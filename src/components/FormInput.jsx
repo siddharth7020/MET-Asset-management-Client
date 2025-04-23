@@ -13,7 +13,7 @@ function FormInput({ label, type, name, value, onChange, error, options, require
           name={name}
           value={value}
           onChange={onChange}
-          className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-primary focus:ring-brand-primary sm:text-sm ${
+          className={`mt-1 block w-full rounded-md border-gray-300 border-black shadow-sm focus:border-brand-primary focus:ring-brand-primary sm:text-sm p-1${
             error ? 'border-red-500' : ''
           }`}
           required={required}
@@ -32,7 +32,7 @@ function FormInput({ label, type, name, value, onChange, error, options, require
           name={name}
           value={value}
           onChange={onChange}
-          className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-primary focus:ring-brand-primary sm:text-sm ${
+          className={`block w-full rounded-md py-1.5 px-2 ring-1 ring-inset ring-gray-400 focus:text-gray-800 ${
             error ? 'border-red-500' : ''
           }`}
           required={required}
