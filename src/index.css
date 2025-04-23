@@ -1,3 +1,54 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --brand-primary: #EF4444;
+  --brand-secondary: #123458;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #f9fafb;
+}
+
+.container {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+/* SVG Icon Styles for Heroicons */
+svg {
+  @apply inline-block;
+}
+
+svg path {
+  @apply stroke-current;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Ensure icons inherit text color for active/hover states */
+.nav-icon {
+  @apply text-current;
+}
+
+/* Active link icon color */
+.bg-brand-primary svg path {
+  @apply stroke-white;
+}
+
+/* Hover state for non-active links */
+.text-gray-600:hover svg path {
+  @apply stroke-gray-800;
+}
+
+/* Mobile sidebar overlay */
+.sidebar-overlay {
+  @apply fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity;
+}
+
+/* Sidebar transitions */
+.sidebar {
+  @apply transition-all duration-300 ease-in-out;
+}

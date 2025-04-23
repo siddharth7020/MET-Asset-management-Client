@@ -1,23 +1,30 @@
-import React from 'react';
+import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Navbar from './navbar/Navbar';
 import Sidebar from './sidebar/Sidebar';
 
-const Layout = () => {
-  return (
-    <>
-      <div className="h-screen w-full grid grid-cols-[15%_85%] md:grid-cols-[20%_80%] lg:grid-cols-[15%_85%] bg-background">
-        <div className="">
-          <Sidebar className="col-span-1" />
-        </div>
-        <div className="col-span-1 grid grid-rows-[5%_95%] ">
-          <Navbar className="row-span-1" />
-          <div className="row-span-1 bg-background"><hr className='border-gray-300' /><Outlet /></div>
-        </div>
-      </div>
-    </>
+function Layout() {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  )
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
+  return (
+    <div className="flex min-h-screen bg-gray-100">
+      <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
+      <div
+        className={`flex-1 flex flex-col transition-all duration-300 ${
+          isSidebarOpen ? 'md:ml-16 lg:ml-64' : 'ml-0 md:ml-16 lg:ml-64'
+        }`}
+      >
+        <Navbar toggleSidebar={toggleSidebar} />
+        <main className="flex-1 overflow-y-auto p-6">
+          <div className="container"><Outlet /></div>
+        </main>
+      </div>
+    </div>
+  );
 }
 
-export default Layout
+export default Layout;

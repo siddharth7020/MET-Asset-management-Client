@@ -1,13 +1,13 @@
+import { BrowserRouter } from 'react-router-dom';
 import Routers from './router/Routers';
 import './App.css';
 
 function App() {
-
   return (
-    <div className=" overflow-hidden text-center">
-      <Routers/>
-    </div>
-  )
+    <BrowserRouter>
+      <Routers />
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;
