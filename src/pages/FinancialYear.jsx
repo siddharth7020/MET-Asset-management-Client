@@ -42,7 +42,7 @@ function FinancialYear() {
   // Table columns
   const columns = [
     { key: 'financialYearId', label: 'ID' },
-    { key: 'year', label: 'Year' },
+    { key: 'year', label: 'Financial Year' },
     {
       key: 'startDate',
       label: 'Start Date',
@@ -151,15 +151,15 @@ function FinancialYear() {
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
       <div className='flex justify-between items-center mb-4'>
-      <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Financial Years</h2>
-          <button
-            onClick={() => setIsFormVisible(!isFormVisible)}
-            className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600"
-          >
-            {isFormVisible ? 'Hide Form' : 'Add Financial Year'}
-          </button>
-        </div>
-      <div className="flex flex-col gap-6 mb-6"> 
+        <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Financial Years</h2>
+        <button
+          onClick={() => setIsFormVisible(!isFormVisible)}
+          className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600"
+        >
+          {isFormVisible ? 'Hide Form' : 'Add Financial Year'}
+        </button>
+      </div>
+      <div className="flex flex-col gap-6 mb-6">
         {/* Form (conditionally rendered) */}
         {isFormVisible && (
           <div>
@@ -176,24 +176,26 @@ function FinancialYear() {
                 error={errors.year}
                 required
               />
-              <FormInput
-                label="Start Date"
-                type="date"
-                name="startDate"
-                value={formData.startDate}
-                onChange={handleChange}
-                error={errors.startDate}
-                required
-              />
-              <FormInput
-                label="End Date"
-                type="date"
-                name="endDate"
-                value={formData.endDate}
-                onChange={handleChange}
-                error={errors.endDate}
-                required
-              />
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <FormInput
+                  label="Start Date"
+                  type="date"
+                  name="startDate"
+                  value={formData.startDate}
+                  onChange={handleChange}
+                  error={errors.startDate}
+                  required
+                />
+                <FormInput
+                  label="End Date"
+                  type="date"
+                  name="endDate"
+                  value={formData.endDate}
+                  onChange={handleChange}
+                  error={errors.endDate}
+                  required
+                />
+              </div>
               <div className="flex space-x-2 mt-4">
                 <button
                   type="submit"

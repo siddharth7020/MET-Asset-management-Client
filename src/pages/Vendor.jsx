@@ -65,7 +65,6 @@ function Vendor() {
 
   // Table columns
   const columns = [
-    { key: 'vendorId', label: 'ID' },
     { key: 'name', label: 'Name' },
     { key: 'companyName', label: 'Company' },
     { key: 'email', label: 'Email' },
@@ -192,139 +191,146 @@ function Vendor() {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Vendors</h2>
-      <div className="flex flex-col gap-6 mb-6">
+      <div className='flex justify-between items-center mb-4'>
+        <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Vendors</h2>
         <div>
           <button
             onClick={() => setIsFormVisible(!isFormVisible)}
             className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600"
           >
-            {isFormVisible ? 'Hide Form' : 'Manage Vendor'}
+            {isFormVisible ? 'Hide Form' : 'Add Vendor'}
           </button>
         </div>
+      </div>
+
+      <div className="flex flex-col gap-6 mb-6">
+
         {isFormVisible && (
           <div>
             <h3 className="text-lg font-medium text-brand-secondary mb-4">
               {isEditMode ? 'Edit Vendor' : 'Add Vendor'}
             </h3>
             <form onSubmit={handleSubmit}>
-              <FormInput
-                label="Vendor ID"
-                type="text"
-                name="vendorId"
-                value={formData.vendorId}
-                onChange={handleChange}
-                disabled
-                required={false}
-              />
-              <FormInput
-                label="Name"
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                error={errors.name}
-                required
-              />
-              <FormInput
-                label="Company Name"
-                type="text"
-                name="companyName"
-                value={formData.companyName}
-                onChange={handleChange}
-                error={errors.companyName}
-                required
-              />
-              <FormInput
-                label="Address"
-                type="text"
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-                error={errors.address}
-                required
-              />
-              <FormInput
-                label="Email"
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                error={errors.email}
-                required
-              />
-              <FormInput
-                label="Mobile Number"
-                type="text"
-                name="mobileNo"
-                value={formData.mobileNo}
-                onChange={handleChange}
-                error={errors.mobileNo}
-                required
-              />
-              <FormInput
-                label="PAN Card Number"
-                type="text"
-                name="pancardNo"
-                value={formData.pancardNo}
-                onChange={handleChange}
-                error={errors.pancardNo}
-                required
-              />
-              <FormInput
-                label="GST Number"
-                type="text"
-                name="gstNo"
-                value={formData.gstNo}
-                onChange={handleChange}
-                error={errors.gstNo}
-                required
-              />
-              <FormInput
-                label="Bank Name"
-                type="text"
-                name="bankName"
-                value={formData.bankName}
-                onChange={handleChange}
-                error={errors.bankName}
-                required
-              />
-              <FormInput
-                label="Account Number"
-                type="text"
-                name="accountNo"
-                value={formData.accountNo}
-                onChange={handleChange}
-                error={errors.accountNo}
-                required
-              />
-              <FormInput
-                label="IFSC Code"
-                type="text"
-                name="ifscCode"
-                value={formData.ifscCode}
-                onChange={handleChange}
-                error={errors.ifscCode}
-                required
-              />
-              <FormInput
-                label="TAN Number"
-                type="text"
-                name="tanNo"
-                value={formData.tanNo}
-                onChange={handleChange}
-                error={errors.tanNo}
-                required
-              />
-              <FormInput
-                label="Website"
-                type="text"
-                name="website"
-                value={formData.website}
-                onChange={handleChange}
-                error={errors.website}
-                required={false}
-              />
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <FormInput
+                  label="Name"
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  error={errors.name}
+                  required
+                />
+                <FormInput
+                  label="Company Name"
+                  type="text"
+                  name="companyName"
+                  value={formData.companyName}
+                  onChange={handleChange}
+                  error={errors.companyName}
+                  required
+                />
+              </div>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <FormInput
+                  label="Address"
+                  type="text"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  error={errors.address}
+                  required
+                />
+                <FormInput
+                  label="Email"
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  error={errors.email}
+                  required
+                />
+              </div>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <FormInput
+                  label="Mobile Number"
+                  type="text"
+                  name="mobileNo"
+                  value={formData.mobileNo}
+                  onChange={handleChange}
+                  error={errors.mobileNo}
+                  required
+                />
+                <FormInput
+                  label="PAN Card Number"
+                  type="text"
+                  name="pancardNo"
+                  value={formData.pancardNo}
+                  onChange={handleChange}
+                  error={errors.pancardNo}
+                  required
+                />
+              </div>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <FormInput
+                  label="GST Number"
+                  type="text"
+                  name="gstNo"
+                  value={formData.gstNo}
+                  onChange={handleChange}
+                  error={errors.gstNo}
+                  required
+                />
+                <FormInput
+                  label="Bank Name"
+                  type="text"
+                  name="bankName"
+                  value={formData.bankName}
+                  onChange={handleChange}
+                  error={errors.bankName}
+                  required
+                />
+              </div>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <FormInput
+                  label="Account Number"
+                  type="text"
+                  name="accountNo"
+                  value={formData.accountNo}
+                  onChange={handleChange}
+                  error={errors.accountNo}
+                  required
+                />
+                <FormInput
+                  label="IFSC Code"
+                  type="text"
+                  name="ifscCode"
+                  value={formData.ifscCode}
+                  onChange={handleChange}
+                  error={errors.ifscCode}
+                  required
+                />
+              </div>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <FormInput
+                  label="TAN Number"
+                  type="text"
+                  name="tanNo"
+                  value={formData.tanNo}
+                  onChange={handleChange}
+                  error={errors.tanNo}
+                  required
+                />
+                <FormInput
+                  label="Website"
+                  type="text"
+                  name="website"
+                  value={formData.website}
+                  onChange={handleChange}
+                  error={errors.website}
+                  required={false}
+                />
+              </div>
               <FormInput
                 label="Remark"
                 type="text"
