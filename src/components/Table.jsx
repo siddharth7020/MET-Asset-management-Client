@@ -1,7 +1,7 @@
 import React from 'react';
 import * as PropTypes from "prop-types";
 
-function Table({ columns, data, actions }) {
+function Table({ columns, data, actions, expandable, onRowClick }) {
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full bg-white shadow-md rounded-lg">
@@ -34,28 +34,47 @@ function Table({ columns, data, actions }) {
             </tr>
           ) : (
             data.map((row, index) => (
-              <tr key={index} className="hover:bg-gray-50">
-                {columns.map((column) => (
-                  <td key={column.key} className="px-6 py-4 text-sm text-gray-900">
-                    {row[column.key] || '-'}
-                  </td>
-                ))}
-                {actions && (
-                  <td className="px-6 py-4 text-sm">
-                    <div className="flex space-x-2">
-                      {actions.map((action) => (
-                        <button
-                          key={action.label}
-                          onClick={() => action.onClick(row)}
-                          className={`px-3 py-1 rounded-md text-white ${action.className}`}
-                        >
-                          {action.label}
-                        </button>
-                      ))}
-                    </div>
-                  </td>
+              <React.Fragment key={index}>
+                <tr
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => onRowClick && onRowClick(row)}
+                >
+                  {columns.map((column) => (
+                    <td key={column.key} className="px-6 py-4 text-sm text-gray-900">
+                      {column.format ? column.format(row[column.key]) : (row[column.key] || '-')}
+                    </td>
+                  ))}
+                  {actions && (
+                    <td className="px-6 py-4 text-sm">
+                      <div className="flex space-x-2">
+                        {actions.map((action) => (
+                          action.render ? (
+                            <div key={action.label}>{action.render(row)}</div>
+                          ) : (
+                            <button
+                              key={action.label}
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent row click when clicking buttons
+                                action.onClick(row);
+                              }}
+                              className={`px-3 py-1 rounded-md text-white ${action.className}`}
+                            >
+                              {action.label}
+                            </button>
+                          )
+                        ))}
+                      </div>
+                    </td>
+                  )}
+                </tr>
+                {expandable && expandable.rowExpandable(row) && expandable.expandedRowKeys.includes(row.poId) && (
+                  <tr>
+                    <td colSpan={columns.length + (actions ? 1 : 0)}>
+                      {expandable.expandedRowRender(row)}
+                    </td>
+                  </tr>
                 )}
-              </tr>
+              </React.Fragment>
             ))
           )}
         </tbody>
@@ -69,6 +88,7 @@ Table.propTypes = {
     PropTypes.shape({
       key: PropTypes.string.isRequired,
       label: PropTypes.string.isRequired,
+      format: PropTypes.func,
     })
   ).isRequired,
   data: PropTypes.arrayOf(PropTypes.object).isRequired,
@@ -76,13 +96,22 @@ Table.propTypes = {
     PropTypes.shape({
       label: PropTypes.string.isRequired,
       onClick: PropTypes.func.isRequired,
-      className: PropTypes.string.isRequired,
+      className: PropTypes.string,
+      render: PropTypes.func,
     })
   ),
+  expandable: PropTypes.shape({
+    expandedRowRender: PropTypes.func,
+    rowExpandable: PropTypes.func,
+    expandedRowKeys: PropTypes.arrayOf(PropTypes.number),
+  }),
+  onRowClick: PropTypes.func,
 };
 
 Table.defaultProps = {
   actions: null,
+  expandable: null,
+  onRowClick: null,
 };
 
 export default Table;

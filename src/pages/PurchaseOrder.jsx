@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import Table from '../components/Table';
 import FormInput from '../components/FormInput';
+import Details from '../components/Details';
+
 
 function PurchaseOrder() {
   const [purchaseOrders, setPurchaseOrders] = useState([]);
@@ -27,6 +28,8 @@ function PurchaseOrder() {
   const [errors, setErrors] = useState({});
   const [editId, setEditId] = useState(null);
   const [expandedPoId, setExpandedPoId] = useState(null);
+  const [selectedPoId, setSelectedPoId] = useState(null); // New state for selected PO
+  const [currentLayout, setCurrentLayout] = useState(null); // New state for layout
 
   // Initialize with dummy data
   useEffect(() => {
@@ -152,7 +155,6 @@ function PurchaseOrder() {
 
   // Table columns for PurchaseOrder
   const poColumns = [
-    { key: 'poId', label: 'ID' },
     {
       key: 'poDate',
       label: 'Date',
@@ -173,14 +175,11 @@ function PurchaseOrder() {
       key: 'vendorId',
       label: 'Vendor',
       format: (value) => vendors.find((v) => v.vendorId === value)?.name || 'N/A',
-    },
-    { key: 'requestedBy', label: 'Requested By' },
-    { key: 'remark', label: 'Remark' },
+    }
   ];
 
   // Table columns for OrderItem (in collapsible section)
   const orderItemColumns = [
-    { key: 'id', label: 'ID' },
     {
       key: 'itemId',
       label: 'Item',
@@ -189,9 +188,20 @@ function PurchaseOrder() {
     { key: 'quantity', label: 'Quantity' },
     { key: 'rate', label: 'Rate' },
     { key: 'amount', label: 'Amount' },
-    { key: 'discount', label: 'Discount' },
     { key: 'totalAmount', label: 'Total Amount' },
   ];
+
+  // Handle row click to show details
+  const handleRowClick = (row) => {
+    setSelectedPoId(row.poId);
+    setCurrentLayout('details'); // Set layout to details
+  };
+
+  // Handle back to table view
+  const handleBack = () => {
+    setSelectedPoId(null);
+    setCurrentLayout(null); // Reset layout
+  };
 
   // Table actions
   const actions = [
@@ -244,20 +254,7 @@ function PurchaseOrder() {
         setExpandedPoId(expandedPoId === row.poId ? null : row.poId);
       },
       className: 'bg-green-500 hover:bg-green-600',
-    },
-    {
-      label: 'View Details',
-      onClick: () => null, // Handled by Link
-      className: 'bg-purple-500 hover:bg-purple-600',
-      render: (row) => (
-        <Link
-          to={`/masters/purchase-order/${row.poId}`}
-          className="bg-purple-500 hover:bg-purple-600 text-white px-2 py-1 rounded"
-        >
-          View Details
-        </Link>
-      ),
-    },
+    }
   ];
 
   // Form handling
@@ -408,270 +405,294 @@ function PurchaseOrder() {
     setEditId(null);
   };
 
+  // Get selected purchase order data
+  const selectedPo = purchaseOrders.find((po) => po.poId === selectedPoId);
+  const selectedOrderItems = orderItems.filter((oi) => oi.poId === selectedPoId);
+
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
-      <div className='flex justify-between items-center mb-4'>
-        <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Purchase Orders</h2>
-        <div>
-          <button
-            onClick={() => setIsFormVisible(!isFormVisible)}
-            className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600"
-          >
-            {isFormVisible ? 'Hide Form' : 'Manage Purchase Order'}
-          </button>
-        </div>
-      </div>
-      <div className="flex flex-col gap-6 mb-6">
-
-        {isFormVisible && (
-          <div>
-            <h3 className="text-base sm:text-lg font-medium text-brand-secondary mb-4">
-              {isEditMode ? 'Edit Purchase Order' : 'Add Purchase Order'}
-            </h3>
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <FormInput
-                label="PO ID"
-                type="text"
-                name="poId"
-                value={formData.poId}
-                onChange={handleChange}
-                disabled
-                required={false}
-                className="w-full text-xs sm:text-sm"
-              />
-              <FormInput
-                label="PO Date"
-                type="date"
-                name="poDate"
-                value={formData.poDate}
-                onChange={handleChange}
-                error={errors.poDate}
-                required
-                className="w-full text-xs sm:text-sm"
-              />
-              <FormInput
-                label="PO Number"
-                type="text"
-                name="poNo"
-                value={formData.poNo}
-                onChange={handleChange}
-                error={errors.poNo}
-                required
-                className="w-full text-xs sm:text-sm"
-              />
+      {selectedPoId ? (
+        <Details
+          purchaseOrder={selectedPo}
+          orderItems={selectedOrderItems}
+          institutes={institutes}
+          financialYears={financialYears}
+          vendors={vendors}
+          items={items}
+          onBack={handleBack}
+        />
+      ) : (
+        <>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Purchase Orders</h2>
+            <div>
+              <button
+                onClick={() => setIsFormVisible(!isFormVisible)}
+                className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600"
+              >
+                {isFormVisible ? 'Hide Form' : 'Manage Purchase Order'}
+              </button>
+            </div>
+          </div>
+          <div className="flex flex-col gap-6 mb-6">
+            {isFormVisible && (
               <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-700">Institute</label>
-                <select
-                  name="instituteId"
-                  value={formData.instituteId}
-                  onChange={handleChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
-                  required
-                >
-                  <option value="">Select Institute</option>
-                  {institutes.map((inst) => (
-                    <option key={inst.instituteId} value={inst.instituteId}>
-                      {inst.instituteName}
-                    </option>
-                  ))}
-                </select>
-                {errors.instituteId && <p className="mt-1 text-xs text-red-600">{errors.instituteId}</p>}
-              </div>
-              <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-700">Financial Year</label>
-                <select
-                  name="financialYearId"
-                  value={formData.financialYearId}
-                  onChange={handleChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
-                  required
-                >
-                  <option value="">Select Financial Year</option>
-                  {financialYears.map((fy) => (
-                    <option key={fy.financialYearId} value={fy.financialYearId}>
-                      {fy.year}
-                    </option>
-                  ))}
-                </select>
-                {errors.financialYearId && <p className="mt-1 text-xs text-red-600">{errors.financialYearId}</p>}
-              </div>
-              <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-700">Vendor</label>
-                <select
-                  name="vendorId"
-                  value={formData.vendorId}
-                  onChange={handleChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
-                  required
-                >
-                  <option value="">Select Vendor</option>
-                  {vendors.map((v) => (
-                    <option key={v.vendorId} value={v.vendorId}>
-                      {v.name}
-                    </option>
-                  ))}
-                </select>
-                {errors.vendorId && <p className="mt-1 text-xs text-red-600">{errors.vendorId}</p>}
-              </div>
-              <FormInput
-                label="Document"
-                type="text"
-                name="document"
-                value={formData.document}
-                onChange={handleChange}
-                error={errors.document}
-                required={false}
-                className="w-full text-xs sm:text-sm"
-              />
-              <FormInput
-                label="Requested By"
-                type="text"
-                name="requestedBy"
-                value={formData.requestedBy}
-                onChange={handleChange}
-                error={errors.requestedBy}
-                required
-                className="w-full text-xs sm:text-sm"
-              />
-              <FormInput
-                label="Remark"
-                type="text"
-                name="remark"
-                value={formData.remark}
-                onChange={handleChange}
-                error={errors.remark}
-                required={false}
-                className="w-full text-xs sm:text-sm"
-              />
-              <div className="col-span-1 sm:col-span-2 lg:col-span-3">
-                <h4 className="text-sm sm:text-md font-medium text-brand-secondary mb-2">Order Items</h4>
-                {formData.orderItems.map((oi, index) => (
-                  <div key={index} className="flex flex-col gap-4 mb-4 p-4 border rounded-md">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-xs sm:text-sm font-medium text-gray-700">Item</label>
-                        <select
-                          name="itemId"
-                          value={oi.itemId}
-                          onChange={(e) => handleOrderItemChange(index, e)}
-                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
-                          required
+                <h3 className="text-base sm:text-lg font-medium text-brand-secondary mb-4">
+                  {isEditMode ? 'Edit Purchase Order' : 'Add Purchase Order'}
+                </h3>
+                <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <FormInput
+                    label="PO ID"
+                    type="text"
+                    name="poId"
+                    value={formData.poId}
+                    onChange={handleChange}
+                    disabled
+                    required={false}
+                    className="w-full text-xs sm:text-sm"
+                  />
+                  <FormInput
+                    label="PO Date"
+                    type="date"
+                    name="poDate"
+                    value={formData.poDate}
+                    onChange={handleChange}
+                    error={errors.poDate}
+                    required
+                    className="w-full text-xs sm:text-sm"
+                  />
+                  <FormInput
+                    label="PO Number"
+                    type="text"
+                    name="poNo"
+                    value={formData.poNo}
+                    onChange={handleChange}
+                    error={errors.poNo}
+                    required
+                    className="w-full text-xs sm:text-sm"
+                  />
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700">Institute</label>
+                    <select
+                      name="instituteId"
+                      value={formData.instituteId}
+                      onChange={handleChange}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
+                      required
+                    >
+                      <option value="">Select Institute</option>
+                      {institutes.map((inst) => (
+                        <option key={inst.instituteId} value={inst.instituteId}>
+                          {inst.instituteName}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.instituteId && <p className="mt-1 text-xs text-red-600">{errors.instituteId}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700">Financial Year</label>
+                    <select
+                      name="financialYearId"
+                      value={formData.financialYearId}
+                      onChange={handleChange}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
+                      required
+                    >
+                      <option value="">Select Financial Year</option>
+                      {financialYears.map((fy) => (
+                        <option key={fy.financialYearId} value={fy.financialYearId}>
+                          {fy.year}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.financialYearId && <p className="mt-1 text-xs text-red-600">{errors.financialYearId}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700">Vendor</label>
+                    <select
+                      name="vendorId"
+                      value={formData.vendorId}
+                      onChange={handleChange}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
+                      required
+                    >
+                      <option value="">Select Vendor</option>
+                      {vendors.map((v) => (
+                        <option key={v.vendorId} value={v.vendorId}>
+                          {v.name}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.vendorId && <p className="mt-1 text-xs text-red-600">{errors.vendorId}</p>}
+                  </div>
+                  <FormInput
+                    label="Document"
+                    type="text"
+                    name="document"
+                    value={formData.document}
+                    onChange={handleChange}
+                    error={errors.document}
+                    required={false}
+                    className="w-full text-xs sm:text-sm"
+                  />
+                  <FormInput
+                    label="Requested By"
+                    type="text"
+                    name="requestedBy"
+                    value={formData.requestedBy}
+                    onChange={handleChange}
+                    error={errors.requestedBy}
+                    required
+                    className="w-full text-xs sm:text-sm"
+                  />
+                  <FormInput
+                    label="Remark"
+                    type="text"
+                    name="remark"
+                    value={formData.remark}
+                    onChange={handleChange}
+                    error={errors.remark}
+                    required={false}
+                    className="w-full text-xs sm:text-sm"
+                  />
+                  <div className="col-span-1 sm:col-span-2 lg:col-span-3">
+                    <h4 className="text-sm sm:text-md font-medium text-brand-secondary mb-2">Order Items</h4>
+                    {formData.orderItems.map((oi, index) => (
+                      <div key={index} className="flex flex-col gap-4 mb-4 p-4 border rounded-md">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700">Item</label>
+                            <select
+                              name="itemId"
+                              value={oi.itemId}
+                              onChange={(e) => handleOrderItemChange(index, e)}
+                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
+                              required
+                            >
+                              <option value="">Select Item</option>
+                              {items.map((item) => (
+                                <option key={item.itemId} value={item.itemId}>
+                                  {item.itemName}
+                                </option>
+                              ))}
+                            </select>
+                            {errors[`orderItems[${index}].itemId`] && <p className="mt-1 text-xs text-red-600">{errors[`orderItems[${index}].itemId`]}</p>}
+                          </div>
+                          <FormInput
+                            label="Quantity"
+                            type="number"
+                            name="quantity"
+                            value={oi.quantity}
+                            onChange={(e) => handleOrderItemChange(index, e)}
+                            error={errors[`orderItems[${index}].quantity`]}
+                            required
+                            className="w-full text-xs sm:text-sm"
+                          />
+                          <FormInput
+                            label="Rate"
+                            type="number"
+                            name="rate"
+                            value={oi.rate}
+                            onChange={(e) => handleOrderItemChange(index, e)}
+                            error={errors[`orderItems[${index}].rate`]}
+                            required
+                            className="w-full text-xs sm:text-sm"
+                          />
+                          <FormInput
+                            label="Amount"
+                            type="text"
+                            name="amount"
+                            value={oi.amount}
+                            disabled
+                            required={false}
+                            className="w-full text-xs sm:text-sm"
+                          />
+                          <FormInput
+                            label="Discount"
+                            type="number"
+                            name="discount"
+                            value={oi.discount}
+                            onChange={(e) => handleOrderItemChange(index, e)}
+                            error={errors[`orderItems[${index}].discount`]}
+                            required={false}
+                            className="w-full text-xs sm:text-sm"
+                          />
+                          <FormInput
+                            label="Total Amount"
+                            type="text"
+                            name="totalAmount"
+                            value={oi.totalAmount}
+                            disabled
+                            required={false}
+                            className="w-full text-xs sm:text-sm"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeOrderItem(index)}
+                          className="text-red-600 hover:text-red-800 text-xs sm:text-sm mt-2"
                         >
-                          <option value="">Select Item</option>
-                          {items.map((item) => (
-                            <option key={item.itemId} value={item.itemId}>
-                              {item.itemName}
-                            </option>
-                          ))}
-                        </select>
-                        {errors[`orderItems[${index}].itemId`] && <p className="mt-1 text-xs text-red-600">{errors[`orderItems[${index}].itemId`]}</p>}
+                          Remove Item
+                        </button>
                       </div>
-                      <FormInput
-                        label="Quantity"
-                        type="number"
-                        name="quantity"
-                        value={oi.quantity}
-                        onChange={(e) => handleOrderItemChange(index, e)}
-                        error={errors[`orderItems[${index}].quantity`]}
-                        required
-                        className="w-full text-xs sm:text-sm"
-                      />
-                      <FormInput
-                        label="Rate"
-                        type="number"
-                        name="rate"
-                        value={oi.rate}
-                        onChange={(e) => handleOrderItemChange(index, e)}
-                        error={errors[`orderItems[${index}].rate`]}
-                        required
-                        className="w-full text-xs sm:text-sm"
-                      />
-                      <FormInput
-                        label="Amount"
-                        type="text"
-                        name="amount"
-                        value={oi.amount}
-                        disabled
-                        required={false}
-                        className="w-full text-xs sm:text-sm"
-                      />
-                      <FormInput
-                        label="Discount"
-                        type="number"
-                        name="discount"
-                        value={oi.discount}
-                        onChange={(e) => handleOrderItemChange(index, e)}
-                        error={errors[`orderItems[${index}].discount`]}
-                        required={false}
-                        className="w-full text-xs sm:text-sm"
-                      />
-                      <FormInput
-                        label="Total Amount"
-                        type="text"
-                        name="totalAmount"
-                        value={oi.totalAmount}
-                        disabled
-                        required={false}
-                        className="w-full text-xs sm:text-sm"
-                      />
-                    </div>
+                    ))}
                     <button
                       type="button"
-                      onClick={() => removeOrderItem(index)}
-                      className="text-red-600 hover:text-red-800 text-xs sm:text-sm mt-2"
+                      onClick={addOrderItem}
+                      className="w-full sm:w-auto bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 text-xs sm:text-sm"
                     >
-                      Remove Item
+                      Add Order Item
                     </button>
                   </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={addOrderItem}
-                  className="w-full sm:w-auto bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 text-xs sm:text-sm"
-                >
-                  Add Order Item
-                </button>
+                  <div className="col-span-1 sm:col-span-2 lg:col-span-3 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+                    <button
+                      type="submit"
+                      className="w-full sm:w-auto bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-xs sm:text-sm"
+                    >
+                      {isEditMode ? 'Update' : 'Add'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { resetForm(); setIsFormVisible(false); }}
+                      className="w-full sm:w-auto px-4 py-2 text-gray-600 rounded-md hover:bg-gray-100 text-xs sm:text-sm"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
               </div>
-              <div className="col-span-1 sm:col-span-2 lg:col-span-3 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-                <button
-                  type="submit"
-                  className="w-full sm:w-auto bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-xs sm:text-sm"
-                >
-                  {isEditMode ? 'Update' : 'Add'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { resetForm(); setIsFormVisible(false); }}
-                  className="w-full sm:w-auto px-4 py-2 text-gray-600 rounded-md hover:bg-gray-100 text-xs sm:text-sm"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-        <div>
-          <Table
-            columns={poColumns}
-            data={purchaseOrders}
-            actions={actions}
-            expandable={{
-              expandedRowRender: (row) => (
-                <div className="p-4 bg-gray-50">
-                  <h4 className="text-md font-medium text-brand-secondary mb-2">Order Items</h4>
+            )}
+            <div>
+              {
+                currentLayout ? (
+                  <Details />
+                ) : (
                   <Table
-                    columns={orderItemColumns}
-                    data={orderItems.filter((oi) => oi.poId === row.poId)}
-                    actions={[]}
+                    columns={poColumns}
+                    data={purchaseOrders}
+                    actions={actions}
+                    onRowClick={handleRowClick}
+                    expandable={{
+                      expandedRowRender: (row) => (
+                        <div className="p-4 bg-gray-50">
+                          <h4 className="text-md font-medium text-brand-secondary mb-2">Order Items</h4>
+                          <Table
+                            columns={orderItemColumns}
+                            data={orderItems.filter((oi) => oi.poId === row.poId)}
+                            actions={[]}
+                          />
+                        </div>
+                      ),
+                      rowExpandable: (row) => orderItems.some((oi) => oi.poId === row.poId),
+                      expandedRowKeys: expandedPoId ? [expandedPoId] : [],
+                    }}
                   />
-                </div>
-              ),
-              rowExpandable: (row) => orderItems.some((oi) => oi.poId === row.poId),
-              expandedRowKeys: expandedPoId ? [expandedPoId] : [],
-            }}
-          />
-        </div>
-      </div>
+                )}
+
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
