@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Table from '../components/Table';
 import FormInput from '../components/FormInput';
+import VendorDetails from './VendorDetails';
 
 function Vendor() {
   const [vendors, setVendors] = useState([]);
@@ -24,6 +25,7 @@ function Vendor() {
   });
   const [errors, setErrors] = useState({});
   const [editId, setEditId] = useState(null);
+  const [selectedVendorId, setSelectedVendorId] = useState(null);
 
   // Initialize with dummy data
   useEffect(() => {
@@ -189,182 +191,218 @@ function Vendor() {
     setEditId(null);
   };
 
+  // Handle row click to show details
+  const handleRowClick = (row) => {
+    setSelectedVendorId(row.vendorId);
+  };
+
+  // Handle back to table view
+  const handleBack = () => {
+    setSelectedVendorId(null);
+  };
+
+  // Get selected vendor data
+  const selectedVendor = vendors.find((v) => v.vendorId === selectedVendorId);
+
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
-      <div className='flex justify-between items-center mb-4'>
-        <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Vendors</h2>
-        <div>
-          <button
-            onClick={() => setIsFormVisible(!isFormVisible)}
-            className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600"
-          >
-            {isFormVisible ? 'Hide Form' : 'Add Vendor'}
-          </button>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-6 mb-6">
-
-        {isFormVisible && (
-          <div>
-            <h3 className="text-lg font-medium text-brand-secondary mb-4">
-              {isEditMode ? 'Edit Vendor' : 'Add Vendor'}
-            </h3>
-            <form onSubmit={handleSubmit}>
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                <FormInput
-                  label="Name"
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  error={errors.name}
-                  required
-                />
-                <FormInput
-                  label="Company Name"
-                  type="text"
-                  name="companyName"
-                  value={formData.companyName}
-                  onChange={handleChange}
-                  error={errors.companyName}
-                  required
-                />
-              </div>
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                <FormInput
-                  label="Address"
-                  type="text"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleChange}
-                  error={errors.address}
-                  required
-                />
-                <FormInput
-                  label="Email"
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  error={errors.email}
-                  required
-                />
-              </div>
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                <FormInput
-                  label="Mobile Number"
-                  type="text"
-                  name="mobileNo"
-                  value={formData.mobileNo}
-                  onChange={handleChange}
-                  error={errors.mobileNo}
-                  required
-                />
-                <FormInput
-                  label="PAN Card Number"
-                  type="text"
-                  name="pancardNo"
-                  value={formData.pancardNo}
-                  onChange={handleChange}
-                  error={errors.pancardNo}
-                  required
-                />
-              </div>
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                <FormInput
-                  label="GST Number"
-                  type="text"
-                  name="gstNo"
-                  value={formData.gstNo}
-                  onChange={handleChange}
-                  error={errors.gstNo}
-                  required
-                />
-                <FormInput
-                  label="Bank Name"
-                  type="text"
-                  name="bankName"
-                  value={formData.bankName}
-                  onChange={handleChange}
-                  error={errors.bankName}
-                  required
-                />
-              </div>
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                <FormInput
-                  label="Account Number"
-                  type="text"
-                  name="accountNo"
-                  value={formData.accountNo}
-                  onChange={handleChange}
-                  error={errors.accountNo}
-                  required
-                />
-                <FormInput
-                  label="IFSC Code"
-                  type="text"
-                  name="ifscCode"
-                  value={formData.ifscCode}
-                  onChange={handleChange}
-                  error={errors.ifscCode}
-                  required
-                />
-              </div>
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                <FormInput
-                  label="TAN Number"
-                  type="text"
-                  name="tanNo"
-                  value={formData.tanNo}
-                  onChange={handleChange}
-                  error={errors.tanNo}
-                  required
-                />
-                <FormInput
-                  label="Website"
-                  type="text"
-                  name="website"
-                  value={formData.website}
-                  onChange={handleChange}
-                  error={errors.website}
-                  required={false}
-                />
-              </div>
-              <FormInput
-                label="Remark"
-                type="text"
-                name="remark"
-                value={formData.remark}
-                onChange={handleChange}
-                error={errors.remark}
-                required
-              />
-              <div className="flex space-x-2 mt-4">
-                <button
-                  type="submit"
-                  className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600"
-                >
-                  {isEditMode ? 'Update' : 'Add'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    resetForm();
-                    setIsFormVisible(false);
-                  }}
-                  className="px-4 py-2 text-gray-600 rounded-md hover:bg-gray-100"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
+      {selectedVendorId ? (
+        <VendorDetails vendor={selectedVendor} onBack={handleBack} />
+      ) : (
+        <>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Vendors</h2>
+            <div>
+              <button
+                onClick={() => setIsFormVisible(!isFormVisible)}
+                className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600"
+              >
+                {isFormVisible ? 'Hide Form' : 'Add Vendor'}
+              </button>
+            </div>
           </div>
-        )}
-        <div>
-          <Table columns={columns} data={vendors} actions={actions} />
-        </div>
-      </div>
+
+          <div className="flex flex-col gap-6 mb-6">
+            {isFormVisible && (
+              <div>
+                <h3 className="text-lg font-medium text-brand-secondary mb-4">
+                  {isEditMode ? 'Edit Vendor' : 'Add Vendor'}
+                </h3>
+                <form onSubmit={handleSubmit}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormInput
+                      label="Name"
+                      type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      error={errors.name}
+                      required
+                      className="w-full text-xs sm:text-sm"
+                    />
+                    <FormInput
+                      label="Company Name"
+                      type="text"
+                      name="companyName"
+                      value={formData.companyName}
+                      onChange={handleChange}
+                      error={errors.companyName}
+                      required
+                      className="w-full text-xs sm:text-sm"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormInput
+                      label="Address"
+                      type="text"
+                      name="address"
+                      value={formData.address}
+                      onChange={handleChange}
+                      error={errors.address}
+                      required
+                      className="w-full text-xs sm:text-sm"
+                    />
+                    <FormInput
+                      label="Email"
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      error={errors.email}
+                      required
+                      className="w-full text-xs sm:text-sm"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormInput
+                      label="Mobile Number"
+                      type="text"
+                      name="mobileNo"
+                      value={formData.mobileNo}
+                      onChange={handleChange}
+                      error={errors.mobileNo}
+                      required
+                      className="w-full text-xs sm:text-sm"
+                    />
+                    <FormInput
+                      label="PAN Card Number"
+                      type="text"
+                      name="pancardNo"
+                      value={formData.pancardNo}
+                      onChange={handleChange}
+                      error={errors.pancardNo}
+                      required
+                      className="w-full text-xs sm:text-sm"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormInput
+                      label="GST Number"
+                      type="text"
+                      name="gstNo"
+                      value={formData.gstNo}
+                      onChange={handleChange}
+                      error={errors.gstNo}
+                      required
+                      className="w-full text-xs sm:text-sm"
+                    />
+                    <FormInput
+                      label="Bank Name"
+                      type="text"
+                      name="bankName"
+                      value={formData.bankName}
+                      onChange={handleChange}
+                      error={errors.bankName}
+                      required
+                      className="w-full text-xs sm:text-sm"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormInput
+                      label="Account Number"
+                      type="text"
+                      name="accountNo"
+                      value={formData.accountNo}
+                      onChange={handleChange}
+                      error={errors.accountNo}
+                      required
+                      className="w-full text-xs sm:text-sm"
+                    />
+                    <FormInput
+                      label="IFSC Code"
+                      type="text"
+                      name="ifscCode"
+                      value={formData.ifscCode}
+                      onChange={handleChange}
+                      error={errors.ifscCode}
+                      required
+                      className="w-full text-xs sm:text-sm"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormInput
+                      label="TAN Number"
+                      type="text"
+                      name="tanNo"
+                      value={formData.tanNo}
+                      onChange={handleChange}
+                      error={errors.tanNo}
+                      required
+                      className="w-full text-xs sm:text-sm"
+                    />
+                    <FormInput
+                      label="Website"
+                      type="text"
+                      name="website"
+                      value={formData.website}
+                      onChange={handleChange}
+                      error={errors.website}
+                      required={false}
+                      className="w-full text-xs sm:text-sm"
+                    />
+                  </div>
+                  <FormInput
+                    label="Remark"
+                    type="text"
+                    name="remark"
+                    value={formData.remark}
+                    onChange={handleChange}
+                    error={errors.remark}
+                    required
+                    className="w-full text-xs sm:text-sm"
+                  />
+                  <div className="flex space-x-2 mt-4">
+                    <button
+                      type="submit"
+                      className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-xs sm:text-sm"
+                    >
+                      {isEditMode ? 'Update' : 'Add'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        resetForm();
+                        setIsFormVisible(false);
+                      }}
+                      className="px-4 py-2 text-gray-600 rounded-md hover:bg-gray-100 text-xs sm:text-sm"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+            <div>
+              <Table
+                columns={columns}
+                data={vendors}
+                actions={actions}
+                onRowClick={handleRowClick}
+              />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
