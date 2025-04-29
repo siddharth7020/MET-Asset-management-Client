@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import Select from 'react-select';
 import Table from '../components/Table';
 import FormInput from '../components/FormInput';
+import QuickInvoiceDetails from './QuickInvoiceDetail';
 
 function QuickInvoice() {
   const [quickInvoices, setQuickInvoices] = useState([]);
@@ -17,11 +17,11 @@ function QuickInvoice() {
     qInvoiceDate: '',
     qGRNIds: [],
     remark: '',
-    taxDetails: {}, // { qGRNItemid: { taxPercentage: number } }
+    taxDetails: {}, // { qGRNItemid: { taxPercentage: number, taxAmount: string, baseAmount: string, totalAmount: string } }
   });
   const [errors, setErrors] = useState({});
   const [editId, setEditId] = useState(null);
-  const [expandedQInvoiceId, setExpandedQInvoiceId] = useState(null);
+  const [selectedQInvoiceId, setSelectedQInvoiceId] = useState(null);
 
   // Initialize dummy data
   useEffect(() => {
@@ -171,7 +171,6 @@ function QuickInvoice() {
     setQuickGRNs(quickGRNsData);
     setQuickGRNItems(quickGRNItemsData);
     setItems(itemsData);
-    console.log('QuickInvoices:', quickInvoicesData, 'QuickInvoiceItems:', quickInvoiceItemsData);
   }, []);
 
   // Generate qInvoiceNo
@@ -211,26 +210,11 @@ function QuickInvoice() {
 
   // Table columns for QuickInvoice
   const quickInvoiceColumns = [
-    { key: 'qInvoiceId', label: 'ID' },
     { key: 'qInvoiceNo', label: 'Invoice No' },
     { key: 'qInvoiceDate', label: 'Invoice Date', format: (value) => new Date(value).toLocaleDateString() },
     { key: 'qGRNIds', label: 'Quick GRNs', format: (value) => value.map((id) => quickGRNs.find((g) => g.qGRNId === id)?.qGRNNo || id).join(', ') },
     { key: 'totalAmount', label: 'Total Amount', format: (value) => `₹${parseFloat(value).toFixed(2)}` },
-    { key: 'remark', label: 'Remark', className: 'hidden sm:table-cell' },
-  ];
-
-  // Table columns for QuickInvoiceItem
-  const quickInvoiceItemColumns = [
-    { key: 'qInvoiceItemId', label: 'ID' },
-    { key: 'qGRNId', label: 'Quick GRN', format: (value) => quickGRNs.find((g) => g.qGRNId === value)?.qGRNNo || value },
-    { key: 'qGRNItemid', label: 'GRN Item ID' },
-    { key: 'itemId', label: 'Item', format: (value) => items.find((i) => i.id === value)?.name || 'N/A' },
-    { key: 'quantity', label: 'Quantity' },
-    { key: 'rate', label: 'Rate', format: (value) => `₹${parseFloat(value).toFixed(2)}` },
-    { key: 'discount', label: 'Discount', format: (value) => `₹${parseFloat(value).toFixed(2)}` },
-    { key: 'taxPercentage', label: 'Tax %', format: (value) => `${parseFloat(value).toFixed(2)}%` },
-    { key: 'taxAmount', label: 'Tax Amount', format: (value) => `₹${parseFloat(value).toFixed(2)}` },
-    { key: 'totalAmount', label: 'Total Amount', format: (value) => `₹${parseFloat(value).toFixed(2)}` },
+    { key: 'remark', label: 'Remark' },
   ];
 
   // Table actions
@@ -244,7 +228,14 @@ function QuickInvoice() {
         quickInvoiceItems
           .filter((qi) => qi.qInvoiceId === row.qInvoiceId)
           .forEach((qi) => {
-            taxDetails[qi.qGRNItemid] = { taxPercentage: qi.taxPercentage };
+            const grnItem = quickGRNItems.find((gi) => gi.qGRNItemid === qi.qGRNItemid);
+            const { baseAmount, taxAmount, totalAmount } = calculateItemAmounts(grnItem, qi.taxPercentage);
+            taxDetails[qi.qGRNItemid] = {
+              taxPercentage: qi.taxPercentage,
+              baseAmount,
+              taxAmount,
+              totalAmount,
+            };
           });
         setFormData({
           qInvoiceNo: row.qInvoiceNo,
@@ -268,27 +259,17 @@ function QuickInvoice() {
       },
       className: 'bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs sm:text-sm',
     },
-    {
-      label: 'View Items',
-      onClick: (row) => {
-        console.log('Toggling items for qInvoiceId:', row.qInvoiceId);
-        setExpandedQInvoiceId(expandedQInvoiceId === row.qInvoiceId ? null : row.qInvoiceId);
-      },
-      className: 'bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs sm:text-sm',
-    },
-    {
-      label: 'View Details',
-      className: 'bg-purple-500 hover:bg-purple-600 text-white px-2 py-1 rounded text-xs sm:text-sm',
-      render: (row) => (
-        <Link
-          to={`/masters/quickinvoice/${row.qInvoiceId}`}
-          className="bg-purple-500 hover:bg-purple-600 text-white px-2 py-1 rounded text-xs sm:text-sm"
-        >
-          View Details
-        </Link>
-      ),
-    },
   ];
+
+  // Handle row click to show details
+  const handleRowClick = (row) => {
+    setSelectedQInvoiceId(row.qInvoiceId);
+  };
+
+  // Handle back to table view
+  const handleBack = () => {
+    setSelectedQInvoiceId(null);
+  };
 
   // Form handling
   const handleChange = (e) => {
@@ -309,7 +290,10 @@ function QuickInvoice() {
         if (!selectedGRNItems.some((gi) => gi.qGRNItemid === Number(key))) delete newTaxDetails[key];
       });
       selectedGRNItems.forEach((gi) => {
-        if (!newTaxDetails[gi.qGRNItemid]) newTaxDetails[gi.qGRNItemid] = { taxPercentage: '' };
+        if (!newTaxDetails[gi.qGRNItemid]) {
+          const { baseAmount, taxAmount, totalAmount } = calculateItemAmounts(gi, 0);
+          newTaxDetails[gi.qGRNItemid] = { taxPercentage: '', baseAmount, taxAmount, totalAmount };
+        }
       });
       return { ...prev, qGRNIds: selected, taxDetails: newTaxDetails };
     });
@@ -318,13 +302,17 @@ function QuickInvoice() {
 
   const handleTaxChange = (qGRNItemid, e) => {
     const { value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      taxDetails: {
-        ...prev.taxDetails,
-        [qGRNItemid]: { taxPercentage: value },
-      },
-    }));
+    setFormData((prev) => {
+      const grnItem = quickGRNItems.find((gi) => gi.qGRNItemid === qGRNItemid);
+      const { baseAmount, taxAmount, totalAmount } = calculateItemAmounts(grnItem, value);
+      return {
+        ...prev,
+        taxDetails: {
+          ...prev.taxDetails,
+          [qGRNItemid]: { taxPercentage: value, baseAmount, taxAmount, totalAmount },
+        },
+      };
+    });
     setErrors((prev) => ({ ...prev, [`taxDetails[${qGRNItemid}].taxPercentage`]: '' }));
   };
 
@@ -349,14 +337,21 @@ function QuickInvoice() {
     return newErrors;
   };
 
-  const calculateInvoiceItems = (qGRNIds, taxDetails) => {
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const newErrors = validateForm();
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
     const items = [];
     let totalInvoiceAmount = 0;
 
-    qGRNIds.forEach((qGRNId) => {
+    formData.qGRNIds.forEach((qGRNId) => {
       const grnItems = quickGRNItems.filter((gi) => gi.qGRNId === qGRNId);
       grnItems.forEach((gi) => {
-        const taxPercentage = Number(taxDetails[gi.qGRNItemid]?.taxPercentage) || 0;
+        const taxPercentage = Number(formData.taxDetails[gi.qGRNItemid]?.taxPercentage) || 0;
         const quantity = Number(gi.quantity);
         const rate = Number(gi.rate);
         const discount = Number(gi.discount) || 0;
@@ -380,19 +375,6 @@ function QuickInvoice() {
       });
     });
 
-    return { items, totalInvoiceAmount };
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const newErrors = validateForm();
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-
-    const { items, totalInvoiceAmount } = calculateInvoiceItems(formData.qGRNIds, formData.taxDetails);
-
     if (isEditMode) {
       setQuickInvoices((prev) =>
         prev.map((inv) =>
@@ -402,6 +384,7 @@ function QuickInvoice() {
                 qInvoiceId: editId,
                 qGRNIds: formData.qGRNIds,
                 totalAmount: totalInvoiceAmount.toFixed(2),
+                updatedAt: new Date().toISOString(),
               }
             : inv
         )
@@ -412,6 +395,7 @@ function QuickInvoice() {
           Math.max(...quickInvoiceItems.map((i) => i.qInvoiceItemId), 0) + index + 1,
         qInvoiceId: editId,
         ...item,
+        updatedAt: new Date().toISOString(),
       }));
       setQuickInvoiceItems((prev) => [
         ...prev.filter((qi) => qi.qInvoiceId !== editId),
@@ -463,272 +447,227 @@ function QuickInvoice() {
     label: grn.qGRNNo,
   }));
 
+  // Get selected Quick Invoice data
+  const selectedQInvoice = quickInvoices.find((inv) => inv.qInvoiceId === selectedQInvoiceId);
+  const selectedQInvoiceItems = quickInvoiceItems.filter((qi) => qi.qInvoiceId === selectedQInvoiceId);
+
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
-      <div className='flex justify-between items-center mb-4'>
-        <h2 className="text-lg sm:text-xl font-semibold text-brand-secondary mb-4">Quick Invoices</h2>
-        <div>
-          <button
-            onClick={() => setIsFormVisible(!isFormVisible)}
-            className="w-full sm:w-auto bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-xs sm:text-sm"
-          >
-            {isFormVisible ? 'Hide Form' : 'Manage Quick Invoice'}
-          </button>
-        </div>
-      </div>
-      
-      <div className="flex flex-col gap-4 sm:gap-6">
-        
-        {isFormVisible && (
-          <div>
-            <h3 className="text-base sm:text-lg font-medium text-brand-secondary mb-4">
-              {isEditMode ? 'Edit Quick Invoice' : 'Add Quick Invoice'}
-            </h3>
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormInput
-                label="Quick Invoice ID"
-                type="text"
-                name="qInvoiceId"
-                value={formData.qInvoiceId}
-                onChange={handleChange}
-                disabled
-                required={false}
-                className="w-full text-xs sm:text-sm"
-              />
-              <FormInput
-                label="Quick Invoice Number"
-                type="text"
-                name="qInvoiceNo"
-                value={formData.qInvoiceNo}
-                onChange={handleChange}
-                error={errors.qInvoiceNo}
-                disabled
-                required
-                className="w-full text-xs sm:text-sm"
-              />
-              <FormInput
-                label="Quick Invoice Date"
-                type="date"
-                name="qInvoiceDate"
-                value={formData.qInvoiceDate}
-                onChange={handleChange}
-                error={errors.qInvoiceDate}
-                required
-                className="w-full text-xs sm:text-sm"
-              />
+      {selectedQInvoiceId ? (
+        <QuickInvoiceDetails
+          quickInvoice={selectedQInvoice}
+          quickInvoiceItems={selectedQInvoiceItems}
+          quickGRNs={quickGRNs}
+          quickGRNItems={quickGRNItems}
+          items={items}
+          onBack={handleBack}
+        />
+      ) : (
+        <>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Quick Invoices</h2>
+            <div>
+              <button
+                onClick={() => setIsFormVisible(!isFormVisible)}
+                className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600"
+              >
+                {isFormVisible ? 'Hide Form' : 'Add Quick Invoice'}
+              </button>
+            </div>
+          </div>
+          <div className="flex flex-col gap-6 mb-6">
+            {isFormVisible && (
               <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-700">Quick GRNs</label>
-                <Select
-                  isMulti
-                  options={grnOptions}
-                  value={grnOptions.filter((option) => formData.qGRNIds.includes(option.value))}
-                  onChange={handleGRNChange}
-                  className="mt-1 text-xs sm:text-sm"
-                  classNamePrefix="select"
-                  placeholder="Select Quick GRNs"
-                  required
-                />
-                {errors.qGRNIds && (
-                  <p className="mt-1 text-xs text-red-600">{errors.qGRNIds}</p>
-                )}
-              </div>
-              <FormInput
-                label="Remark"
-                type="text"
-                name="remark"
-                value={formData.remark}
-                onChange={handleChange}
-                error={errors.remark}
-                required={false}
-                className="w-full text-xs sm:text-sm"
-              />
-              <div className="col-span-1 sm:col-span-2">
-                <h4 className="text-sm sm:text-md font-medium text-brand-secondary mb-2">Tax Details</h4>
-                {formData.qGRNIds.map((qGRNId) => (
-                  <div key={qGRNId} className="mb-4 p-4 border rounded-md">
-                    <h5 className="text-xs sm:text-sm font-medium text-gray-700 mb-2">
-                      Items for {quickGRNs.find((g) => g.qGRNId === qGRNId)?.qGRNNo || qGRNId}
-                    </h5>
-                    {quickGRNItems
-                      .filter((gi) => gi.qGRNId === qGRNId)
-                      .map((gi) => {
-                        const { baseAmount, taxAmount, totalAmount } = calculateItemAmounts(
-                          gi,
-                          formData.taxDetails[gi.qGRNItemid]?.taxPercentage
-                        );
-                        return (
-                          <div key={gi.qGRNItemid} className="flex flex-col gap-2 mb-4 p-4 border rounded-md">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                              <p className="text-xs sm:text-sm">
-                                <strong>Item:</strong> {items.find((i) => i.id === gi.itemId)?.name || 'N/A'}
-                              </p>
-                              <p className="text-xs sm:text-sm">
-                                <strong>Quantity:</strong> {gi.quantity}
-                              </p>
-                              <p className="text-xs sm:text-sm">
-                                <strong>Rate:</strong> ₹{parseFloat(gi.rate).toFixed(2)}
-                              </p>
-                              <p className="text-xs sm:text-sm">
-                                <strong>Discount:</strong> ₹{parseFloat(gi.discount || 0).toFixed(2)}
-                              </p>
-                              <p className="text-xs sm:text-sm">
-                                <strong>Base Amount:</strong> ₹{baseAmount}
-                              </p>
-                              <p className="text-xs sm:text-sm">
-                                <strong>Tax Amount:</strong> ₹{taxAmount}
-                              </p>
-                              <p className="text-xs sm:text-sm">
-                                <strong>Total Amount:</strong> ₹{totalAmount}
-                              </p>
+                <h3 className="text-base sm:text-lg font-medium text-brand-secondary mb-4">
+                  {isEditMode ? 'Edit Quick Invoice' : 'Add Quick Invoice'}
+                </h3>
+                <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <FormInput
+                    label="Quick Invoice ID"
+                    type="text"
+                    name="qInvoiceId"
+                    value={formData.qInvoiceId}
+                    onChange={handleChange}
+                    disabled
+                    required={false}
+                    className="w-full text-xs sm:text-sm"
+                  />
+                  <FormInput
+                    label="Quick Invoice Number"
+                    type="text"
+                    name="qInvoiceNo"
+                    value={formData.qInvoiceNo}
+                    onChange={handleChange}
+                    error={errors.qInvoiceNo}
+                    disabled
+                    required
+                    className="w-full text-xs sm:text-sm"
+                  />
+                  <FormInput
+                    label="Quick Invoice Date"
+                    type="date"
+                    name="qInvoiceDate"
+                    value={formData.qInvoiceDate}
+                    onChange={handleChange}
+                    error={errors.qInvoiceDate}
+                    required
+                    className="w-full text-xs sm:text-sm"
+                  />
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700">Quick GRNs</label>
+                    <Select
+                      isMulti
+                      options={grnOptions}
+                      value={grnOptions.filter((option) => formData.qGRNIds.includes(option.value))}
+                      onChange={handleGRNChange}
+                      className="mt-1 text-xs sm:text-sm"
+                      classNamePrefix="select"
+                      placeholder="Select Quick GRNs"
+                      required
+                    />
+                    {errors.qGRNIds && (
+                      <p className="mt-1 text-xs text-red-600">{errors.qGRNIds}</p>
+                    )}
+                  </div>
+                  <FormInput
+                    label="Remark"
+                    type="text"
+                    name="remark"
+                    value={formData.remark}
+                    onChange={handleChange}
+                    error={errors.remark}
+                    required={false}
+                    className="w-full text-xs sm:text-sm"
+                  />
+                  <div className="col-span-1 sm:col-span-2 lg:col-span-3">
+                    <h4 className="text-sm sm:text-md font-medium text-brand-secondary mb-2">Tax Details</h4>
+                    {formData.qGRNIds.map((qGRNId) => (
+                      <div key={qGRNId} className="mb-4 p-4 border rounded-md">
+                        <h5 className="text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                          Items for {quickGRNs.find((g) => g.qGRNId === qGRNId)?.qGRNNo || qGRNId}
+                        </h5>
+                        {quickGRNItems
+                          .filter((gi) => gi.qGRNId === qGRNId)
+                          .map((gi) => (
+                            <div key={gi.qGRNItemid} className="flex flex-col gap-2 mb-4 p-4 border rounded-md">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                <div>
+                                  <label className="block text-xs sm:text-sm font-medium text-gray-700">Item</label>
+                                  <input
+                                    type="text"
+                                    value={items.find((i) => i.id === gi.itemId)?.name || 'N/A'}
+                                    disabled
+                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-xs sm:text-sm bg-gray-100"
+                                  />
+                                </div>
+                                <FormInput
+                                  label="Quantity"
+                                  type="number"
+                                  value={gi.quantity}
+                                  disabled
+                                  required={false}
+                                  className="w-full text-xs sm:text-sm"
+                                />
+                                <FormInput
+                                  label="Rate"
+                                  type="number"
+                                  value={gi.rate}
+                                  disabled
+                                  required={false}
+                                  className="w-full text-xs sm:text-sm"
+                                />
+                                <FormInput
+                                  label="Discount"
+                                  type="number"
+                                  value={gi.discount || 0}
+                                  disabled
+                                  required={false}
+                                  className="w-full text-xs sm:text-sm"
+                                />
+                                <FormInput
+                                  label="Base Amount"
+                                  type="text"
+                                  value={formData.taxDetails[gi.qGRNItemid]?.baseAmount || ''}
+                                  disabled
+                                  required={false}
+                                  className="w-full text-xs sm:text-sm"
+                                />
+                                <FormInput
+                                  label="Tax Amount"
+                                  type="text"
+                                  value={formData.taxDetails[gi.qGRNItemid]?.taxAmount || ''}
+                                  disabled
+                                  required={false}
+                                  className="w-full text-xs sm:text-sm"
+                                />
+                                <FormInput
+                                  label="Total Amount"
+                                  type="text"
+                                  value={formData.taxDetails[gi.qGRNItemid]?.totalAmount || ''}
+                                  disabled
+                                  required={false}
+                                  className="w-full text-xs sm:text-sm"
+                                />
+                                <div>
+                                  <label className="block text-xs sm:text-sm font-medium text-gray-700">
+                                    Tax Percentage
+                                  </label>
+                                  <input
+                                    type="number"
+                                    value={formData.taxDetails[gi.qGRNItemid]?.taxPercentage || ''}
+                                    onChange={(e) => handleTaxChange(gi.qGRNItemid, e)}
+                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
+                                    placeholder="Enter tax percentage"
+                                    required
+                                  />
+                                  {errors[`taxDetails[${gi.qGRNItemid}].taxPercentage`] && (
+                                    <p className="mt-1 text-xs text-red-600">{errors[`taxDetails[${gi.qGRNItemid}].taxPercentage`]}</p>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                            <label className="text-xs sm:text-sm font-medium text-gray-700 mt-2">
-                              Tax Percentage for Item {gi.qGRNItemid}
-                            </label>
-                            <input
-                              type="number"
-                              value={formData.taxDetails[gi.qGRNItemid]?.taxPercentage || ''}
-                              onChange={(e) => handleTaxChange(gi.qGRNItemid, e)}
-                              className="w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
-                              placeholder="Enter tax percentage"
-                              required
-                            />
-                            {errors[`taxDetails[${gi.qGRNItemid}].taxPercentage`] && (
-                              <p className="mt-1 text-xs text-red-600">{errors[`taxDetails[${gi.qGRNItemid}].taxPercentage`]}</p>
-                            )}
-                          </div>
-                        );
-                      })}
+                          ))}
+                      </div>
+                    ))}
+                    <div className="mt-4 p-4 bg-gray-50 rounded-md">
+                      <h4 className="text-sm sm:text-md font-semibold text-brand-secondary">Final Total Amount</h4>
+                      <p className="text-sm sm:text-md font-medium text-gray-900">
+                        ₹{calculateFinalTotalAmount(formData.qGRNIds, formData.taxDetails)}
+                      </p>
+                    </div>
                   </div>
-                ))}
-                <div className="mt-4 p-4 bg-gray-50 rounded-md">
-                  <h4 className="text-sm sm:text-md font-semibold text-brand-secondary">Final Total Amount</h4>
-                  <p className="text-sm sm:text-md font-medium text-gray-900">
-                    ₹{calculateFinalTotalAmount(formData.qGRNIds, formData.taxDetails)}
-                  </p>
-                </div>
-              </div>
-              <div className="col-span-1 sm:col-span-2 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-                <button
-                  type="submit"
-                  className="w-full sm:w-auto bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-xs sm:text-sm"
-                >
-                  {isEditMode ? 'Update' : 'Add'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    resetForm();
-                    setIsFormVisible(false);
-                  }}
-                  className="w-full sm:w-auto px-4 py-2 text-gray-600 rounded-md hover:bg-gray-100 text-xs sm:text-sm"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-        <div>
-          <div className="sm:hidden space-y-4">
-            {quickInvoices.map((inv) => (
-              <div key={inv.qInvoiceId} className="p-4 border rounded-md bg-gray-50">
-                <div className="space-y-2">
-                  <p className="text-xs"><strong>ID:</strong> {inv.qInvoiceId}</p>
-                  <p className="text-xs"><strong>Invoice No:</strong> {inv.qInvoiceNo}</p>
-                  <p className="text-xs"><strong>Invoice Date:</strong> {new Date(inv.qInvoiceDate).toLocaleDateString()}</p>
-                  <p className="text-xs"><strong>Quick GRNs:</strong> {inv.qGRNIds.map((id) => quickGRNs.find((g) => g.qGRNId === id)?.qGRNNo || id).join(', ')}</p>
-                  <p className="text-xs"><strong>Total Amount:</strong> ₹{parseFloat(inv.totalAmount).toFixed(2)}</p>
-                </div>
-                <div className="flex flex-col space-y-2 mt-2">
-                  {actions.map((action, index) => (
+                  <div className="col-span-1 sm:col-span-2 lg:col-span-3 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
                     <button
-                      key={index}
-                      onClick={() => action.onClick && action.onClick(inv)}
-                      className={`${action.className} w-full text-xs py-1 ${action.render ? 'hidden' : ''}`}
+                      type="submit"
+                      className="w-full sm:w-auto bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-xs sm:text-sm"
                     >
-                      {action.label}
+                      {isEditMode ? 'Update' : 'Add'}
                     </button>
-                  ))}
-                  <Link
-                    to={`/masters/quickinvoice/${inv.qInvoiceId}`}
-                    className="bg-purple-500 hover:bg-purple-600 text-white px-2 py-1 rounded text-xs w-full text-center"
-                  >
-                    View Details
-                  </Link>
-                </div>
-                {expandedQInvoiceId === inv.qInvoiceId && (
-                  <div className="mt-4">
-                    <h4 className="text-sm font-medium text-brand-secondary mb-2">Quick Invoice Items</h4>
-                    <div className="space-y-4">
-                      {quickInvoiceItems
-                        .filter((qi) => qi.qInvoiceId === Number(inv.qInvoiceId))
-                        .map((qi) => (
-                          <div key={qi.qInvoiceItemId} className="p-4 border rounded-md bg-white">
-                            <p className="text-xs"><strong>ID:</strong> {qi.qInvoiceItemId}</p>
-                            <p className="text-xs"><strong>Quick GRN:</strong> {quickGRNs.find((g) => g.qGRNId === qi.qGRNId)?.qGRNNo || qi.qGRNId}</p>
-                            <p className="text-xs"><strong>GRN Item ID:</strong> {qi.qGRNItemid}</p>
-                            <p className="text-xs"><strong>Item:</strong> {items.find((i) => i.id === qi.itemId)?.name || 'N/A'}</p>
-                            <p className="text-xs"><strong>Quantity:</strong> {qi.quantity}</p>
-                            <p className="text-xs"><strong>Rate:</strong> ₹{parseFloat(qi.rate).toFixed(2)}</p>
-                            <p className="text-xs"><strong>Discount:</strong> ₹{parseFloat(qi.discount).toFixed(2)}</p>
-                            <p className="text-xs"><strong>Tax %:</strong> {parseFloat(qi.taxPercentage).toFixed(2)}%</p>
-                            <p className="text-xs"><strong>Tax Amount:</strong> ₹{parseFloat(qi.taxAmount).toFixed(2)}</p>
-                            <p className="text-xs"><strong>Total Amount:</strong> ₹{parseFloat(qi.totalAmount).toFixed(2)}</p>
-                          </div>
-                        ))}
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        resetForm();
+                        setIsFormVisible(false);
+                      }}
+                      className="w-full sm:w-auto px-4 py-2 text-gray-600 rounded-md hover:bg-gray-100 text-xs sm:text-sm"
+                    >
+                      Cancel
+                    </button>
                   </div>
-                )}
+                </form>
               </div>
-            ))}
+            )}
+            <div>
+              <Table
+                columns={quickInvoiceColumns}
+                data={quickInvoices}
+                actions={actions}
+                onRowClick={handleRowClick}
+              />
+            </div>
           </div>
-          <div className="hidden sm:block overflow-x-auto">
-            <Table
-              columns={quickInvoiceColumns}
-              data={quickInvoices}
-              actions={actions}
-              expandable={{
-                expandedRowRender: (row) => {
-                  const items = quickInvoiceItems.filter((qi) => qi.qInvoiceId === Number(row.qInvoiceId));
-                  console.log('Rendering items for qInvoiceId:', row.qInvoiceId, items);
-                  return (
-                    <div className="p-4 bg-gray-50">
-                      <h4 className="text-sm font-medium text-brand-secondary mb-2">Quick Invoice Items</h4>
-                      <div className="sm:hidden space-y-4">
-                        {items.map((qi) => (
-                          <div key={qi.qInvoiceItemId} className="p-4 border rounded-md bg-white">
-                            <p className="text-xs"><strong>ID:</strong> {qi.qInvoiceItemId}</p>
-                            <p className="text-xs"><strong>Quick GRN:</strong> {quickGRNs.find((g) => g.qGRNId === qi.qGRNId)?.qGRNNo || qi.qGRNId}</p>
-                            <p className="text-xs"><strong>GRN Item ID:</strong> {qi.qGRNItemid}</p>
-                            <p className="text-xs"><strong>Item:</strong> {items.find((i) => i.id === qi.itemId)?.name || 'N/A'}</p>
-                            <p className="text-xs"><strong>Quantity:</strong> {qi.quantity}</p>
-                            <p className="text-xs"><strong>Rate:</strong> ₹{parseFloat(qi.rate).toFixed(2)}</p>
-                            <p className="text-xs"><strong>Discount:</strong> ₹{parseFloat(qi.discount).toFixed(2)}</p>
-                            <p className="text-xs"><strong>Tax %:</strong> {parseFloat(qi.taxPercentage).toFixed(2)}%</p>
-                            <p className="text-xs"><strong>Tax Amount:</strong> ₹{parseFloat(qi.taxAmount).toFixed(2)}</p>
-                            <p className="text-xs"><strong>Total Amount:</strong> ₹{parseFloat(qi.totalAmount).toFixed(2)}</p>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="hidden sm:block overflow-x-auto">
-                        <Table
-                          columns={quickInvoiceItemColumns}
-                          data={items}
-                          actions={[]}
-                          className="text-sm"
-                        />
-                      </div>
-                    </div>
-                  );
-                },
-                rowExpandable: (row) => quickInvoiceItems.some((qi) => qi.qInvoiceId === Number(row.qInvoiceId)),
-                expandedRowKeys: expandedQInvoiceId ? [Number(expandedQInvoiceId)] : [],
-              }}
-              className="text-sm"
-            />
-          </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }

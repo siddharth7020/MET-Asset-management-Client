@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import Select from 'react-select';
 import Table from '../components/Table';
 import FormInput from '../components/FormInput';
+import DistributionDetails from './DistributionDetails';
 
 function Distribution() {
   const [distributions, setDistributions] = useState([]);
@@ -23,7 +23,7 @@ function Distribution() {
   });
   const [errors, setErrors] = useState({});
   const [editId, setEditId] = useState(null);
-  const [expandedDistributionId, setExpandedDistributionId] = useState(null);
+  const [selectedDistributionId, setSelectedDistributionId] = useState(null);
 
   // Initialize dummy data
   useEffect(() => {
@@ -70,7 +70,6 @@ function Distribution() {
     setItems(itemsData);
     setFinancialYears(financialYearsData);
     setInstitutes(institutesData);
-    console.log('Distributions:', distributionsData, 'DistributionItems:', distributionItemsData);
   }, []);
 
   // Form handling
@@ -146,12 +145,12 @@ function Distribution() {
         prev.map((dist) =>
           dist.id === editId
             ? {
-              ...formData,
-              id: editId,
-              documents: documentPath,
-              createdAt: dist.createdAt,
-              updatedAt: new Date().toISOString(),
-            }
+                ...formData,
+                id: editId,
+                documents: documentPath,
+                createdAt: dist.createdAt,
+                updatedAt: new Date().toISOString(),
+              }
             : dist
         )
       );
@@ -217,14 +216,7 @@ function Distribution() {
     { key: 'instituteId', label: 'Institute', format: (value) => institutes.find((inst) => inst.id === value)?.name || value },
     { key: 'employeeName', label: 'Employee Name' },
     { key: 'location', label: 'Location' },
-    { key: 'remark', label: 'Remark', className: 'hidden sm:table-cell' },
-    { key: 'createdAt', label: 'Created At', format: (value) => new Date(value).toLocaleDateString() },
-  ];
-
-  // Table columns for DistributionItem
-  const distributionItemColumns = [
-    { key: 'itemId', label: 'Item', format: (value) => items.find((i) => i.id === value)?.itemName || 'N/A' },
-    { key: 'issueQuantity', label: 'Issue Quantity' },
+    { key: 'remark', label: 'Remark' },
   ];
 
   // Table actions
@@ -264,27 +256,17 @@ function Distribution() {
       },
       className: 'bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs sm:text-sm',
     },
-    {
-      label: 'View Items',
-      onClick: (row) => {
-        console.log('Toggling items for distributionId:', row.id);
-        setExpandedDistributionId(expandedDistributionId === row.id ? null : row.id);
-      },
-      className: 'bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs sm:text-sm',
-    },
-    {
-      label: 'View Details',
-      className: 'bg-purple-500 hover:bg-purple-600 text-white px-2 py-1 rounded text-xs sm:text-sm',
-      render: (row) => (
-        <Link
-          to={`/masters/distribution/${row.id}`}
-          className="bg-purple-500 hover:bg-purple-600 text-white px-2 py-1 rounded text-xs sm:text-sm"
-        >
-          View Details
-        </Link>
-      ),
-    },
   ];
+
+  // Handle row click to show details
+  const handleRowClick = (row) => {
+    setSelectedDistributionId(row.id);
+  };
+
+  // Handle back to table view
+  const handleBack = () => {
+    setSelectedDistributionId(null);
+  };
 
   // react-select options
   const financialYearOptions = financialYears.map((fy) => ({
@@ -300,267 +282,199 @@ function Distribution() {
     label: item.itemName,
   }));
 
+  // Get selected Distribution data
+  const selectedDistribution = distributions.find((dist) => dist.id === selectedDistributionId);
+  const selectedDistributionItems = distributionItems.filter((di) => di.distributionId === selectedDistributionId);
+
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
-      <div className='flex justify-between items-center mb-4'>
-        <h2 className="text-lg sm:text-xl font-semibold text-brand-secondary mb-4">Distributions</h2>
-        <div>
-          <button
-            onClick={() => setIsFormVisible(!isFormVisible)}
-            className="w-full sm:w-auto bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-xs sm:text-sm"
-          >
-            {isFormVisible ? 'Hide Form' : 'Manage Distribution'}
-          </button>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-4 sm:gap-6">
-        {isFormVisible && (
-          <div>
-            <h3 className="text-base sm:text-lg font-medium text-brand-secondary mb-4">
-              {isEditMode ? 'Edit Distribution' : 'Add Distribution'}
-            </h3>
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-700">Financial Year</label>
-                <Select
-                  options={financialYearOptions}
-                  value={financialYearOptions.find((option) => option.value === formData.financialYearId)}
-                  onChange={(option) => handleChange({ target: { name: 'financialYearId', value: option ? option.value : '' } })}
-                  className="mt-1 text-xs sm:text-sm"
-                  classNamePrefix="select"
-                  placeholder="Select Financial Year"
-                  isClearable
-                />
-                {errors.financialYearId && (
-                  <p className="mt-1 text-xs text-red-600">{errors.financialYearId}</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-700">Institute</label>
-                <Select
-                  options={instituteOptions}
-                  value={instituteOptions.find((option) => option.value === formData.instituteId)}
-                  onChange={(option) => handleChange({ target: { name: 'instituteId', value: option ? option.value : '' } })}
-                  className="mt-1 text-xs sm:text-sm"
-                  classNamePrefix="select"
-                  placeholder="Select Institute"
-                  isClearable
-                />
-                {errors.instituteId && (
-                  <p className="mt-1 text-xs text-red-600">{errors.instituteId}</p>
-                )}
-              </div>
-              <FormInput
-                label="Employee Name"
-                type="text"
-                name="employeeName"
-                value={formData.employeeName}
-                onChange={handleChange}
-                error={errors.employeeName}
-                required
-                className="w-full text-xs sm:text-sm"
-              />
-              <FormInput
-                label="Location"
-                type="text"
-                name="location"
-                value={formData.location}
-                onChange={handleChange}
-                error={errors.location}
-                required
-                className="w-full text-xs sm:text-sm"
-              />
-              <FormInput
-                label="Documents"
-                type="file"
-                name="documents"
-                onChange={handleChange}
-                error={errors.documents}
-                required={false}
-                className="w-full text-xs sm:text-sm"
-              />
-              <FormInput
-                label="Remark"
-                type="textarea"
-                name="remark"
-                value={formData.remark}
-                onChange={handleChange}
-                error={errors.remark}
-                required={false}
-                className="w-full text-xs sm:text-sm"
-              />
-              <div className="col-span-1 sm:col-span-2">
-                <h4 className="text-sm sm:text-md font-medium text-brand-secondary mb-2">Items</h4>
-                {formData.items.map((item, index) => (
-                  <div key={index} className="flex flex-col gap-2 mb-4 p-4 border rounded-md">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      <div>
-                        <label className="block text-xs sm:text-sm font-medium text-gray-700">Item</label>
-                        <Select
-                          options={itemOptions}
-                          value={itemOptions.find((option) => option.value === item.itemId)}
-                          onChange={(option) =>
-                            handleItemChange(index, { target: { name: 'itemId', value: option ? option.value : '' } })
-                          }
-                          className="mt-1 text-xs sm:text-sm"
-                          classNamePrefix="select"
-                          placeholder="Select Item"
-                          isClearable
-                        />
-                        {errors[`items[${index}].itemId`] && (
-                          <p className="mt-1 text-xs text-red-600">{errors[`items[${index}].itemId`]}</p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-xs sm:text-sm font-medium text-gray-700">Issue Quantity</label>
-                        <input
-                          type="number"
-                          name="issueQuantity"
-                          value={item.issueQuantity}
-                          onChange={(e) => handleItemChange(index, e)}
-                          className="mt-1 w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
-                          placeholder="Enter quantity"
-                          min="0"
-                          required
-                        />
-                        {errors[`items[${index}].issueQuantity`] && (
-                          <p className="mt-1 text-xs text-red-600">{errors[`items[${index}].issueQuantity`]}</p>
-                        )}
-                      </div>
-                      <div className="flex items-end">
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveItem(index)}
-                          className="w-full sm:w-auto bg-red-500 text-white px-2 py-1 rounded-md hover:bg-red-600 text-xs sm:text-sm"
-                          disabled={formData.items.length === 1}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {errors.items && (
-                  <p className="mt-1 text-xs text-red-600">{errors.items}</p>
-                )}
-                <button
-                  type="button"
-                  onClick={handleAddItem}
-                  className="mt-2 w-full sm:w-auto bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-xs sm:text-sm"
-                >
-                  Add Item
-                </button>
-              </div>
-              <div className="col-span-1 sm:col-span-2 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-                <button
-                  type="submit"
-                  className="w-full sm:w-auto bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-xs sm:text-sm"
-                >
-                  {isEditMode ? 'Update' : 'Add'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    resetForm();
-                    setIsFormVisible(false);
-                  }}
-                  className="w-full sm:w-auto px-4 py-2 text-gray-600 rounded-md hover:bg-gray-100 text-xs sm:text-sm"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
+      {selectedDistributionId ? (
+        <DistributionDetails
+          distribution={selectedDistribution}
+          distributionItems={selectedDistributionItems}
+          items={items}
+          financialYears={financialYears}
+          institutes={institutes}
+          onBack={handleBack}
+        />
+      ) : (
+        <>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Distributions</h2>
+            <div>
+              <button
+                onClick={() => setIsFormVisible(!isFormVisible)}
+                className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600"
+              >
+                {isFormVisible ? 'Hide Form' : 'Add Distribution'}
+              </button>
+            </div>
           </div>
-        )}
-        <div>
-          <div className="sm:hidden space-y-4">
-            {distributions.map((dist) => (
-              <div key={dist.id} className="p-4 border rounded-md bg-gray-50">
-                <div className="space-y-2">
-                  <p className="text-xs"><strong>ID:</strong> {dist.id}</p>
-                  <p className="text-xs"><strong>Financial Year:</strong> {financialYears.find((fy) => fy.id === dist.financialYearId)?.name || dist.financialYearId}</p>
-                  <p className="text-xs"><strong>Institute:</strong> {institutes.find((inst) => inst.id === dist.instituteId)?.name || dist.instituteId}</p>
-                  <p className="text-xs"><strong>Employee Name:</strong> {dist.employeeName}</p>
-                  <p className="text-xs"><strong>Location:</strong> {dist.location}</p>
-                  <p className="text-xs"><strong>Created At:</strong> {new Date(dist.createdAt).toLocaleDateString()}</p>
-                </div>
-                <div className="flex flex-col space-y-2 mt-2">
-                  {actions.map((action, index) => (
+          <div className="flex flex-col gap-6 mb-6">
+            {isFormVisible && (
+              <div>
+                <h3 className="text-base sm:text-lg font-medium text-brand-secondary mb-4">
+                  {isEditMode ? 'Edit Distribution' : 'Add Distribution'}
+                </h3>
+                <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700">Financial Year</label>
+                    <Select
+                      options={financialYearOptions}
+                      value={financialYearOptions.find((option) => option.value === formData.financialYearId)}
+                      onChange={(option) => handleChange({ target: { name: 'financialYearId', value: option ? option.value : '' } })}
+                      className="mt-1 text-xs sm:text-sm"
+                      classNamePrefix="select"
+                      placeholder="Select Financial Year"
+                      isClearable
+                    />
+                    {errors.financialYearId && (
+                      <p className="mt-1 text-xs text-red-600">{errors.financialYearId}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700">Institute</label>
+                    <Select
+                      options={instituteOptions}
+                      value={instituteOptions.find((option) => option.value === formData.instituteId)}
+                      onChange={(option) => handleChange({ target: { name: 'instituteId', value: option ? option.value : '' } })}
+                      className="mt-1 text-xs sm:text-sm"
+                      classNamePrefix="select"
+                      placeholder="Select Institute"
+                      isClearable
+                    />
+                    {errors.instituteId && (
+                      <p className="mt-1 text-xs text-red-600">{errors.instituteId}</p>
+                    )}
+                  </div>
+                  <FormInput
+                    label="Employee Name"
+                    type="text"
+                    name="employeeName"
+                    value={formData.employeeName}
+                    onChange={handleChange}
+                    error={errors.employeeName}
+                    required
+                    className="w-full text-xs sm:text-sm"
+                  />
+                  <FormInput
+                    label="Location"
+                    type="text"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleChange}
+                    error={errors.location}
+                    required
+                    className="w-full text-xs sm:text-sm"
+                  />
+                  <FormInput
+                    label="Documents"
+                    type="file"
+                    name="documents"
+                    onChange={handleChange}
+                    error={errors.documents}
+                    required={false}
+                    className="w-full text-xs sm:text-sm"
+                  />
+                  <FormInput
+                    label="Remark"
+                    type="textarea"
+                    name="remark"
+                    value={formData.remark}
+                    onChange={handleChange}
+                    error={errors.remark}
+                    required={false}
+                    className="w-full text-xs sm:text-sm"
+                  />
+                  <div className="col-span-1 sm:col-span-2 lg:col-span-3">
+                    <h4 className="text-sm sm:text-md font-medium text-brand-secondary mb-2">Items</h4>
+                    {formData.items.map((item, index) => (
+                      <div key={index} className="flex flex-col gap-2 mb-4 p-4 border rounded-md">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700">Item</label>
+                            <Select
+                              options={itemOptions}
+                              value={itemOptions.find((option) => option.value === item.itemId)}
+                              onChange={(option) =>
+                                handleItemChange(index, { target: { name: 'itemId', value: option ? option.value : '' } })
+                              }
+                              className="mt-1 text-xs sm:text-sm"
+                              classNamePrefix="select"
+                              placeholder="Select Item"
+                              isClearable
+                            />
+                            {errors[`items[${index}].itemId`] && (
+                              <p className="mt-1 text-xs text-red-600">{errors[`items[${index}].itemId`]}</p>
+                            )}
+                          </div>
+                          <FormInput
+                            label="Issue Quantity"
+                            type="number"
+                            name="issueQuantity"
+                            value={item.issueQuantity}
+                            onChange={(e) => handleItemChange(index, e)}
+                            error={errors[`items[${index}].issueQuantity`]}
+                            required
+                            min="0"
+                            className="w-full text-xs sm:text-sm"
+                          />
+                          <div className="flex items-end">
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveItem(index)}
+                              className="w-full sm:w-auto bg-red-500 text-white px-2 py-1 rounded-md hover:bg-red-600 text-xs sm:text-sm"
+                              disabled={formData.items.length === 1}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {errors.items && (
+                      <p className="mt-1 text-xs text-red-600">{errors.items}</p>
+                    )}
                     <button
-                      key={index}
-                      onClick={() => action.onClick && action.onClick(dist)}
-                      className={`${action.className} w-full text-xs py-1 ${action.render ? 'hidden' : ''}`}
+                      type="button"
+                      onClick={handleAddItem}
+                      className="mt-2 w-full sm:w-auto bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-xs sm:text-sm"
                     >
-                      {action.label}
+                      Add Item
                     </button>
-                  ))}
-                  <Link
-                    to={`/masters/distribution/${dist.id}`}
-                    className="bg-purple-500 hover:bg-purple-600 text-white px-2 py-1 rounded text-xs w-full text-center"
-                  >
-                    View Details
-                  </Link>
-                </div>
-                {expandedDistributionId === dist.id && (
-                  <div className="mt-4">
-                    <h4 className="text-sm font-medium text-brand-secondary mb-2">Distribution Items</h4>
-                    <div className="space-y-4">
-                      {distributionItems
-                        .filter((di) => di.distributionId === Number(dist.id))
-                        .map((di) => (
-                          <div key={di.id} className="p-4 border rounded-md bg-white">
-                            <p className="text-xs"><strong>ID:</strong> {di.id}</p>
-                            <p className="text-xs"><strong>Item:</strong> {items.find((i) => i.id === di.itemId)?.itemName || 'N/A'}</p>
-                            <p className="text-xs"><strong>Issue Quantity:</strong> {di.issueQuantity}</p>
-                          </div>
-                        ))}
-                    </div>
                   </div>
-                )}
+                  <div className="col-span-1 sm:col-span-2 lg:col-span-3 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+                    <button
+                      type="submit"
+                      className="w-full sm:w-auto bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-xs sm:text-sm"
+                    >
+                      {isEditMode ? 'Update' : 'Add'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        resetForm();
+                        setIsFormVisible(false);
+                      }}
+                      className="w-full sm:w-auto px-4 py-2 text-gray-600 rounded-md hover:bg-gray-100 text-xs sm:text-sm"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
               </div>
-            ))}
+            )}
+            <div>
+              <Table
+                columns={distributionColumns}
+                data={distributions}
+                actions={actions}
+                onRowClick={handleRowClick}
+              />
+            </div>
           </div>
-          <div className="hidden sm:block overflow-x-auto">
-            <Table
-              columns={distributionColumns}
-              data={distributions}
-              actions={actions}
-              expandable={{
-                expandedRowRender: (row) => {
-                  const distItems = distributionItems.filter((di) => di.distributionId === Number(row.id));
-                  console.log('Rendering items for distributionId:', row.id, distItems);
-                  return (
-                    <div className="p-4 bg-gray-50">
-                      <h4 className="text-sm font-medium text-brand-secondary mb-2">Distribution Items</h4>
-                      <div className="sm:hidden space-y-4">
-                        {distItems.map((di) => (
-                          <div key={di.id} className="p-4 border rounded-md bg-white">
-                            <p className="text-xs"><strong>ID:</strong> {di.id}</p>
-                            <p className="text-xs"><strong>Item:</strong> {items.find((i) => i.id === di.itemId)?.itemName || 'N/A'}</p>
-                            <p className="text-xs"><strong>Issue Quantity:</strong> {di.issueQuantity}</p>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="hidden sm:block overflow-x-auto">
-                        <Table
-                          columns={distributionItemColumns}
-                          data={distItems}
-                          actions={[]}
-                          className="text-sm"
-                        />
-                      </div>
-                    </div>
-                  );
-                },
-                rowExpandable: (row) => distributionItems.some((di) => di.distributionId === Number(row.id)),
-                expandedRowKeys: expandedDistributionId ? [Number(expandedDistributionId)] : [],
-              }}
-              className="text-sm"
-            />
-          </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }

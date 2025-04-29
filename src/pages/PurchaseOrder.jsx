@@ -430,7 +430,7 @@ function PurchaseOrder() {
                 onClick={() => setIsFormVisible(!isFormVisible)}
                 className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600"
               >
-                {isFormVisible ? 'Hide Form' : 'Manage Purchase Order'}
+                {isFormVisible ? 'Hide Form' : 'Add Purchase Order'}
               </button>
             </div>
           </div>

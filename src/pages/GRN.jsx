@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Table from '../components/Table';
 import FormInput from '../components/FormInput';
+import GrnDetails from './GRNDetail';
 
 function GRN() {
   const [grns, setGrns] = useState([]);
@@ -24,6 +25,7 @@ function GRN() {
   const [errors, setErrors] = useState({});
   const [editId, setEditId] = useState(null);
   const [expandedGrnId, setExpandedGrnId] = useState(null);
+  const [selectedGrnId, setSelectedGrnId] = useState(null);
 
   // Initialize dummy data
   useEffect(() => {
@@ -77,21 +79,47 @@ function GRN() {
     console.log('GRNs:', grnsData, 'GRNItems:', grnItemsData); // Debug
   }, []);
 
+  // Handle row click to show details
+  const handleRowClick = (row) => {
+    setSelectedGrnId(row.id);
+  };
+
+  // Handle back to table view
+  const handleBack = () => {
+    setSelectedGrnId(null);
+  };
+
   // Table columns for GRN
   const grnColumns = [
     { key: 'id', label: 'ID' },
-    { key: 'poId', label: 'PO Number', format: (value) => purchaseOrders.find((po) => po.poId === value)?.poNo || 'N/A' },
+    {
+      key: 'poId',
+      label: 'PO Number',
+      format: (value) => purchaseOrders.find((po) => po.poId === value)?.poNo || 'N/A',
+    },
     { key: 'grnNo', label: 'GRN Number' },
-    { key: 'grnDate', label: 'GRN Date', format: (value) => new Date(value).toLocaleDateString() },
+    {
+      key: 'grnDate',
+      label: 'GRN Date',
+      format: (value) => new Date(value).toLocaleDateString(),
+    },
     { key: 'challanNo', label: 'Challan Number' },
-    { key: 'challanDate', label: 'Challan Date', format: (value) => new Date(value).toLocaleDateString() },
+    {
+      key: 'challanDate',
+      label: 'Challan Date',
+      format: (value) => new Date(value).toLocaleDateString(),
+    },
     { key: 'remark', label: 'Remark' },
   ];
 
   // Table columns for GRNItem
   const grnItemColumns = [
     { key: 'id', label: 'ID' },
-    { key: 'orderItemId', label: 'Item', format: (value) => orderItems.find((oi) => oi.id === value)?.itemName || 'N/A' },
+    {
+      key: 'orderItemId',
+      label: 'Item',
+      format: (value) => orderItems.find((oi) => oi.id === value)?.itemName || 'N/A',
+    },
     { key: 'receivedQuantity', label: 'Received Quantity' },
     { key: 'rejectedQuantity', label: 'Rejected Quantity' },
   ];
@@ -140,22 +168,9 @@ function GRN() {
     {
       label: 'View Items',
       onClick: (row) => {
-        console.log('Toggling items for grnId:', row.id); // Debug
         setExpandedGrnId(expandedGrnId === row.id ? null : row.id);
       },
       className: 'bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-sm',
-    },
-    {
-      label: 'View Details',
-      className: 'bg-purple-500 hover:bg-purple-600 text-white px-2 py-1 rounded text-sm',
-      render: (row) => (
-        <Link
-          to={`/masters/grn/${row.id}`}
-          className="bg-purple-500 hover:bg-purple-600 text-white px-2 py-1 rounded text-sm"
-        >
-          View Details
-        </Link>
-      ),
     },
   ];
 
@@ -224,9 +239,7 @@ function GRN() {
     if (isEditMode) {
       setGrns((prev) =>
         prev.map((grn) =>
-          grn.id === editId
-            ? { ...formData, id: editId, poId: Number(formData.poId) }
-            : grn
+          grn.id === editId ? { ...formData, id: editId, poId: Number(formData.poId) } : grn
         )
       );
       const existingIds = grnItems.filter((gi) => gi.grnId === editId).map((gi) => gi.id);
@@ -237,10 +250,7 @@ function GRN() {
         receivedQuantity: Number(gi.receivedQuantity),
         rejectedQuantity: Number(gi.rejectedQuantity || 0),
       }));
-      setGrnItems((prev) => [
-        ...prev.filter((gi) => gi.grnId !== editId),
-        ...updatedItems,
-      ]);
+      setGrnItems((prev) => [...prev.filter((gi) => gi.grnId !== editId), ...updatedItems]);
     } else {
       const newGrnId = Math.max(...grns.map((grn) => grn.id), 0) + 1;
       setGrns((prev) => [
@@ -286,229 +296,240 @@ function GRN() {
     setEditId(null);
   };
 
+  // Get selected GRN data
+  const selectedGrn = grns.find((grn) => grn.id === selectedGrnId);
+  const selectedGrnItems = grnItems.filter((gi) => gi.grnId === selectedGrnId);
+
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
-      <div className='flex justify-between items-center mb-4'>
-        <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Goods Received Notes</h2>
-        <div>
-          <button
-            onClick={() => setIsFormVisible(!isFormVisible)}
-            className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-sm"
-          >
-            {isFormVisible ? 'Hide Form' : 'Manage GRN'}
-          </button>
-        </div>
-      </div>
-      <div className="flex flex-col gap-6">
-        {isFormVisible && (
-          <div>
-            <h3 className="text-lg font-medium text-brand-secondary mb-4">
-              {isEditMode ? 'Edit GRN' : 'Add GRN'}
-            </h3>
-            <form onSubmit={handleSubmit} className="grid grid-cols-3 gap-4">
-              <FormInput
-                label="GRN ID"
-                type="text"
-                name="id"
-                value={formData.id}
-                onChange={handleChange}
-                disabled
-                required={false}
-                className="w-full text-sm"
-              />
+      {selectedGrnId ? (
+        <GrnDetails
+          grn={selectedGrn}
+          grnItems={selectedGrnItems}
+          purchaseOrders={purchaseOrders}
+          orderItems={orderItems}
+          onBack={handleBack}
+        />
+      ) : (
+        <>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Goods Received Notes</h2>
+            <div>
+              <button
+                onClick={() => setIsFormVisible(!isFormVisible)}
+                className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-sm"
+              >
+                {isFormVisible ? 'Hide Form' : 'Manage GRN'}
+              </button>
+            </div>
+          </div>
+          <div className="flex flex-col gap-6">
+            {isFormVisible && (
               <div>
-                <label className="block text-sm font-medium text-gray-700">Purchase Order</label>
-                <select
-                  name="poId"
-                  value={formData.poId}
-                  onChange={handleChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-sm"
-                  required
-                >
-                  <option value="">Select PO</option>
-                  {purchaseOrders.map((po) => (
-                    <option key={po.poId} value={po.poId}>
-                      {po.poNo}
-                    </option>
-                  ))}
-                </select>
-                {errors.poId && (
-                  <p className="mt-1 text-sm text-red-600">{errors.poId}</p>
-                )}
-              </div>
-              <FormInput
-                label="GRN Number"
-                type="text"
-                name="grnNo"
-                value={formData.grnNo}
-                onChange={handleChange}
-                error={errors.grnNo}
-                required
-                className="w-full text-sm"
-              />
-              <FormInput
-                label="GRN Date"
-                type="date"
-                name="grnDate"
-                value={formData.grnDate}
-                onChange={handleChange}
-                error={errors.grnDate}
-                required
-                className="w-full text-sm"
-              />
-              <FormInput
-                label="Challan Number"
-                type="text"
-                name="challanNo"
-                value={formData.challanNo}
-                onChange={handleChange}
-                error={errors.challanNo}
-                required
-                className="w-full text-sm"
-              />
-              <FormInput
-                label="Challan Date"
-                type="date"
-                name="challanDate"
-                value={formData.challanDate}
-                onChange={handleChange}
-                error={errors.challanDate}
-                required
-                className="w-full text-sm"
-              />
-              <FormInput
-                label="Document"
-                type="text"
-                name="document"
-                value={formData.document}
-                onChange={handleChange}
-                error={errors.document}
-                required={false}
-                className="w-full text-sm"
-              />
-              <FormInput
-                label="Remark"
-                type="text"
-                name="remark"
-                value={formData.remark}
-                onChange={handleChange}
-                error={errors.remark}
-                required={false}
-                className="w-full text-sm"
-              />
-              <div className="col-span-3">
-                <h4 className="text-md font-medium text-brand-secondary mb-2">GRN Items</h4>
-                {formData.grnItems.map((gi, index) => (
-                  <div key={index} className="flex flex-col gap-4 mb-4 p-4 border rounded-md">
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Order Item</label>
-                        <select
-                          name="orderItemId"
-                          value={gi.orderItemId}
-                          onChange={(e) => handleGrnItemChange(index, e)}
-                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-sm"
-                          required
+                <h3 className="text-lg font-medium text-brand-secondary mb-4">
+                  {isEditMode ? 'Edit GRN' : 'Add GRN'}
+                </h3>
+                <form onSubmit={handleSubmit} className="grid grid-cols-3 gap-4">
+                  <FormInput
+                    label="GRN ID"
+                    type="text"
+                    name="id"
+                    value={formData.id}
+                    onChange={handleChange}
+                    disabled
+                    required={false}
+                    className="w-full text-sm"
+                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Purchase Order</label>
+                    <select
+                      name="poId"
+                      value={formData.poId}
+                      onChange={handleChange}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-sm"
+                      required
+                    >
+                      <option value="">Select PO</option>
+                      {purchaseOrders.map((po) => (
+                        <option key={po.poId} value={po.poId}>
+                          {po.poNo}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.poId && <p className="mt-1 text-sm text-red-600">{errors.poId}</p>}
+                  </div>
+                  <FormInput
+                    label="GRN Number"
+                    type="text"
+                    name="grnNo"
+                    value={formData.grnNo}
+                    onChange={handleChange}
+                    error={errors.grnNo}
+                    required
+                    className="w-full text-sm"
+                  />
+                  <FormInput
+                    label="GRN Date"
+                    type="date"
+                    name="grnDate"
+                    value={formData.grnDate}
+                    onChange={handleChange}
+                    error={errors.grnDate}
+                    required
+                    className="w-full text-sm"
+                  />
+                  <FormInput
+                    label="Challan Number"
+                    type="text"
+                    name="challanNo"
+                    value={formData.challanNo}
+                    onChange={handleChange}
+                    error={errors.challanNo}
+                    required
+                    className="w-full text-sm"
+                  />
+                  <FormInput
+                    label="Challan Date"
+                    type="date"
+                    name="challanDate"
+                    value={formData.challanDate}
+                    onChange={handleChange}
+                    error={errors.challanDate}
+                    required
+                    className="w-full text-sm"
+                  />
+                  <FormInput
+                    label="Document"
+                    type="text"
+                    name="document"
+                    value={formData.document}
+                    onChange={handleChange}
+                    error={errors.document}
+                    required={false}
+                    className="w-full text-sm"
+                  />
+                  <FormInput
+                    label="Remark"
+                    type="text"
+                    name="remark"
+                    value={formData.remark}
+                    onChange={handleChange}
+                    error={errors.remark}
+                    required={false}
+                    className="w-full text-sm"
+                  />
+                  <div className="col-span-3">
+                    <h4 className="text-md font-medium text-brand-secondary mb-2">GRN Items</h4>
+                    {formData.grnItems.map((gi, index) => (
+                      <div key={index} className="flex flex-col gap-4 mb-4 p-4 border rounded-md">
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">Order Item</label>
+                            <select
+                              name="orderItemId"
+                              value={gi.orderItemId}
+                              onChange={(e) => handleGrnItemChange(index, e)}
+                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-sm"
+                              required
+                            >
+                              <option value="">Select Item</option>
+                              {orderItems
+                                .filter((oi) => oi.poId === Number(formData.poId))
+                                .map((oi) => (
+                                  <option key={oi.id} value={oi.id}>
+                                    {oi.itemName}
+                                  </option>
+                                ))}
+                            </select>
+                            {errors[`grnItems[${index}].orderItemId`] && (
+                              <p className="mt-1 text-sm text-red-600">
+                                {errors[`grnItems[${index}].orderItemId`]}
+                              </p>
+                            )}
+                          </div>
+                          <FormInput
+                            label="Received Quantity"
+                            type="number"
+                            name="receivedQuantity"
+                            value={gi.receivedQuantity}
+                            onChange={(e) => handleGrnItemChange(index, e)}
+                            error={errors[`grnItems[${index}].receivedQuantity`]}
+                            required
+                            className="w-full text-sm"
+                          />
+                          <FormInput
+                            label="Rejected Quantity"
+                            type="number"
+                            name="rejectedQuantity"
+                            value={gi.rejectedQuantity || ''}
+                            onChange={(e) => handleGrnItemChange(index, e)}
+                            required={false}
+                            className="w-full text-sm"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeGrnItem(index)}
+                          className="text-red-600 hover:text-red-800 text-sm mt-2"
                         >
-                          <option value="">Select Item</option>
-                          {orderItems
-                            .filter((oi) => oi.poId === Number(formData.poId))
-                            .map((oi) => (
-                              <option key={oi.id} value={oi.id}>
-                                {oi.itemName}
-                              </option>
-                            ))}
-                        </select>
-                        {errors[`grnItems[${index}].orderItemId`] && (
-                          <p className="mt-1 text-sm text-red-600">{errors[`grnItems[${index}].orderItemId`]}</p>
-                        )}
+                          Remove Item
+                        </button>
                       </div>
-                      <FormInput
-                        label="Received Quantity"
-                        type="number"
-                        name="receivedQuantity"
-                        value={gi.receivedQuantity}
-                        onChange={(e) => handleGrnItemChange(index, e)}
-                        error={errors[`grnItems[${index}].receivedQuantity`]}
-                        required
-                        className="w-full text-sm"
-                      />
-                      <FormInput
-                        label="Rejected Quantity"
-                        type="number"
-                        name="rejectedQuantity"
-                        value={gi.rejectedQuantity || ''}
-                        onChange={(e) => handleGrnItemChange(index, e)}
-                        required={false}
-                        className="w-full text-sm"
-                      />
-                    </div>
+                    ))}
                     <button
                       type="button"
-                      onClick={() => removeGrnItem(index)}
-                      className="text-red-600 hover:text-red-800 text-sm mt-2"
+                      onClick={addGrnItem}
+                      className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 text-sm"
                     >
-                      Remove Item
+                      Add GRN Item
                     </button>
                   </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={addGrnItem}
-                  className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 text-sm"
-                >
-                  Add GRN Item
-                </button>
-              </div>
-              <div className="col-span-3 flex space-x-4">
-                <button
-                  type="submit"
-                  className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-sm"
-                >
-                  {isEditMode ? 'Update' : 'Add'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    resetForm();
-                    setIsFormVisible(false);
-                  }}
-                  className="px-4 py-2 text-gray-600 rounded-md hover:bg-gray-100 text-sm"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-        <div>
-          <Table
-            columns={grnColumns}
-            data={grns}
-            actions={actions}
-            expandable={{
-              expandedRowRender: (row) => {
-                const items = grnItems.filter((gi) => gi.grnId === Number(row.id));
-                console.log('Rendering items for grnId:', row.id, items); // Debug
-                return (
-                  <div className="p-4 bg-gray-50">
-                    <h4 className="text-md font-medium text-brand-secondary mb-2">GRN Items</h4>
-                    <Table
-                      columns={grnItemColumns}
-                      data={items}
-                      actions={[]}
-                      className="text-sm"
-                    />
+                  <div className="col-span-3 flex space-x-4">
+                    <button
+                      type="submit"
+                      className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-sm"
+                    >
+                      {isEditMode ? 'Update' : 'Add'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        resetForm();
+                        setIsFormVisible(false);
+                      }}
+                      className="px-4 py-2 text-gray-600 rounded-md hover:bg-gray-100 text-sm"
+                    >
+                      Cancel
+                    </button>
                   </div>
-                );
-              },
-              rowExpandable: (row) => grnItems.some((gi) => gi.grnId === Number(row.id)),
-              expandedRowKeys: expandedGrnId ? [Number(expandedGrnId)] : [],
-            }}
-            className="text-sm"
-          />
-        </div>
-      </div>
+                </form>
+              </div>
+            )}
+            <div>
+              <Table
+                columns={grnColumns}
+                data={grns}
+                actions={actions}
+                onRowClick={handleRowClick}
+                expandable={{
+                  expandedRowRender: (row) => (
+                    <div className="p-4 bg-gray-50">
+                      <h4 className="text-md font-medium text-brand-secondary mb-2">GRN Items</h4>
+                      <Table
+                        columns={grnItemColumns}
+                        data={grnItems.filter((gi) => gi.grnId === row.id)}
+                        actions={[]}
+                      />
+                    </div>
+                  ),
+                  rowExpandable: (row) => grnItems.some((gi) => gi.grnId === row.id),
+                  expandedRowKeys: expandedGrnId ? [expandedGrnId] : [],
+                }}
+              />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

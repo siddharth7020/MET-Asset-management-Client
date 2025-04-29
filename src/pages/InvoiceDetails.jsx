@@ -1,16 +1,18 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-const QuickInvoiceDetails = ({ quickInvoice, quickInvoiceItems, quickGRNs, items, onBack }) => {
-  if (!quickInvoice) {
-    return <div className="text-center p-6">No Quick Invoice selected</div>;
+const InvoiceDetails = ({ invoice, invoiceItems, purchaseOrders, orderItems, onBack }) => {
+  if (!invoice) {
+    return <div className="text-center p-6">No invoice selected</div>;
   }
+
+  const purchaseOrder = purchaseOrders.find((po) => po.poId === invoice.poId);
 
   return (
     <div className="">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-lg sm:text-xl font-semibold text-brand-secondary">Quick Invoice Details</h2>
+        <h2 className="text-lg sm:text-xl font-semibold text-brand-secondary">Invoice Details</h2>
         <button
           onClick={onBack}
           className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-brand-primary-hover text-xs sm:text-sm"
@@ -24,36 +26,38 @@ const QuickInvoiceDetails = ({ quickInvoice, quickInvoiceItems, quickGRNs, items
         <h3 className="text-sm sm:text-base font-medium text-brand-secondary mb-4">Details</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="flex flex-col">
-            <span className="text-xs sm:text-sm font-semibold text-gray-700">Quick Invoice ID</span>
-            <span className="text-xs sm:text-sm text-gray-900">{quickInvoice.qInvoiceId}</span>
+            <span className="text-xs sm:text-sm font-semibold text-gray-700">Invoice ID</span>
+            <span className="text-xs sm:text-sm text-gray-900">{invoice.id}</span>
           </div>
           <div className="flex flex-col">
-            <span className="text-xs sm:text-sm font-semibold text-gray-700">Quick Invoice Number</span>
-            <span className="text-xs sm:text-sm text-gray-900">{quickInvoice.qInvoiceNo}</span>
+            <span className="text-xs sm:text-sm font-semibold text-gray-700">Invoice Number</span>
+            <span className="text-xs sm:text-sm text-gray-900">{invoice.invoiceNo}</span>
           </div>
           <div className="flex flex-col">
-            <span className="text-xs sm:text-sm font-semibold text-gray-700">Quick Invoice Date</span>
+            <span className="text-xs sm:text-sm font-semibold text-gray-700">Purchase Order</span>
+            <span className="text-xs sm:text-sm text-gray-900">{purchaseOrder?.poNo || 'N/A'}</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xs sm:text-sm font-semibold text-gray-700">Invoice Date</span>
             <span className="text-xs sm:text-sm text-gray-900">
-              {new Date(quickInvoice.qInvoiceDate).toLocaleDateString()}
+              {new Date(invoice.invoiceDate).toLocaleDateString()}
             </span>
           </div>
           <div className="flex flex-col">
-            <span className="text-xs sm:text-sm font-semibold text-gray-700">Quick GRNs</span>
-            <span className="text-xs sm:text-sm text-gray-900">
-              {quickInvoice.qGRNIds
-                .map((id) => quickGRNs.find((g) => g.qGRNId === id)?.qGRNNo || id)
-                .join(', ')}
-            </span>
+            <span className="text-xs sm:text-sm font-semibold text-gray-700">Subtotal</span>
+            <span className="text-xs sm:text-sm text-gray-900">₹{parseFloat(invoice.subtotal).toFixed(2)}</span>
           </div>
           <div className="flex flex-col">
-            <span className="text-xs sm:text-sm font-semibold text-gray-700">Total Amount</span>
-            <span className="text-xs sm:text-sm text-gray-900">
-              ₹{parseFloat(quickInvoice.totalAmount).toFixed(2)}
-            </span>
+            <span className="text-xs sm:text-sm font-semibold text-gray-700">Total Tax</span>
+            <span className="text-xs sm:text-sm text-gray-900">₹{parseFloat(invoice.totalTax).toFixed(2)}</span>
           </div>
           <div className="flex flex-col">
-            <span className="text-xs sm:text-sm font-semibold text-gray-700">Remark</span>
-            <span className="text-xs sm:text-sm text-gray-900">{quickInvoice.remark || 'N/A'}</span>
+            <span className="text-xs sm:text-sm font-semibold text-gray-700">Invoice Amount</span>
+            <span className="text-xs sm:text-sm text-gray-900">₹{parseFloat(invoice.invoiceAmount).toFixed(2)}</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xs sm:text-sm font-semibold text-gray-700">Payment Details</span>
+            <span className="text-xs sm:text-sm text-gray-900">{invoice.paymentDetails || 'N/A'}</span>
           </div>
         </div>
       </div>
@@ -63,19 +67,13 @@ const QuickInvoiceDetails = ({ quickInvoice, quickInvoiceItems, quickGRNs, items
         <h3 className="text-sm sm:text-base font-medium text-brand-secondary mb-4">Items</h3>
         {/* Mobile View */}
         <div className="sm:hidden space-y-4">
-          {quickInvoiceItems.map((item) => (
-            <div key={item.qInvoiceItemId} className="p-4 border rounded-md bg-gray-50">
+          {invoiceItems.map((item) => (
+            <div key={item.id} className="p-4 border rounded-md bg-gray-50">
               <p className="text-xs">
-                <strong>Item ID:</strong> {item.qInvoiceItemId}
+                <strong>Item ID:</strong> {item.id}
               </p>
               <p className="text-xs">
-                <strong>Quick GRN:</strong> {quickGRNs.find((g) => g.qGRNId === item.qGRNId)?.qGRNNo || item.qGRNId}
-              </p>
-              <p className="text-xs">
-                <strong>GRN Item ID:</strong> {item.qGRNItemid}
-              </p>
-              <p className="text-xs">
-                <strong>Item Name:</strong> {items.find((i) => i.id === item.itemId)?.name || 'N/A'}
+                <strong>Item Name:</strong> {orderItems.find((oi) => oi.id === item.orderItemId)?.itemName || 'N/A'}
               </p>
               <p className="text-xs">
                 <strong>Quantity:</strong> {item.quantity}
@@ -104,8 +102,6 @@ const QuickInvoiceDetails = ({ quickInvoice, quickInvoiceItems, quickGRNs, items
             <thead className="text-xs uppercase bg-gray-200">
               <tr>
                 <th scope="col" className="px-6 py-3">Item ID</th>
-                <th scope="col" className="px-6 py-3">Quick GRN</th>
-                <th scope="col" className="px-6 py-3">GRN Item ID</th>
                 <th scope="col" className="px-6 py-3">Item Name</th>
                 <th scope="col" className="px-6 py-3">Quantity</th>
                 <th scope="col" className="px-6 py-3">Rate</th>
@@ -116,12 +112,10 @@ const QuickInvoiceDetails = ({ quickInvoice, quickInvoiceItems, quickGRNs, items
               </tr>
             </thead>
             <tbody>
-              {quickInvoiceItems.map((item) => (
-                <tr key={item.qInvoiceItemId} className="bg-white border-b">
-                  <td className="px-6 py-4">{item.qInvoiceItemId}</td>
-                  <td className="px-6 py-4">{quickGRNs.find((g) => g.qGRNId === item.qGRNId)?.qGRNNo || item.qGRNId}</td>
-                  <td className="px-6 py-4">{item.qGRNItemid}</td>
-                  <td className="px-6 py-4">{items.find((i) => i.id === item.itemId)?.name || 'N/A'}</td>
+              {invoiceItems.map((item) => (
+                <tr key={item.id} className="bg-white border-b">
+                  <td className="px-6 py-4">{item.id}</td>
+                  <td className="px-6 py-4">{orderItems.find((oi) => oi.id === item.orderItemId)?.itemName || 'N/A'}</td>
                   <td className="px-6 py-4">{item.quantity}</td>
                   <td className="px-6 py-4">₹{parseFloat(item.rate).toFixed(2)}</td>
                   <td className="px-6 py-4">₹{parseFloat(item.discount).toFixed(2)}</td>
@@ -138,24 +132,25 @@ const QuickInvoiceDetails = ({ quickInvoice, quickInvoiceItems, quickGRNs, items
   );
 };
 
-QuickInvoiceDetails.propTypes = {
-  quickInvoice: PropTypes.shape({
-    qInvoiceId: PropTypes.number,
-    qInvoiceNo: PropTypes.string,
-    qInvoiceDate: PropTypes.string,
-    qGRNIds: PropTypes.arrayOf(PropTypes.number),
-    totalAmount: PropTypes.number,
-    remark: PropTypes.string,
+InvoiceDetails.propTypes = {
+  invoice: PropTypes.shape({
+    id: PropTypes.number,
+    invoiceNo: PropTypes.string,
+    poId: PropTypes.number,
+    invoiceDate: PropTypes.string,
+    subtotal: PropTypes.number,
+    totalTax: PropTypes.number,
+    invoiceAmount: PropTypes.number,
+    paymentDetails: PropTypes.string,
+    paymentDate: PropTypes.string,
     createdAt: PropTypes.string,
     updatedAt: PropTypes.string,
   }),
-  quickInvoiceItems: PropTypes.arrayOf(
+  invoiceItems: PropTypes.arrayOf(
     PropTypes.shape({
-      qInvoiceItemId: PropTypes.number,
-      qInvoiceId: PropTypes.number,
-      qGRNId: PropTypes.number,
-      qGRNItemid: PropTypes.number,
-      itemId: PropTypes.number,
+      id: PropTypes.number,
+      invoiceId: PropTypes.number,
+      orderItemId: PropTypes.number,
       quantity: PropTypes.number,
       rate: PropTypes.number,
       discount: PropTypes.number,
@@ -166,30 +161,25 @@ QuickInvoiceDetails.propTypes = {
       updatedAt: PropTypes.string,
     })
   ).isRequired,
-  quickGRNs: PropTypes.arrayOf(
+  purchaseOrders: PropTypes.arrayOf(
     PropTypes.shape({
-      qGRNId: PropTypes.number,
-      qGRNNo: PropTypes.string,
+      poId: PropTypes.number,
+      poNo: PropTypes.string,
     })
   ).isRequired,
-  quickGRNItems: PropTypes.arrayOf(
-    PropTypes.shape({
-      qGRNItemid: PropTypes.number,
-      qGRNId: PropTypes.number,
-      itemId: PropTypes.number,
-    })
-  ).isRequired,
-  items: PropTypes.arrayOf(
+  orderItems: PropTypes.arrayOf(
     PropTypes.shape({
       id: PropTypes.number,
-      name: PropTypes.string,
+      poId: PropTypes.number,
+      itemId: PropTypes.number,
+      itemName: PropTypes.string,
     })
   ).isRequired,
   onBack: PropTypes.func.isRequired,
 };
 
-QuickInvoiceDetails.defaultProps = {
-  quickInvoice: null,
+InvoiceDetails.defaultProps = {
+  invoice: null,
 };
 
-export default QuickInvoiceDetails;
+export default InvoiceDetails;

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import Select from 'react-select';
 import Table from '../components/Table';
 import FormInput from '../components/FormInput';
+import ReturnDetails from './ReturnDetails';
 
 function Return() {
   const [returns, setReturns] = useState([]);
@@ -27,6 +27,7 @@ function Return() {
   const [errors, setErrors] = useState({});
   const [editId, setEditId] = useState(null);
   const [expandedReturnId, setExpandedReturnId] = useState(null);
+  const [selectedReturnId, setSelectedReturnId] = useState(null);
 
   // Initialize dummy data
   useEffect(() => {
@@ -99,7 +100,6 @@ function Return() {
     setItems(itemsData);
     setFinancialYears(financialYearsData);
     setInstitutes(institutesData);
-    console.log('Returns:', returnsData, 'ReturnItems:', returnItemsData);
   }, []);
 
   // Form handling
@@ -143,10 +143,14 @@ function Return() {
   };
 
   const handleRemoveItem = (index) => {
-    setFormData((prev) => {
-      const newItems = prev.items.filter((_, i) => i !== index);
-      return { ...prev, items: newItems };
-    });
+    if (formData.items.length === 1) {
+      alert('At least one item is required');
+      return;
+    }
+    setFormData((prev) => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index),
+    }));
     setErrors((prev) => {
       const newErrors = { ...prev };
       Object.keys(newErrors).forEach((key) => {
@@ -163,7 +167,6 @@ function Return() {
     if (!formData.instituteId) newErrors.instituteId = 'Institute is required';
     if (!formData.employeeName) newErrors.employeeName = 'Employee name is required';
     if (!formData.location) newErrors.location = 'Location is required';
-    if (formData.items.length === 0) newErrors.items = 'At least one item is required';
     formData.items.forEach((item, index) => {
       if (!item.itemId) newErrors[`items[${index}].itemId`] = 'Item is required';
       if (!item.returnQuantity || Number(item.returnQuantity) <= 0)
@@ -266,19 +269,45 @@ function Return() {
     setEditId(null);
   };
 
+  // Handle row click to show details
+  const handleRowClick = (row) => {
+    setSelectedReturnId(row.id);
+  };
+
+  // Handle back to table view
+  const handleBack = () => {
+    setSelectedReturnId(null);
+  };
+
   // Table columns for Return
   const returnColumns = [
     { key: 'distributionId', label: 'Distribution ID' },
-    { key: 'financialYearId', label: 'Financial Year', format: (value) => financialYears.find((fy) => fy.id === value)?.name || value },
-    { key: 'instituteId', label: 'Institute', format: (value) => institutes.find((inst) => inst.id === value)?.name || value },
+    {
+      key: 'financialYearId',
+      label: 'Financial Year',
+      format: (value) => financialYears.find((fy) => fy.id === value)?.name || value,
+    },
+    {
+      key: 'instituteId',
+      label: 'Institute',
+      format: (value) => institutes.find((inst) => inst.id === value)?.name || value,
+    },
     { key: 'employeeName', label: 'Employee Name' },
     { key: 'location', label: 'Location' },
-    { key: 'createdAt', label: 'Created At', format: (value) => new Date(value).toLocaleDateString() },
+    {
+      key: 'createdAt',
+      label: 'Created At',
+      format: (value) => new Date(value).toLocaleDateString(),
+    },
   ];
 
   // Table columns for ReturnItem
   const returnItemColumns = [
-    { key: 'itemId', label: 'Item', format: (value) => items.find((i) => i.id === value)?.itemName || 'N/A' },
+    {
+      key: 'itemId',
+      label: 'Item',
+      format: (value) => items.find((i) => i.id === value)?.itemName || 'N/A',
+    },
     { key: 'returnQuantity', label: 'Return Quantity' },
   ];
 
@@ -307,7 +336,7 @@ function Return() {
         });
         setIsFormVisible(true);
       },
-      className: 'bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs sm:text-sm',
+      className: 'bg-blue-500 hover:bg-blue-600',
     },
     {
       label: 'Delete',
@@ -318,27 +347,14 @@ function Return() {
           resetForm();
         }
       },
-      className: 'bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs sm:text-sm',
+      className: 'bg-red-500 hover:bg-red-600',
     },
     {
       label: 'View Items',
       onClick: (row) => {
-        console.log('Toggling items for returnId:', row.id);
         setExpandedReturnId(expandedReturnId === row.id ? null : row.id);
       },
-      className: 'bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs sm:text-sm',
-    },
-    {
-      label: 'View Details',
-      className: 'bg-purple-500 hover:bg-purple-600 text-white px-2 py-1 rounded text-xs sm:text-sm',
-      render: (row) => (
-        <Link
-          to={`/masters/return/${row.id}`}
-          className="bg-purple-500 hover:bg-purple-600 text-white px-2 py-1 rounded text-xs sm:text-sm"
-        >
-          View Details
-        </Link>
-      ),
+      className: 'bg-green-500 hover:bg-green-600',
     },
   ];
 
@@ -364,285 +380,227 @@ function Return() {
     }));
   };
 
+  // Get selected return data
+  const selectedReturn = returns.find((ret) => ret.id === selectedReturnId);
+  const selectedReturnItems = returnItems.filter((ri) => ri.returnId === selectedReturnId);
+
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
-      <div className='flex justify-between items-center mb-4'>
-       <h2 className="text-lg sm:text-xl font-semibold text-brand-secondary mb-4">Returns</h2> 
-       <div>
-          <button
-            onClick={() => setIsFormVisible(!isFormVisible)}
-            className="w-full sm:w-auto bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-xs sm:text-sm"
-          >
-            {isFormVisible ? 'Hide Form' : 'Manage Return'}
-          </button>
-        </div>
-      </div>
-      
-      <div className="flex flex-col gap-4 sm:gap-6">
-      
-        {isFormVisible && (
-          <div>
-            <h3 className="text-base sm:text-lg font-medium text-brand-secondary mb-4">
-              {isEditMode ? 'Edit Return' : 'Add Return'}
-            </h3>
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-700">Distribution</label>
-                <Select
-                  options={distributionOptions}
-                  value={distributionOptions.find((option) => option.value === formData.distributionId)}
-                  onChange={(option) => handleChange({ target: { name: 'distributionId', value: option ? option.value : '' } })}
-                  className="mt-1 text-xs sm:text-sm"
-                  classNamePrefix="select"
-                  placeholder="Select Distribution"
-                  isClearable
-                />
-                {errors.distributionId && (
-                  <p className="mt-1 text-xs text-red-600">{errors.distributionId}</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-700">Financial Year</label>
-                <Select
-                  options={financialYearOptions}
-                  value={financialYearOptions.find((option) => option.value === formData.financialYearId)}
-                  onChange={(option) => handleChange({ target: { name: 'financialYearId', value: option ? option.value : '' } })}
-                  className="mt-1 text-xs sm:text-sm"
-                  classNamePrefix="select"
-                  placeholder="Select Financial Year"
-                  isClearable
-                />
-                {errors.financialYearId && (
-                  <p className="mt-1 text-xs text-red-600">{errors.financialYearId}</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-700">Institute</label>
-                <Select
-                  options={instituteOptions}
-                  value={instituteOptions.find((option) => option.value === formData.instituteId)}
-                  onChange={(option) => handleChange({ target: { name: 'instituteId', value: option ? option.value : '' } })}
-                  className="mt-1 text-xs sm:text-sm"
-                  classNamePrefix="select"
-                  placeholder="Select Institute"
-                  isClearable
-                />
-                {errors.instituteId && (
-                  <p className="mt-1 text-xs text-red-600">{errors.instituteId}</p>
-                )}
-              </div>
-              <FormInput
-                label="Employee Name"
-                type="text"
-                name="employeeName"
-                value={formData.employeeName}
-                onChange={handleChange}
-                error={errors.employeeName}
-                required
-                className="w-full text-xs sm:text-sm"
-              />
-              <FormInput
-                label="Location"
-                type="text"
-                name="location"
-                value={formData.location}
-                onChange={handleChange}
-                error={errors.location}
-                required
-                className="w-full text-xs sm:text-sm"
-              />
-              <FormInput
-                label="Documents"
-                type="file"
-                name="documents"
-                onChange={handleChange}
-                error={errors.documents}
-                required={false}
-                className="w-full text-xs sm:text-sm"
-              />
-              <FormInput
-                label="Remark"
-                type="textarea"
-                name="remark"
-                value={formData.remark}
-                onChange={handleChange}
-                error={errors.remark}
-                required={false}
-                className="w-full text-xs sm:text-sm"
-              />
-              <div className="col-span-1 sm:col-span-2">
-                <h4 className="text-sm sm:text-md font-medium text-brand-secondary mb-2">Return Items</h4>
-                {formData.items.map((item, index) => (
-                  <div key={index} className="flex flex-col gap-2 mb-4 p-4 border rounded-md">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      <div>
-                        <label className="block text-xs sm:text-sm font-medium text-gray-700">Item</label>
-                        <Select
-                          options={getItemOptions(formData.distributionId)}
-                          value={getItemOptions(formData.distributionId).find((option) => option.value === item.itemId)}
-                          onChange={(option) =>
-                            handleItemChange(index, { target: { name: 'itemId', value: option ? option.value : '' } })
-                          }
-                          className="mt-1 text-xs sm:text-sm"
-                          classNamePrefix="select"
-                          placeholder="Select Item"
-                          isClearable
-                          isDisabled={!formData.distributionId}
-                        />
-                        {errors[`items[${index}].itemId`] && (
-                          <p className="mt-1 text-xs text-red-600">{errors[`items[${index}].itemId`]}</p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-xs sm:text-sm font-medium text-gray-700">Return Quantity</label>
-                        <input
-                          type="number"
-                          name="returnQuantity"
-                          value={item.returnQuantity}
-                          onChange={(e) => handleItemChange(index, e)}
-                          className="mt-1 w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
-                          placeholder="Enter quantity"
-                          min="1"
-                          required
-                        />
-                        {errors[`items[${index}].returnQuantity`] && (
-                          <p className="mt-1 text-xs text-red-600">{errors[`items[${index}].returnQuantity`]}</p>
-                        )}
-                      </div>
-                      <div className="flex items-end">
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveItem(index)}
-                          className="w-full sm:w-auto bg-red-500 text-white px-2 py-1 rounded-md hover:bg-red-600 text-xs sm:text-sm"
-                          disabled={formData.items.length === 1}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {errors.items && (
-                  <p className="mt-1 text-xs text-red-600">{errors.items}</p>
-                )}
-                <button
-                  type="button"
-                  onClick={handleAddItem}
-                  className="mt-2 w-full sm:w-auto bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-xs sm:text-sm"
-                >
-                  Add Item
-                </button>
-              </div>
-              <div className="col-span-1 sm:col-span-2 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-                <button
-                  type="submit"
-                  className="w-full sm:w-auto bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-xs sm:text-sm"
-                >
-                  {isEditMode ? 'Update' : 'Add'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    resetForm();
-                    setIsFormVisible(false);
-                  }}
-                  className="w-full sm:w-auto px-4 py-2 text-gray-600 rounded-md hover:bg-gray-100 text-xs sm:text-sm"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
+      {selectedReturnId ? (
+        <ReturnDetails
+          returnData={selectedReturn}
+          returnItems={selectedReturnItems}
+          institutes={institutes}
+          financialYears={financialYears}
+          distributions={distributions}
+          items={items}
+          onBack={handleBack}
+        />
+      ) : (
+        <>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Returns</h2>
+            <div>
+              <button
+                onClick={() => setIsFormVisible(!isFormVisible)}
+                className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600"
+              >
+                {isFormVisible ? 'Hide Form' : 'Manage Return'}
+              </button>
+            </div>
           </div>
-        )}
-        <div>
-          <div className="sm:hidden space-y-4">
-            {returns.map((ret) => (
-              <div key={ret.id} className="p-4 border rounded-md bg-gray-50">
-                <div className="space-y-2">
-                  <p className="text-xs"><strong>ID:</strong> {ret.id}</p>
-                  <p className="text-xs"><strong>Distribution ID:</strong> {ret.distributionId}</p>
-                  <p className="text-xs"><strong>Financial Year:</strong> {financialYears.find((fy) => fy.id === ret.financialYearId)?.name || ret.financialYearId}</p>
-                  <p className="text-xs"><strong>Institute:</strong> {institutes.find((inst) => inst.id === ret.instituteId)?.name || ret.instituteId}</p>
-                  <p className="text-xs"><strong>Employee Name:</strong> {ret.employeeName}</p>
-                  <p className="text-xs"><strong>Location:</strong> {ret.location}</p>
-                  <p className="text-xs"><strong>Created At:</strong> {new Date(ret.createdAt).toLocaleDateString()}</p>
-                </div>
-                <div className="flex flex-col space-y-2 mt-2">
-                  {actions.map((action, index) => (
+          <div className="flex flex-col gap-6 mb-6">
+            {isFormVisible && (
+              <div>
+                <h3 className="text-base sm:text-lg font-medium text-brand-secondary mb-4">
+                  {isEditMode ? 'Edit Return' : 'Add Return'}
+                </h3>
+                <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700">Distribution</label>
+                    <Select
+                      options={distributionOptions}
+                      value={distributionOptions.find((option) => option.value === formData.distributionId)}
+                      onChange={(option) => handleChange({ target: { name: 'distributionId', value: option ? option.value : '' } })}
+                      className="mt-1 text-xs sm:text-sm"
+                      classNamePrefix="select"
+                      placeholder="Select Distribution"
+                      isClearable
+                    />
+                    {errors.distributionId && (
+                      <p className="mt-1 text-xs text-red-600">{errors.distributionId}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700">Financial Year</label>
+                    <Select
+                      options={financialYearOptions}
+                      value={financialYearOptions.find((option) => option.value === formData.financialYearId)}
+                      onChange={(option) => handleChange({ target: { name: 'financialYearId', value: option ? option.value : '' } })}
+                      className="mt-1 text-xs sm:text-sm"
+                      classNamePrefix="select"
+                      placeholder="Select Financial Year"
+                      isClearable
+                    />
+                    {errors.financialYearId && (
+                      <p className="mt-1 text-xs text-red-600">{errors.financialYearId}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700">Institute</label>
+                    <Select
+                      options={instituteOptions}
+                      value={instituteOptions.find((option) => option.value === formData.instituteId)}
+                      onChange={(option) => handleChange({ target: { name: 'instituteId', value: option ? option.value : '' } })}
+                      className="mt-1 text-xs sm:text-sm"
+                      classNamePrefix="select"
+                      placeholder="Select Institute"
+                      isClearable
+                    />
+                    {errors.instituteId && (
+                      <p className="mt-1 text-xs text-red-600">{errors.instituteId}</p>
+                    )}
+                  </div>
+                  <FormInput
+                    label="Employee Name"
+                    type="text"
+                    name="employeeName"
+                    value={formData.employeeName}
+                    onChange={handleChange}
+                    error={errors.employeeName}
+                    required
+                    className="w-full text-xs sm:text-sm"
+                  />
+                  <FormInput
+                    label="Location"
+                    type="text"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleChange}
+                    error={errors.location}
+                    required
+                    className="w-full text-xs sm:text-sm"
+                  />
+                  <FormInput
+                    label="Documents"
+                    type="file"
+                    name="documents"
+                    onChange={handleChange}
+                    error={errors.documents}
+                    required={false}
+                    className="w-full text-xs sm:text-sm"
+                  />
+                  <FormInput
+                    label="Remark"
+                    type="textarea"
+                    name="remark"
+                    value={formData.remark}
+                    onChange={handleChange}
+                    error={errors.remark}
+                    required={false}
+                    className="w-full text-xs sm:text-sm"
+                  />
+                  <div className="col-span-1 sm:col-span-2 lg:col-span-3">
+                    <h4 className="text-sm sm:text-md font-medium text-brand-secondary mb-2">Return Items</h4>
+                    {formData.items.map((item, index) => (
+                      <div key={index} className="flex flex-col gap-4 mb-4 p-4 border rounded-md">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700">Item</label>
+                            <Select
+                              options={getItemOptions(formData.distributionId)}
+                              value={getItemOptions(formData.distributionId).find((option) => option.value === item.itemId)}
+                              onChange={(option) =>
+                                handleItemChange(index, { target: { name: 'itemId', value: option ? option.value : '' } })
+                              }
+                              className="mt-1 text-xs sm:text-sm"
+                              classNamePrefix="select"
+                              placeholder="Select Item"
+                              isClearable
+                              isDisabled={!formData.distributionId}
+                            />
+                            {errors[`items[${index}].itemId`] && (
+                              <p className="mt-1 text-xs text-red-600">{errors[`items[${index}].itemId`]}</p>
+                            )}
+                          </div>
+                          <FormInput
+                            label="Return Quantity"
+                            type="number"
+                            name="returnQuantity"
+                            value={item.returnQuantity}
+                            onChange={(e) => handleItemChange(index, e)}
+                            error={errors[`items[${index}].returnQuantity`]}
+                            required
+                            className="w-full text-xs sm:text-sm"
+                            min="1"
+                          />
+                          <div className="flex items-end">
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveItem(index)}
+                              className="w-full sm:w-auto text-red-600 hover:text-red-800 text-xs sm:text-sm mt-2"
+                              disabled={formData.items.length === 1}
+                            >
+                              Remove Item
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                     <button
-                      key={index}
-                      onClick={() => action.onClick && action.onClick(ret)}
-                      className={`${action.className} w-full text-xs py-1 ${action.render ? 'hidden' : ''}`}
+                      type="button"
+                      onClick={handleAddItem}
+                      className="w-full sm:w-auto bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 text-xs sm:text-sm"
                     >
-                      {action.label}
+                      Add Item
                     </button>
-                  ))}
-                  <Link
-                    to={`/masters/return/${ret.id}`}
-                    className="bg-purple-500 hover:bg-purple-600 text-white px-2 py-1 rounded text-xs w-full text-center"
-                  >
-                    View Details
-                  </Link>
-                </div>
-                {expandedReturnId === ret.id && (
-                  <div className="mt-4">
-                    <h4 className="text-sm font-medium text-brand-secondary mb-2">Return Items</h4>
-                    <div className="space-y-4">
-                      {returnItems
-                        .filter((ri) => ri.returnId === Number(ret.id))
-                        .map((ri) => (
-                          <div key={ri.id} className="p-4 border rounded-md bg-white">
-                            <p className="text-xs"><strong>ID:</strong> {ri.id}</p>
-                            <p className="text-xs"><strong>Item:</strong> {items.find((i) => i.id === ri.itemId)?.itemName || 'N/A'}</p>
-                            <p className="text-xs"><strong>Return Quantity:</strong> {ri.returnQuantity}</p>
-                          </div>
-                        ))}
-                    </div>
                   </div>
-                )}
+                  <div className="col-span-1 sm:col-span-2 lg:col-span-3 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+                    <button
+                      type="submit"
+                      className="w-full sm:w-auto bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-xs sm:text-sm"
+                    >
+                      {isEditMode ? 'Update' : 'Add'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        resetForm();
+                        setIsFormVisible(false);
+                      }}
+                      className="w-full sm:w-auto px-4 py-2 text-gray-600 rounded-md hover:bg-gray-100 text-xs sm:text-sm"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
               </div>
-            ))}
-          </div>
-          <div className="hidden sm:block overflow-x-auto">
-            <Table
-              columns={returnColumns}
-              data={returns}
-              actions={actions}
-              expandable={{
-                expandedRowRender: (row) => {
-                  const retItems = returnItems.filter((ri) => ri.returnId === Number(row.id));
-                  console.log('Rendering items for returnId:', row.id, retItems);
-                  return (
+            )}
+            <div>
+              <Table
+                columns={returnColumns}
+                data={returns}
+                actions={actions}
+                onRowClick={handleRowClick}
+                expandable={{
+                  expandedRowRender: (row) => (
                     <div className="p-4 bg-gray-50">
-                      <h4 className="text-sm font-medium text-brand-secondary mb-2">Return Items</h4>
-                      <div className="sm:hidden space-y-4">
-                        {retItems.map((ri) => (
-                          <div key={ri.id} className="p-4 border rounded-md bg-white">
-                            <p className="text-xs"><strong>ID:</strong> {ri.id}</p>
-                            <p className="text-xs"><strong>Item:</strong> {items.find((i) => i.id === ri.itemId)?.itemName || 'N/A'}</p>
-                            <p className="text-xs"><strong>Return Quantity:</strong> {ri.returnQuantity}</p>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="hidden sm:block overflow-x-auto">
-                        <Table
-                          columns={returnItemColumns}
-                          data={retItems}
-                          actions={[]}
-                          className="text-sm"
-                        />
-                      </div>
+                      <h4 className="text-md font-medium text-brand-secondary mb-2">Return Items</h4>
+                      <Table
+                        columns={returnItemColumns}
+                        data={returnItems.filter((ri) => ri.returnId === row.id)}
+                        actions={[]}
+                      />
                     </div>
-                  );
-                },
-                rowExpandable: (row) => returnItems.some((ri) => ri.returnId === Number(row.id)),
-                expandedRowKeys: expandedReturnId ? [Number(expandedReturnId)] : [],
-              }}
-              className="text-sm"
-            />
+                  ),
+                  rowExpandable: (row) => returnItems.some((ri) => ri.returnId === row.id),
+                  expandedRowKeys: expandedReturnId ? [expandedReturnId] : [],
+                }}
+              />
+            </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }

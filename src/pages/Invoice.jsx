@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import Table from '../components/Table';
 import FormInput from '../components/FormInput';
+import InvoiceDetails from './InvoiceDetails';
 
 function Invoice() {
   const [invoices, setInvoices] = useState([]);
@@ -20,7 +20,8 @@ function Invoice() {
   });
   const [errors, setErrors] = useState({});
   const [editId, setEditId] = useState(null);
-  const [expandedInvoiceId, setExpandedInvoiceId] = useState(null);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState(null);
+  const [currentLayout, setCurrentLayout] = useState(null);
 
   // Initialize dummy data
   useEffect(() => {
@@ -80,7 +81,6 @@ function Invoice() {
     setInvoiceItems(invoiceItemsData);
     setPurchaseOrders(purchaseOrdersData);
     setOrderItems(orderItemsData);
-    console.log('Invoices:', invoicesData, 'InvoiceItems:', invoiceItemsData); // Debug
   }, []);
 
   // Table columns for Invoice
@@ -92,19 +92,7 @@ function Invoice() {
     { key: 'subtotal', label: 'Subtotal', format: (value) => `₹${parseFloat(value).toFixed(2)}` },
     { key: 'totalTax', label: 'Total Tax', format: (value) => `₹${parseFloat(value).toFixed(2)}` },
     { key: 'invoiceAmount', label: 'Invoice Amount', format: (value) => `₹${parseFloat(value).toFixed(2)}` },
-    { key: 'paymentDetails', label: 'Payment Details', className: 'hidden sm:table-cell' },
-  ];
-
-  // Table columns for InvoiceItem
-  const invoiceItemColumns = [
-    { key: 'id', label: 'ID' },
-    { key: 'orderItemId', label: 'Item', format: (value) => orderItems.find((oi) => oi.id === value)?.itemName || 'N/A' },
-    { key: 'quantity', label: 'Quantity' },
-    { key: 'rate', label: 'Rate', format: (value) => `₹${parseFloat(value).toFixed(2)}` },
-    { key: 'discount', label: 'Discount', format: (value) => `₹${parseFloat(value).toFixed(2)}` },
-    { key: 'taxPercentage', label: 'Tax %', format: (value) => `${parseFloat(value).toFixed(2)}%` },
-    { key: 'taxAmount', label: 'Tax Amount', format: (value) => `₹${parseFloat(value).toFixed(2)}` },
-    { key: 'totalAmount', label: 'Total Amount', format: (value) => `₹${parseFloat(value).toFixed(2)}` },
+    { key: 'paymentDetails', label: 'Payment Details' },
   ];
 
   // Table actions
@@ -149,27 +137,19 @@ function Invoice() {
       },
       className: 'bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs sm:text-sm',
     },
-    {
-      label: 'View Items',
-      onClick: (row) => {
-        console.log('Toggling items for invoiceId:', row.id); // Debug
-        setExpandedInvoiceId(expandedInvoiceId === row.id ? null : row.id);
-      },
-      className: 'bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs sm:text-sm',
-    },
-    {
-      label: 'View Details',
-      className: 'bg-purple-500 hover:bg-purple-600 text-white px-2 py-1 rounded text-xs sm:text-sm',
-      render: (row) => (
-        <Link
-          to={`/masters/invoice/${row.id}`}
-          className="bg-purple-500 hover:bg-purple-600 text-white px-2 py-1 rounded text-xs sm:text-sm"
-        >
-          View Details
-        </Link>
-      ),
-    },
   ];
+
+  // Handle row click to show details
+  const handleRowClick = (row) => {
+    setSelectedInvoiceId(row.id);
+  setCurrentLayout('details');
+  };
+
+  // Handle back to table view
+  const handleBack = () => {
+    setSelectedInvoiceId(null);
+    setCurrentLayout(null);
+  };
 
   // Form handling
   const handleChange = (e) => {
@@ -182,6 +162,20 @@ function Invoice() {
     const { name, value } = e.target;
     const updatedItems = [...formData.items];
     updatedItems[index] = { ...updatedItems[index], [name]: value };
+
+    // Calculate taxAmount and totalAmount
+    const quantity = Number(updatedItems[index].quantity) || 0;
+    const rate = Number(updatedItems[index].rate) || 0;
+    const discount = Number(updatedItems[index].discount) || 0;
+    const taxPercentage = Number(updatedItems[index].taxPercentage) || 0;
+
+    const baseAmount = quantity * rate - discount;
+    const taxAmount = baseAmount * (taxPercentage / 100);
+    const totalAmount = baseAmount + taxAmount;
+
+    updatedItems[index].taxAmount = taxAmount.toFixed(2);
+    updatedItems[index].totalAmount = totalAmount.toFixed(2);
+
     setFormData((prev) => ({ ...prev, items: updatedItems }));
     setErrors((prev) => ({ ...prev, [`items[${index}].${name}`]: '' }));
   };
@@ -189,7 +183,7 @@ function Invoice() {
   const addItem = () => {
     setFormData((prev) => ({
       ...prev,
-      items: [...prev.items, { orderItemId: '', taxPercentage: '', quantity: '', rate: '', discount: '' }],
+      items: [...prev.items, { orderItemId: '', taxPercentage: '', quantity: '', rate: '', discount: '', taxAmount: '', totalAmount: '' }],
     }));
   };
 
@@ -272,13 +266,14 @@ function Invoice() {
         prev.map((inv) =>
           inv.id === editId
             ? {
-              ...formData,
-              id: editId,
-              poId: Number(formData.poId),
-              subtotal,
-              totalTax,
-              invoiceAmount,
-            }
+                ...formData,
+                id: editId,
+                poId: Number(formData.poId),
+                subtotal,
+                totalTax,
+                invoiceAmount,
+                updatedAt: new Date().toISOString(),
+              }
             : inv
         )
       );
@@ -293,6 +288,8 @@ function Invoice() {
         taxPercentage: Number(item.taxPercentage),
         taxAmount: Number(item.taxAmount),
         totalAmount: Number(item.totalAmount),
+        createdAt: item.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       }));
       setInvoiceItems((prev) => [
         ...prev.filter((ii) => ii.invoiceId !== editId),
@@ -340,288 +337,244 @@ function Invoice() {
       invoiceNo: '',
       invoiceDate: '',
       paymentDetails: '',
-      items: [{ orderItemId: '', taxPercentage: '', quantity: '', rate: '', discount: '' }],
+      items: [{ orderItemId: '', taxPercentage: '', quantity: '', rate: '', discount: '', taxAmount: '', totalAmount: '' }],
     });
     setErrors({});
     setIsEditMode(false);
     setEditId(null);
   };
 
+  // Get selected invoice data
+  const selectedInvoice = invoices.find((inv) => inv.id === selectedInvoiceId);
+  const selectedInvoiceItems = invoiceItems.filter((ii) => ii.invoiceId === selectedInvoiceId);
+
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
-      <div className='flex justify-between items-center mb-4'>
-        <h2 className="text-lg sm:text-xl font-semibold text-brand-secondary mb-4">Invoices</h2>
-        <div>
-          <button
-            onClick={() => setIsFormVisible(!isFormVisible)}
-            className="w-full sm:w-auto bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-xs sm:text-sm"
-          >
-            {isFormVisible ? 'Hide Form' : 'Manage Invoice'}
-          </button>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-4 sm:gap-6">
-
-        {isFormVisible && (
-          <div>
-            <h3 className="text-base sm:text-lg font-medium text-brand-secondary mb-4">
-              {isEditMode ? 'Edit Invoice' : 'Add Invoice'}
-            </h3>
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {selectedInvoiceId ? (
+        <InvoiceDetails
+          invoice={selectedInvoice}
+          invoiceItems={selectedInvoiceItems}
+          purchaseOrders={purchaseOrders}
+          orderItems={orderItems}
+          onBack={handleBack}
+        />
+      ) : (
+        <>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Invoices</h2>
+            <div>
+              <button
+                onClick={() => setIsFormVisible(!isFormVisible)}
+                className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600"
+              >
+                {isFormVisible ? 'Hide Form' : 'Add Invoice'}
+              </button>
+            </div>
+          </div>
+          <div className="flex flex-col gap-6 mb-6">
+            {isFormVisible && (
               <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-700">Purchase Order</label>
-                <select
-                  name="poId"
-                  value={formData.poId}
-                  onChange={handleChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
-                  required
-                >
-                  <option value="">Select PO</option>
-                  {purchaseOrders.map((po) => (
-                    <option key={po.poId} value={po.poId}>
-                      {po.poNo}
-                    </option>
-                  ))}
-                </select>
-                {errors.poId && (
-                  <p className="mt-1 text-xs text-red-600">{errors.poId}</p>
-                )}
-              </div>
-              <FormInput
-                label="Invoice Number"
-                type="text"
-                name="invoiceNo"
-                value={formData.invoiceNo}
-                onChange={handleChange}
-                error={errors.invoiceNo}
-                required
-                className="w-full text-xs sm:text-sm"
-              />
-              <FormInput
-                label="Invoice Date"
-                type="date"
-                name="invoiceDate"
-                value={formData.invoiceDate}
-                onChange={handleChange}
-                error={errors.invoiceDate}
-                required
-                className="w-full text-xs sm:text-sm"
-              />
-              <FormInput
-                label="Payment Details"
-                type="text"
-                name="paymentDetails"
-                value={formData.paymentDetails}
-                onChange={handleChange}
-                error={errors.paymentDetails}
-                required={false}
-                className="w-full text-xs sm:text-sm"
-              />
-              <div className="col-span-1 sm:col-span-2 lg:col-span-3">
-                <h4 className="text-sm sm:text-md font-medium text-brand-secondary mb-2">Invoice Items</h4>
-                {formData.items.map((item, index) => (
-                  <div key={index} className="flex flex-col gap-4 mb-4 p-4 border rounded-md">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-xs sm:text-sm font-medium text-gray-700">Order Item</label>
-                        <select
-                          name="orderItemId"
-                          value={item.orderItemId}
-                          onChange={(e) => handleItemChange(index, e)}
-                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
-                          required
+                <h3 className="text-base sm:text-lg font-medium text-brand-secondary mb-4">
+                  {isEditMode ? 'Edit Invoice' : 'Add Invoice'}
+                </h3>
+                <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <FormInput
+                    label="Invoice ID"
+                    type="text"
+                    name="id"
+                    value={formData.id}
+                    onChange={handleChange}
+                    disabled
+                    required={false}
+                    className="w-full text-xs sm:text-sm"
+                  />
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700">Purchase Order</label>
+                    <select
+                      name="poId"
+                      value={formData.poId}
+                      onChange={handleChange}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
+                      required
+                    >
+                      <option value="">Select PO</option>
+                      {purchaseOrders.map((po) => (
+                        <option key={po.poId} value={po.poId}>
+                          {po.poNo}
+                        </option>
+                      ))}
+                    </select>
+                    
+                  </div>
+                  <FormInput
+                    label="Invoice Number"
+                    type="text"
+                    name="invoiceNo"
+                    value={formData.invoiceNo}
+                    onChange={handleChange}
+                    error={errors.invoiceNo}
+                    required
+                    className="w-full text-xs sm:text-sm"
+                  />
+                  <FormInput
+                    label="Invoice Date"
+                    type="date"
+                    name="invoiceDate"
+                    value={formData.invoiceDate}
+                    onChange={handleChange}
+                    error={errors.invoiceDate}
+                    required
+                    className="w-full text-xs sm:text-sm"
+                  />
+                  <FormInput
+                    label="Payment Details"
+                    type="text"
+                    name="paymentDetails"
+                    value={formData.paymentDetails}
+                    onChange={handleChange}
+                    error={errors.paymentDetails}
+                    required={false}
+                    className="w-full text-xs sm:text-sm"
+                  />
+                  <div className="col-span-1 sm:col-span-2 lg:col-span-3">
+                    <h4 className="text-sm sm:text-md font-medium text-brand-secondary mb-2">Invoice Items</h4>
+                    {formData.items.map((item, index) => (
+                      <div key={index} className="flex flex-col gap-4 mb-4 p-4 border rounded-md">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700">Order Item</label>
+                            <select
+                              name="orderItemId"
+                              value={item.orderItemId}
+                              onChange={(e) => handleItemChange(index, e)}
+                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
+                              required
+                            >
+                              <option value="">Select Item</option>
+                              {orderItems
+                                .filter((oi) => oi.poId === Number(formData.poId))
+                                .map((oi) => (
+                                  <option key={oi.id} value={oi.id}>
+                                    {oi.itemName}
+                                  </option>
+                                ))}
+                            </select>
+                            {errors[`items[${index}].orderItemId`] && (
+                              <p className="mt-1 text-xs text-red-600">{errors[`items[${index}].orderItemId`]}</p>
+                            )}
+                          </div>
+                          <FormInput
+                            label="Quantity"
+                            type="number"
+                            name="quantity"
+                            value={item.quantity}
+                            onChange={(e) => handleItemChange(index, e)}
+                            error={errors[`items[${index}].quantity`]}
+                            required
+                            className="w-full text-xs sm:text-sm"
+                          />
+                          <FormInput
+                            label="Rate"
+                            type="number"
+                            name="rate"
+                            value={item.rate}
+                            onChange={(e) => handleItemChange(index, e)}
+                            error={errors[`items[${index}].rate`]}
+                            required
+                            className="w-full text-xs sm:text-sm"
+                          />
+                          <FormInput
+                            label="Discount"
+                            type="number"
+                            name="discount"
+                            value={item.discount}
+                            onChange={(e) => handleItemChange(index, e)}
+                            error={errors[`items[${index}].discount`]}
+                            required={false}
+                            className="w-full text-xs sm:text-sm"
+                          />
+                          <FormInput
+                            label="Tax Percentage"
+                            type="number"
+                            name="taxPercentage"
+                            value={item.taxPercentage}
+                            onChange={(e) => handleItemChange(index, e)}
+                            error={errors[`items[${index}].taxPercentage`]}
+                            required
+                            className="w-full text-xs sm:text-sm"
+                          />
+                          <FormInput
+                            label="Tax Amount"
+                            type="text"
+                            name="taxAmount"
+                            value={item.taxAmount}
+                            disabled
+                            required={false}
+                            className="w-full text-xs sm:text-sm"
+                          />
+                          <FormInput
+                            label="Total Amount"
+                            type="text"
+                            name="totalAmount"
+                            value={item.totalAmount}
+                            disabled
+                            required={false}
+                            className="w-full text-xs sm:text-sm"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeItem(index)}
+                          className="text-red-600 hover:text-red-800 text-xs sm:text-sm mt-2"
                         >
-                          <option value="">Select Item</option>
-                          {orderItems
-                            .filter((oi) => oi.poId === Number(formData.poId))
-                            .map((oi) => (
-                              <option key={oi.id} value={oi.id}>
-                                {oi.itemName}
-                              </option>
-                            ))}
-                        </select>
-                        {errors[`items[${index}].orderItemId`] && (
-                          <p className="mt-1 text-xs text-red-600">{errors[`items[${index}].orderItemId`]}</p>
-                        )}
+                          Remove Item
+                        </button>
                       </div>
-                      <FormInput
-                        label="Quantity"
-                        type="number"
-                        name="quantity"
-                        value={item.quantity}
-                        onChange={(e) => handleItemChange(index, e)}
-                        error={errors[`items[${index}].quantity`]}
-                        required
-                        className="w-full text-xs sm:text-sm"
-                      />
-                      <FormInput
-                        label="Rate"
-                        type="number"
-                        name="rate"
-                        value={item.rate}
-                        onChange={(e) => handleItemChange(index, e)}
-                        error={errors[`items[${index}].rate`]}
-                        required
-                        className="w-full text-xs sm:text-sm"
-                      />
-                      <FormInput
-                        label="Discount"
-                        type="number"
-                        name="discount"
-                        value={item.discount}
-                        onChange={(e) => handleItemChange(index, e)}
-                        error={errors[`items[${index}].discount`]}
-                        required={false}
-                        className="w-full text-xs sm:text-sm"
-                      />
-                      <FormInput
-                        label="Tax Percentage"
-                        type="number"
-                        name="taxPercentage"
-                        value={item.taxPercentage}
-                        onChange={(e) => handleItemChange(index, e)}
-                        error={errors[`items[${index}].taxPercentage`]}
-                        required
-                        className="w-full text-xs sm:text-sm"
-                      />
-                    </div>
+                    ))}
                     <button
                       type="button"
-                      onClick={() => removeItem(index)}
-                      className="text-red-600 hover:text-red-800 text-xs sm:text-sm mt-2"
+                      onClick={addItem}
+                      className="w-full sm:w-auto bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 text-xs sm:text-sm"
                     >
-                      Remove Item
+                      Add Invoice Item
                     </button>
                   </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={addItem}
-                  className="w-full sm:w-auto bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 text-xs sm:text-sm"
-                >
-                  Add Invoice Item
-                </button>
-              </div>
-              <div className="col-span-1 sm:col-span-2 lg:col-span-3 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-                <button
-                  type="submit"
-                  className="w-full sm:w-auto bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-xs sm:text-sm"
-                >
-                  {isEditMode ? 'Update' : 'Add'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    resetForm();
-                    setIsFormVisible(false);
-                  }}
-                  className="w-full sm:w-auto px-4 py-2 text-gray-600 rounded-md hover:bg-gray-100 text-xs sm:text-sm"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-        <div>
-          <div className="sm:hidden space-y-4">
-            {invoices.map((invoice) => (
-              <div key={invoice.id} className="p-4 border rounded-md bg-gray-50">
-                <div className="space-y-2">
-                  <p className="text-xs"><strong>ID:</strong> {invoice.id}</p>
-                  <p className="text-xs"><strong>Invoice Number:</strong> {invoice.invoiceNo}</p>
-                  <p className="text-xs"><strong>PO Number:</strong> {purchaseOrders.find((po) => po.poId === invoice.poId)?.poNo || 'N/A'}</p>
-                  <p className="text-xs"><strong>Invoice Date:</strong> {new Date(invoice.invoiceDate).toLocaleDateString()}</p>
-                  <p className="text-xs"><strong>Subtotal:</strong> ₹{parseFloat(invoice.subtotal).toFixed(2)}</p>
-                  <p className="text-xs"><strong>Total Tax:</strong> ₹{parseFloat(invoice.totalTax).toFixed(2)}</p>
-                  <p className="text-xs"><strong>Invoice Amount:</strong> ₹{parseFloat(invoice.invoiceAmount).toFixed(2)}</p>
-                </div>
-                <div className="flex flex-col space-y-2 mt-2">
-                  {actions.map((action, index) => (
+                  <div className="col-span-1 sm:col-span-2 lg:col-span-3 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
                     <button
-                      key={index}
-                      onClick={() => action.onClick && action.onClick(invoice)}
-                      className={`${action.className} w-full text-xs py-1 ${action.render ? 'hidden' : ''}`}
+                      type="submit"
+                      className="w-full sm:w-auto bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-xs sm:text-sm"
                     >
-                      {action.label}
+                      {isEditMode ? 'Update' : 'Add'}
                     </button>
-                  ))}
-                  <Link
-                    to={`/masters/invoice/${invoice.id}`}
-                    className="bg-purple-500 hover:bg-purple-600 text-white px-2 py-1 rounded text-xs w-full text-center"
-                  >
-                    View Details
-                  </Link>
-                </div>
-                {expandedInvoiceId === invoice.id && (
-                  <div className="mt-4">
-                    <h4 className="text-sm font-medium text-brand-secondary mb-2">Invoice Items</h4>
-                    <div className="space-y-4">
-                      {invoiceItems.filter((ii) => ii.invoiceId === Number(invoice.id)).map((ii) => (
-                        <div key={ii.id} className="p-4 border rounded-md bg-white">
-                          <p className="text-xs"><strong>ID:</strong> {ii.id}</p>
-                          <p className="text-xs"><strong>Item:</strong> {orderItems.find((oi) => oi.id === ii.orderItemId)?.itemName || 'N/A'}</p>
-                          <p className="text-xs"><strong>Quantity:</strong> {ii.quantity}</p>
-                          <p className="text-xs"><strong>Rate:</strong> ₹{parseFloat(ii.rate).toFixed(2)}</p>
-                          <p className="text-xs"><strong>Discount:</strong> ₹{parseFloat(ii.discount).toFixed(2)}</p>
-                          <p className="text-xs"><strong>Tax %:</strong> {parseFloat(ii.taxPercentage).toFixed(2)}%</p>
-                          <p className="text-xs"><strong>Tax Amount:</strong> ₹{parseFloat(ii.taxAmount).toFixed(2)}</p>
-                          <p className="text-xs"><strong>Total Amount:</strong> ₹{parseFloat(ii.totalAmount).toFixed(2)}</p>
-                        </div>
-                      ))}
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        resetForm();
+                        setIsFormVisible(false);
+                      }}
+                      className="w-full sm:w-auto px-4 py-2 text-gray-600 rounded-md hover:bg-gray-100 text-xs sm:text-sm"
+                    >
+                      Cancel
+                    </button>
                   </div>
-                )}
+                </form>
               </div>
-            ))}
+            )}
+            <div>
+              {currentLayout ? (
+                <InvoiceDetails />
+              ) : (
+                <Table
+                  columns={invoiceColumns}
+                  data={invoices}
+                  actions={actions}
+                  onRowClick={handleRowClick}
+                />
+              )}
+            </div>
           </div>
-          <div className="hidden sm:block overflow-x-auto">
-            <Table
-              columns={invoiceColumns}
-              data={invoices}
-              actions={actions}
-              expandable={{
-                expandedRowRender: (row) => {
-                  const items = invoiceItems.filter((ii) => ii.invoiceId === Number(row.id));
-                  console.log('Rendering items for invoiceId:', row.id, items); // Debug
-                  return (
-                    <div className="p-4 bg-gray-50">
-                      <h4 className="text-sm font-medium text-brand-secondary mb-2">Invoice Items</h4>
-                      <div className="sm:hidden space-y-4">
-                        {items.map((ii) => (
-                          <div key={ii.id} className="p-4 border rounded-md bg-white">
-                            <p className="text-xs"><strong>ID:</strong> {ii.id}</p>
-                            <p className="text-xs"><strong>Item:</strong> {orderItems.find((oi) => oi.id === ii.orderItemId)?.itemName || 'N/A'}</p>
-                            <p className="text-xs"><strong>Quantity:</strong> {ii.quantity}</p>
-                            <p className="text-xs"><strong>Rate:</strong> ₹{parseFloat(ii.rate).toFixed(2)}</p>
-                            <p className="text-xs"><strong>Discount:</strong> ₹{parseFloat(ii.discount).toFixed(2)}</p>
-                            <p className="text-xs"><strong>Tax %:</strong> {parseFloat(ii.taxPercentage).toFixed(2)}%</p>
-                            <p className="text-xs"><strong>Tax Amount:</strong> ₹{parseFloat(ii.taxAmount).toFixed(2)}</p>
-                            <p className="text-xs"><strong>Total Amount:</strong> ₹{parseFloat(ii.totalAmount).toFixed(2)}</p>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="hidden sm:block overflow-x-auto">
-                        <Table
-                          columns={invoiceItemColumns}
-                          data={items}
-                          actions={[]}
-                          className="text-sm"
-                        />
-                      </div>
-                    </div>
-                  );
-                },
-                rowExpandable: (row) => invoiceItems.some((ii) => ii.invoiceId === Number(row.id)),
-                expandedRowKeys: expandedInvoiceId ? [Number(expandedInvoiceId)] : [],
-              }}
-              className="text-sm"
-            />
-          </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }
