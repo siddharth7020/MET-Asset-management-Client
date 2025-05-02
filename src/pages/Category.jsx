@@ -1,60 +1,90 @@
 import React, { useState, useEffect } from 'react';
 import Table from '../components/Table';
 import FormInput from '../components/FormInput';
+import {
+  getCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory
+} from '../api/categoryService';
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
+
+const MySwal = withReactContent(Swal);
 
 function Category() {
   const [categories, setCategories] = useState([]);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [formData, setFormData] = useState({
-    categoryID: '',
     categoryName: '',
   });
   const [errors, setErrors] = useState({});
   const [editId, setEditId] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  // Initialize with dummy data
   useEffect(() => {
-    setCategories([
-      { categoryID: 1, categoryName: 'Electronics' },
-      { categoryID: 2, categoryName: 'Furniture' },
-      { categoryID: 3, categoryName: 'Stationery' },
-    ]);
+    fetchCategories();
   }, []);
 
-  // Table columns
-  const columns = [
-    { key: 'categoryName', label: 'Name' },
-  ];
+  const fetchCategories = async () => {
+    setLoading(true);
+    try {
+      const res = await getCategories();
+      setCategories(res.data.categories || []);
+    } catch (err) {
+      console.error('Fetch error:', err.message);
+      MySwal.fire('Error', 'Failed to fetch categories', 'error');
+    }
+     finally {
+      setLoading(false);
+    }
+  };
+  console.log(categories);
+  
 
-  // Table actions
+  const columns = [{ key: 'categoryName', label: 'Name' }];
+
   const actions = [
     {
       label: 'Edit',
       onClick: (row) => {
         setIsEditMode(true);
         setEditId(row.categoryID);
-        setFormData({
-          categoryID: row.categoryID,
-          categoryName: row.categoryName,
-        });
+        setFormData({ categoryName: row.categoryName });
         setIsFormVisible(true);
       },
       className: 'bg-blue-500 hover:bg-blue-600',
     },
     {
       label: 'Delete',
-      onClick: (row) => {
-        if (window.confirm(`Delete category ${row.categoryName}?`)) {
-          setCategories((prev) => prev.filter((cat) => cat.categoryID !== row.categoryID));
-          resetForm();
+      onClick: async (row) => {
+        const result = await MySwal.fire({
+          title: `Delete ${row.categoryName}?`,
+          text: 'This action cannot be undone!',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6',
+          confirmButtonText: 'Yes, delete it!',
+        });
+
+        if (result.isConfirmed) {
+          try {
+            await deleteCategory(row.categoryID);
+            await fetchCategories();
+            resetForm();
+            MySwal.fire('Deleted!', 'Category has been deleted.', 'success');
+          } catch (err) {
+            console.error('Delete failed:', err);
+            MySwal.fire('Error', 'Failed to delete category.', 'error');
+          }
         }
       },
       className: 'bg-red-500 hover:bg-red-600',
     },
   ];
 
-  // Form handling
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -67,7 +97,7 @@ function Category() {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = validateForm();
     if (Object.keys(newErrors).length > 0) {
@@ -75,23 +105,28 @@ function Category() {
       return;
     }
 
-    if (isEditMode) {
-      setCategories((prev) =>
-        prev.map((cat) =>
-          cat.categoryID === editId ? { ...formData, categoryID: editId } : cat
-        )
-      );
-    } else {
-      const newId = Math.max(...categories.map((cat) => cat.categoryID), 0) + 1;
-      setCategories((prev) => [...prev, { ...formData, categoryID: newId }]);
+    setLoading(true);
+    try {
+      if (isEditMode) {
+        await updateCategory(editId, formData);
+        MySwal.fire('Updated', 'Category updated successfully', 'success');
+      } else {
+        await createCategory(formData);
+        MySwal.fire('Created', 'Category added successfully', 'success');
+      }
+      await fetchCategories();
+      resetForm();
+      setIsFormVisible(false);
+    } catch (err) {
+      console.error('Submit error:', err);
+      MySwal.fire('Error', 'Failed to save category', 'error');
+    } finally {
+      setLoading(false);
     }
-
-    resetForm();
-    setIsFormVisible(false);
   };
 
   const resetForm = () => {
-    setFormData({ categoryID: '', categoryName: '' });
+    setFormData({ categoryName: '' });
     setErrors({});
     setIsEditMode(false);
     setEditId(null);
@@ -101,18 +136,15 @@ function Category() {
     <div className="bg-white p-6 rounded-lg shadow-md">
       <div className='flex justify-between items-center mb-4'>
         <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Categories</h2>
-        <div>
-          <button
-            onClick={() => setIsFormVisible(!isFormVisible)}
-            className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600"
-          >
-            {isFormVisible ? 'Hide Form' : 'Add Category'}
-          </button>
-        </div>
+        <button
+          onClick={() => setIsFormVisible(!isFormVisible)}
+          className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600"
+        >
+          {isFormVisible ? 'Hide Form' : 'Add Category'}
+        </button>
       </div>
 
       <div className="flex flex-col gap-6 mb-6">
-
         {isFormVisible && (
           <div>
             <h3 className="text-lg font-medium text-brand-secondary mb-4">
@@ -132,8 +164,9 @@ function Category() {
                 <button
                   type="submit"
                   className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600"
+                  disabled={loading}
                 >
-                  {isEditMode ? 'Update' : 'Add'}
+                  {loading ? 'Saving...' : isEditMode ? 'Update' : 'Add'}
                 </button>
                 <button
                   type="button"
@@ -149,8 +182,15 @@ function Category() {
             </form>
           </div>
         )}
+
         <div>
-          <Table columns={columns} data={categories} actions={actions} />
+          {loading ? (
+            <div className="flex justify-center items-center py-6">
+              <div className="loader border-t-4 border-brand-primary h-10 w-10 rounded-full animate-spin"></div>
+            </div>
+          ) : (
+            <Table columns={columns} data={categories || []} actions={actions} />
+          )}
         </div>
       </div>
     </div>

@@ -1,38 +1,53 @@
 import React, { useState, useEffect } from 'react';
 import Table from '../components/Table';
 import FormInput from '../components/FormInput';
+import {
+  getUnits,
+  createUnit,
+  updateUnit,
+  deleteUnit
+} from '../api/unitService';
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
+
+const MySwal = withReactContent(Swal);
 
 function Unit() {
   const [units, setUnits] = useState([]);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [formData, setFormData] = useState({
-    unitId: '',
     uniteName: '',
     uniteCode: '',
     remark: '',
   });
   const [errors, setErrors] = useState({});
   const [editId, setEditId] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  // Initialize with dummy data
   useEffect(() => {
-    setUnits([
-      { unitId: 1, uniteName: 'Piece', uniteCode: 'PC', remark: 'Standard unit' },
-      { unitId: 2, uniteName: 'Kilogram', uniteCode: 'KG', remark: 'Weight unit' },
-      { unitId: 3, uniteName: 'Meter', uniteCode: 'MTR', remark: 'Length unit' },
-    ]);
+    fetchUnits();
   }, []);
 
-  // Table columns
+  const fetchUnits = async () => {
+    setLoading(true);
+    try {
+      const res = await getUnits();
+      setUnits(res.data.data);
+    } catch (error) {
+      console.error('Fetch error:', error);
+      MySwal.fire('Error', 'Failed to load units', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const columns = [
-    { key: 'unitId', label: 'ID' },
     { key: 'uniteName', label: 'Name' },
     { key: 'uniteCode', label: 'Code' },
     { key: 'remark', label: 'Remark' },
   ];
 
-  // Table actions
   const actions = [
     {
       label: 'Edit',
@@ -40,7 +55,6 @@ function Unit() {
         setIsEditMode(true);
         setEditId(row.unitId);
         setFormData({
-          unitId: row.unitId,
           uniteName: row.uniteName,
           uniteCode: row.uniteCode,
           remark: row.remark,
@@ -51,17 +65,33 @@ function Unit() {
     },
     {
       label: 'Delete',
-      onClick: (row) => {
-        if (window.confirm(`Delete unit ${row.uniteName}?`)) {
-          setUnits((prev) => prev.filter((u) => u.unitId !== row.unitId));
-          resetForm();
+      onClick: async (row) => {
+        const result = await MySwal.fire({
+          title: `Delete ${row.uniteName}?`,
+          text: 'This action cannot be undone!',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6',
+          confirmButtonText: 'Yes, delete it!',
+        });
+
+        if (result.isConfirmed) {
+          try {
+            await deleteUnit(row.unitId);
+            await fetchUnits();
+            resetForm();
+            MySwal.fire('Deleted!', 'Unit has been deleted.', 'success');
+          } catch (err) {
+            console.error('Delete failed:', err);
+            MySwal.fire('Error', 'Failed to delete unit.', 'error');
+          }
         }
       },
       className: 'bg-red-500 hover:bg-red-600',
     },
   ];
 
-  // Form handling
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -75,7 +105,7 @@ function Unit() {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = validateForm();
     if (Object.keys(newErrors).length > 0) {
@@ -83,21 +113,28 @@ function Unit() {
       return;
     }
 
-    if (isEditMode) {
-      setUnits((prev) =>
-        prev.map((u) => (u.unitId === editId ? { ...formData, unitId: editId } : u))
-      );
-    } else {
-      const newId = Math.max(...units.map((u) => u.unitId), 0) + 1;
-      setUnits((prev) => [...prev, { ...formData, unitId: newId }]);
+    setLoading(true);
+    try {
+      if (isEditMode) {
+        await updateUnit(editId, formData);
+        MySwal.fire('Updated', 'Unit updated successfully', 'success');
+      } else {
+        await createUnit(formData);
+        MySwal.fire('Created', 'Unit added successfully', 'success');
+      }
+      await fetchUnits();
+      resetForm();
+      setIsFormVisible(false);
+    } catch (err) {
+      console.error('Submit error:', err);
+      MySwal.fire('Error', 'Failed to save unit', 'error');
+    } finally {
+      setLoading(false);
     }
-
-    resetForm();
-    setIsFormVisible(false);
   };
 
   const resetForm = () => {
-    setFormData({ unitId: '', uniteName: '', uniteCode: '', remark: '' });
+    setFormData({ uniteName: '', uniteCode: '', remark: '' });
     setErrors({});
     setIsEditMode(false);
     setEditId(null);
@@ -107,18 +144,16 @@ function Unit() {
     <div className="bg-white p-6 rounded-lg shadow-md">
       <div className='flex justify-between items-center mb-4'>
         <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Units</h2> 
-        <div>
-          <button
-            onClick={() => setIsFormVisible(!isFormVisible)}
-            className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600"
-          >
-            {isFormVisible ? 'Hide Form' : 'Add Unit'}
-          </button>
-        </div>
+        <button
+          onClick={() => setIsFormVisible(!isFormVisible)}
+          className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600"
+        >
+          {isFormVisible ? 'Hide Form' : 'Add Unit'}
+        </button>
       </div>
-     
+
       <div className="flex flex-col gap-6 mb-6">
-         {isFormVisible && (
+        {isFormVisible && (
           <div>
             <h3 className="text-lg font-medium text-brand-secondary mb-4">
               {isEditMode ? 'Edit Unit' : 'Add Unit'}
@@ -148,15 +183,14 @@ function Unit() {
                 name="remark"
                 value={formData.remark}
                 onChange={handleChange}
-                error={errors.remark}
-                required={false}
               />
               <div className="flex space-x-2 mt-4">
                 <button
                   type="submit"
                   className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600"
+                  disabled={loading}
                 >
-                  {isEditMode ? 'Update' : 'Add'}
+                  {loading ? 'Saving...' : isEditMode ? 'Update' : 'Add'}
                 </button>
                 <button
                   type="button"
@@ -172,8 +206,15 @@ function Unit() {
             </form>
           </div>
         )}
+
         <div>
-          <Table columns={columns} data={units} actions={actions} />
+          {loading ? (
+            <div className="flex justify-center items-center py-6">
+              <div className="loader border-t-4 border-brand-primary h-10 w-10 rounded-full animate-spin"></div>
+            </div>
+          ) : (
+            <Table columns={columns} data={units} actions={actions} />
+          )}
         </div>
       </div>
     </div>
