@@ -52,3 +52,15 @@ svg path {
 .sidebar {
   @apply transition-all duration-300 ease-in-out;
 }
+
+/* In src/index.css or App.css */
+.loader {
+  border-top-color: #3498db;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

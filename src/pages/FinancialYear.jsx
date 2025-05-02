@@ -1,47 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import Table from '../components/Table';
 import FormInput from '../components/FormInput';
+import {
+  getFinancialYears,
+  createFinancialYear,
+  updateFinancialYear,
+  deleteFinancialYear,
+} from '../api/financialYearService';
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
+
 
 function FinancialYear() {
   const [financialYears, setFinancialYears] = useState([]);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [formData, setFormData] = useState({
-    financialYearId: '',
     year: '',
     startDate: '',
     endDate: '',
   });
   const [errors, setErrors] = useState({});
   const [editId, setEditId] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  // Initialize with dummy data
+  const MySwal = withReactContent(Swal);
+
   useEffect(() => {
-    setFinancialYears([
-      {
-        financialYearId: 1,
-        year: '2023-2024',
-        startDate: '2023-04-01',
-        endDate: '2024-03-31',
-      },
-      {
-        financialYearId: 2,
-        year: '2024-2025',
-        startDate: '2024-04-01',
-        endDate: '2025-03-31',
-      },
-      {
-        financialYearId: 3,
-        year: '2025-2026',
-        startDate: '2025-04-01',
-        endDate: '2026-03-31',
-      },
-    ]);
+    fetchFinancialYears();
   }, []);
 
-  // Table columns
+  const fetchFinancialYears = async () => {
+    setLoading(true);
+    try {
+      const res = await getFinancialYears();
+      setFinancialYears(res.data.data);
+    } catch (error) {
+      console.error('Error fetching financial years:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
   const columns = [
-    { key: 'financialYearId', label: 'ID' },
     { key: 'year', label: 'Financial Year' },
     {
       key: 'startDate',
@@ -55,7 +57,6 @@ function FinancialYear() {
     },
   ];
 
-  // Table actions
   const actions = [
     {
       label: 'Edit',
@@ -63,28 +64,44 @@ function FinancialYear() {
         setIsEditMode(true);
         setEditId(row.financialYearId);
         setFormData({
-          financialYearId: row.financialYearId,
           year: row.year,
-          startDate: row.startDate.split('T')[0] || row.startDate, // Ensure date format
+          startDate: row.startDate.split('T')[0] || row.startDate,
           endDate: row.endDate.split('T')[0] || row.endDate,
         });
-        setIsFormVisible(true); // Show form on edit
+        setIsFormVisible(true);
       },
       className: 'bg-blue-500 hover:bg-blue-600',
     },
     {
       label: 'Delete',
-      onClick: (row) => {
-        if (window.confirm(`Delete financial year ${row.year}?`)) {
-          setFinancialYears((prev) => prev.filter((fy) => fy.financialYearId !== row.financialYearId));
-          resetForm();
+      onClick: async (row) => {
+        const result = await MySwal.fire({
+          title: `Delete ${row.year}?`,
+          text: 'This action cannot be undone!',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6',
+          confirmButtonText: 'Yes, delete it!',
+        });
+
+        if (result.isConfirmed) {
+          try {
+            await deleteFinancialYear(row.financialYearId);
+            await fetchFinancialYears();
+            resetForm();
+            MySwal.fire('Deleted!', 'The financial year has been deleted.', 'success');
+          } catch (err) {
+            console.error('Delete failed:', err);
+            MySwal.fire('Error', 'Something went wrong during deletion.', 'error');
+          }
         }
-      },
+      }
+      ,
       className: 'bg-red-500 hover:bg-red-600',
     },
   ];
 
-  // Form handling
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -111,7 +128,7 @@ function FinancialYear() {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = validateForm();
     if (Object.keys(newErrors).length > 0) {
@@ -119,30 +136,33 @@ function FinancialYear() {
       return;
     }
 
-    if (isEditMode) {
-      // Update existing financial year
-      setFinancialYears((prev) =>
-        prev.map((fy) =>
-          fy.financialYearId === editId
-            ? { ...formData, financialYearId: editId }
-            : fy
-        )
-      );
-    } else {
-      // Add new financial year
-      const newId = Math.max(...financialYears.map((fy) => fy.financialYearId), 0) + 1;
-      setFinancialYears((prev) => [
-        ...prev,
-        { ...formData, financialYearId: newId },
-      ]);
-    }
+    setLoading(true);
+    try {
+      if (isEditMode) {
+        await updateFinancialYear(editId, formData);
+      } else {
+        await createFinancialYear(formData);
+      }
+      await fetchFinancialYears();
+      resetForm();
+      setIsFormVisible(false);
 
-    resetForm();
-    setIsFormVisible(false); // Hide form after submit
+      MySwal.fire({
+        icon: 'success',
+        title: isEditMode ? 'Updated successfully!' : 'Added successfully!',
+        showConfirmButton: false,
+        timer: 1500,
+      });
+    } catch (err) {
+      console.error('Submit error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
+
   const resetForm = () => {
-    setFormData({ financialYearId: '', year: '', startDate: '', endDate: '' });
+    setFormData({ year: '', startDate: '', endDate: '' });
     setErrors({});
     setIsEditMode(false);
     setEditId(null);
@@ -160,7 +180,6 @@ function FinancialYear() {
         </button>
       </div>
       <div className="flex flex-col gap-6 mb-6">
-        {/* Form (conditionally rendered) */}
         {isFormVisible && (
           <div>
             <h3 className="text-lg font-medium text-brand-secondary mb-4">
@@ -217,9 +236,15 @@ function FinancialYear() {
             </form>
           </div>
         )}
-        {/* Table */}
         <div>
-          <Table columns={columns} data={financialYears} actions={actions} />
+          {loading ? (
+            <div className="flex justify-center items-center py-6">
+              <div className="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-10 w-10"></div>
+            </div>
+          ) : (
+            <Table columns={columns} data={financialYears} actions={actions} />
+          )}
+
         </div>
       </div>
     </div>
