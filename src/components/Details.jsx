@@ -1,14 +1,21 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-const Details = ({ purchaseOrder, orderItems, institutes, financialYears, vendors, items, onBack }) => {
+const Details = ({ purchaseOrder, orderItems, institutesData, financialYears, vendors, items, onBack }) => {
   if (!purchaseOrder) {
     return <div className="text-center p-6">No purchase order selected</div>;
   }
 
-  const institute = institutes.find((inst) => inst.instituteId === purchaseOrder.instituteId);
-  const financialYear = financialYears.find((fy) => fy.financialYearId === purchaseOrder.financialYearId);
-  const vendor = vendors.find((v) => v.vendorId === purchaseOrder.vendorId);
+  const institute = institutesData.find((inst) => inst.instituteId === purchaseOrder.instituteId);
+  // console.log('institute', institute);
+  const financialYear = financialYears.find((year) => year.financialYearId === purchaseOrder.financialYearId);
+  // console.log('financialYear', financialYear);
+  const vendor = vendors.find((vend) => vend.vendorId === purchaseOrder.vendorId);
+  // console.log('vendor', vendor);
+  const item = items.find((itm) => itm.itemId === purchaseOrder.itemId);
+  // console.log('item', item);
+  
+  
 
   return (
     <div className="">
@@ -41,7 +48,7 @@ const Details = ({ purchaseOrder, orderItems, institutes, financialYears, vendor
           </div>
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Institute</span>
-            <span className="text-xs sm:text-sm text-gray-900">{institute?.instituteName || 'N/A'}</span>
+             <span className="text-xs sm:text-sm text-gray-900">{institute?.instituteName || 'N/A'}</span>
           </div>
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Financial Year</span>

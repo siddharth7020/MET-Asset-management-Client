@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import Table from '../components/Table';
 import FormInput from '../components/FormInput';
 import Details from '../components/Details';
-
+import { getPurchaseOrders, createPurchaseOrder, updatePurchaseOrder, deletePurchaseOrder } from '../api/purchaseOrderService';
+import axios from '../api/axiosInstance';
 
 function PurchaseOrder() {
   const [purchaseOrders, setPurchaseOrders] = useState([]);
-  const [orderItems, setOrderItems] = useState([]);
   const [institutes, setInstitutes] = useState([]);
   const [financialYears, setFinancialYears] = useState([]);
   const [vendors, setVendors] = useState([]);
@@ -28,129 +28,63 @@ function PurchaseOrder() {
   const [errors, setErrors] = useState({});
   const [editId, setEditId] = useState(null);
   const [expandedPoId, setExpandedPoId] = useState(null);
-  const [selectedPoId, setSelectedPoId] = useState(null); // New state for selected PO
-  const [currentLayout, setCurrentLayout] = useState(null); // New state for layout
+  const [selectedPoId, setSelectedPoId] = useState(null);
+  const [currentLayout, setCurrentLayout] = useState(null);
+  const [inputValue, setInputValue] = useState('');
 
-  // Initialize with dummy data
+  // Fetch data from APIs
   useEffect(() => {
-    setPurchaseOrders([
-      {
-        poId: 1,
-        poDate: '2025-03-26',
-        poNo: 'PO001',
-        instituteId: 2,
-        financialYearId: 1,
-        vendorId: 1,
-        document: 'po_doc1.pdf',
-        requestedBy: 'John Doe',
-        remark: 'Demo test',
-      },
-      {
-        poId: 2,
-        poDate: '2025-04-01',
-        poNo: 'PO002',
-        instituteId: 1,
-        financialYearId: 2,
-        vendorId: 2,
-        document: 'po_doc2.pdf',
-        requestedBy: 'Jane Smith',
-        remark: 'Bulk order',
-      },
-    ]);
-    setOrderItems([
-      {
-        id: 1,
-        poId: 1,
-        itemId: 1,
-        quantity: 100,
-        rate: 100.00,
-        amount: 10000.00,
-        discount: 0.00,
-        totalAmount: 10000.00,
-      },
-      {
-        id: 2,
-        poId: 1,
-        itemId: 2,
-        quantity: 500,
-        rate: 100.00,
-        amount: 50000.00,
-        discount: 0.00,
-        totalAmount: 50000.00,
-      },
-      {
-        id: 3,
-        poId: 2,
-        itemId: 3,
-        quantity: 200,
-        rate: 5.00,
-        amount: 1000.00,
-        discount: 50.00,
-        totalAmount: 950.00,
-      },
-    ]);
-    setInstitutes([
-      { instituteId: 1, instituteName: 'Central University', intituteCode: 'CU001' },
-      { instituteId: 2, instituteName: 'State College', intituteCode: 'SC002' },
-      { instituteId: 3, instituteName: 'Tech Institute', intituteCode: 'TI003' },
-    ]);
-    setFinancialYears([
-      {
-        financialYearId: 1,
-        year: '2023-2024',
-        startDate: '2023-04-01',
-        endDate: '2024-03-31',
-      },
-      {
-        financialYearId: 2,
-        year: '2024-2025',
-        startDate: '2024-04-01',
-        endDate: '2025-03-31',
-      },
-      {
-        financialYearId: 3,
-        year: '2025-2026',
-        startDate: '2025-04-01',
-        endDate: '2026-03-31',
-      },
-    ]);
-    setVendors([
-      {
-        vendorId: 1,
-        name: 'John Doe',
-        companyName: 'ABC Supplies',
-        email: 'john@abcsupplies.com',
-      },
-      {
-        vendorId: 2,
-        name: 'Jane Smith',
-        companyName: 'XYZ Traders',
-        email: 'jane@xyztraders.com',
-      },
-    ]);
-    setItems([
-      {
-        itemId: 1,
-        itemName: 'Laptop',
-        itemCategory: 1,
-        unit: 1,
-        remark: 'High-performance laptop',
-      },
-      {
-        itemId: 2,
-        itemName: 'Office Chair',
-        itemCategory: 2,
-        unit: 1,
-        remark: 'Ergonomic chair',
-      },
-      {
-        itemId: 3,
-        itemName: 'Notebook',
-        itemCategory: 3,
-        unit: 1,
-        remark: 'A4 size notebook',
-      },
-    ]);
+    const fetchData = async () => {
+      try {
+        // Fetch purchase orders
+        const poResponse = await getPurchaseOrders();
+        setPurchaseOrders(poResponse.data);
+        // console.log(poResponse.data);
+
+        const institutesResponse = await axios.get('/institutes');
+        if (Array.isArray(institutesResponse.data.data)) {
+          const institutesData = institutesResponse.data.data;
+          setInstitutes(institutesData);
+          // console.log('Institutes:', institutesData);
+        } else {
+          console.error('Expected institutes data to be an array, but got:', institutesResponse.data.data);
+        }
+
+        // Fetch financial years
+        const fyResponse = await axios.get('/financialYears');
+        if (Array.isArray(fyResponse.data.data)) {
+          const financialYearsData = fyResponse.data.data;
+          setFinancialYears(financialYearsData);
+          // console.log('Financial Years:', financialYearsData);
+        } else {
+          console.error('Expected financial years data to be an array, but got:', fyResponse.data.data);
+        }
+
+        // Fetch vendors
+        const vendorsResponse = await axios.get('/vendors');
+        if (Array.isArray(vendorsResponse.data.data)) {
+          setVendors(vendorsResponse.data.data);
+          // console.log('Vendors:', vendorsResponse.data.data);
+        } else {
+          console.error('Expected vendors data to be an array, but got:', vendorsResponse.data.data);
+        }
+
+        // Fetch items
+        const itemsResponse = await axios.get('/items');
+        if (Array.isArray(itemsResponse.data.items)) {
+          setItems(itemsResponse.data.items);
+          console.log('Items:', itemsResponse.data.items);
+        } else {
+          console.error('Expected items data to be an array, but got:', itemsResponse.data.items);
+        }
+
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        alert('Failed to fetch data. Please try again.');
+      }
+    };
+
+    fetchData();
   }, []);
 
   // Table columns for PurchaseOrder
@@ -164,18 +98,15 @@ function PurchaseOrder() {
     {
       key: 'instituteId',
       label: 'Institute',
-      format: (value) => institutes.find((inst) => inst.instituteId === value)?.instituteName || 'N/A',
     },
     {
       key: 'financialYearId',
       label: 'Financial Year',
-      format: (value) => financialYears.find((fy) => fy.financialYearId === value)?.year || 'N/A',
     },
     {
       key: 'vendorId',
       label: 'Vendor',
-      format: (value) => vendors.find((v) => v.vendorId === value)?.name || 'N/A',
-    }
+    },
   ];
 
   // Table columns for OrderItem (in collapsible section)
@@ -183,7 +114,7 @@ function PurchaseOrder() {
     {
       key: 'itemId',
       label: 'Item',
-      format: (value) => items.find((item) => item.itemId === value)?.itemName || 'N/A',
+      format: (value) => items?.find((item) => item.itemId === value)?.itemName || 'N/A'
     },
     { key: 'quantity', label: 'Quantity' },
     { key: 'rate', label: 'Rate' },
@@ -194,13 +125,13 @@ function PurchaseOrder() {
   // Handle row click to show details
   const handleRowClick = (row) => {
     setSelectedPoId(row.poId);
-    setCurrentLayout('details'); // Set layout to details
+    setCurrentLayout('details');
   };
 
   // Handle back to table view
   const handleBack = () => {
     setSelectedPoId(null);
-    setCurrentLayout(null); // Reset layout
+    setCurrentLayout(null);
   };
 
   // Table actions
@@ -210,17 +141,15 @@ function PurchaseOrder() {
       onClick: (row) => {
         setIsEditMode(true);
         setEditId(row.poId);
-        const poItems = orderItems
-          .filter((oi) => oi.poId === row.poId)
-          .map((oi) => ({
-            id: oi.id,
-            itemId: oi.itemId,
-            quantity: oi.quantity,
-            rate: oi.rate,
-            amount: oi.amount,
-            discount: oi.discount,
-            totalAmount: oi.totalAmount,
-          }));
+        const poItems = row.orderItems.map((oi) => ({
+          id: oi.id,
+          itemId: oi.itemId,
+          quantity: oi.quantity,
+          rate: oi.rate,
+          amount: oi.amount,
+          discount: oi.discount,
+          totalAmount: oi.totalAmount,
+        }));
         setFormData({
           poId: row.poId,
           poDate: row.poDate.split('T')[0],
@@ -239,11 +168,16 @@ function PurchaseOrder() {
     },
     {
       label: 'Delete',
-      onClick: (row) => {
+      onClick: async (row) => {
         if (window.confirm(`Delete purchase order ${row.poNo}?`)) {
-          setPurchaseOrders((prev) => prev.filter((po) => po.poId !== row.poId));
-          setOrderItems((prev) => prev.filter((oi) => oi.poId !== row.poId));
-          resetForm();
+          try {
+            await deletePurchaseOrder(row.poId);
+            setPurchaseOrders((prev) => prev.filter((po) => po.poId !== row.poId));
+            resetForm();
+          } catch (error) {
+            console.error('Error deleting purchase order:', error);
+            alert('Failed to delete purchase order. Please try again.');
+          }
         }
       },
       className: 'bg-red-500 hover:bg-red-600',
@@ -254,14 +188,12 @@ function PurchaseOrder() {
         setExpandedPoId(expandedPoId === row.poId ? null : row.poId);
       },
       className: 'bg-green-500 hover:bg-green-600',
-    }
+    },
   ];
 
   // Form handling
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    setErrors((prev) => ({ ...prev, [name]: '' }));
+    setInputValue(e.target.value);
   };
 
   const handleOrderItemChange = (index, e) => {
@@ -323,7 +255,7 @@ function PurchaseOrder() {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = validateForm();
     if (Object.keys(newErrors).length > 0) {
@@ -331,60 +263,39 @@ function PurchaseOrder() {
       return;
     }
 
-    if (isEditMode) {
-      // Update PurchaseOrder
-      setPurchaseOrders((prev) =>
-        prev.map((po) =>
-          po.poId === editId
-            ? { ...formData, poId: editId, instituteId: Number(formData.instituteId), financialYearId: Number(formData.financialYearId), vendorId: Number(formData.vendorId) }
-            : po
-        )
-      );
-      // Update OrderItems
-      const existingIds = orderItems.filter((oi) => oi.poId === editId).map((oi) => oi.id);
-      const updatedItems = formData.orderItems.map((oi, index) => ({
-        id: oi.id || existingIds[index] || Math.max(...orderItems.map((o) => o.id), 0) + index + 1,
-        poId: editId,
+    const payload = {
+      ...formData,
+      instituteId: Number(formData.instituteId),
+      financialYearId: Number(formData.financialYearId),
+      vendorId: Number(formData.vendorId),
+      orderItems: formData.orderItems.map((oi) => ({
         itemId: Number(oi.itemId),
         quantity: Number(oi.quantity),
         rate: Number(oi.rate),
         amount: Number(oi.amount),
         discount: Number(oi.discount),
         totalAmount: Number(oi.totalAmount),
-      }));
-      setOrderItems((prev) => [
-        ...prev.filter((oi) => oi.poId !== editId),
-        ...updatedItems,
-      ]);
-    } else {
-      // Add new PurchaseOrder
-      const newPoId = Math.max(...purchaseOrders.map((po) => po.poId), 0) + 1;
-      setPurchaseOrders((prev) => [
-        ...prev,
-        {
-          ...formData,
-          poId: newPoId,
-          instituteId: Number(formData.instituteId),
-          financialYearId: Number(formData.financialYearId),
-          vendorId: Number(formData.vendorId),
-        },
-      ]);
-      // Add new OrderItems
-      const newOrderItems = formData.orderItems.map((oi, index) => ({
-        id: Math.max(...orderItems.map((o) => o.id), 0) + index + 1,
-        poId: newPoId,
-        itemId: Number(oi.itemId),
-        quantity: Number(oi.quantity),
-        rate: Number(oi.rate),
-        amount: Number(oi.amount),
-        discount: Number(oi.discount),
-        totalAmount: Number(oi.totalAmount),
-      }));
-      setOrderItems((prev) => [...prev, ...newOrderItems]);
-    }
+      })),
+    };
 
-    resetForm();
-    setIsFormVisible(false);
+    try {
+      if (isEditMode) {
+        // Update PurchaseOrder
+        await updatePurchaseOrder(editId, payload);
+        setPurchaseOrders((prev) =>
+          prev.map((po) => (po.poId === editId ? { ...payload, poId: editId } : po))
+        );
+      } else {
+        // Add new PurchaseOrder
+        const response = await createPurchaseOrder(payload);
+        setPurchaseOrders((prev) => [...prev, response.data]);
+      }
+      resetForm();
+      setIsFormVisible(false);
+    } catch (error) {
+      console.error('Error saving purchase order:', error);
+      alert('Failed to save purchase order. Please try again.');
+    }
   };
 
   const resetForm = () => {
@@ -407,7 +318,7 @@ function PurchaseOrder() {
 
   // Get selected purchase order data
   const selectedPo = purchaseOrders.find((po) => po.poId === selectedPoId);
-  const selectedOrderItems = orderItems.filter((oi) => oi.poId === selectedPoId);
+  const selectedOrderItems = selectedPo?.orderItems || [];
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
@@ -415,7 +326,7 @@ function PurchaseOrder() {
         <Details
           purchaseOrder={selectedPo}
           orderItems={selectedOrderItems}
-          institutes={institutes}
+          institutesData={institutes}
           financialYears={financialYears}
           vendors={vendors}
           items={items}
@@ -442,24 +353,11 @@ function PurchaseOrder() {
                 </h3>
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <FormInput
-                    label="PO ID"
-                    type="text"
-                    name="poId"
-                    value={formData.poId}
-                    onChange={handleChange}
-                    disabled
-                    required={false}
-                    className="w-full text-xs sm:text-sm"
-                  />
-                  <FormInput
                     label="PO Date"
                     type="date"
                     name="poDate"
-                    value={formData.poDate}
-                    onChange={handleChange}
-                    error={errors.poDate}
-                    required
-                    className="w-full text-xs sm:text-sm"
+                    value={inputValue}
+                    onChange={(e) => setFormData({ ...formData, poDate: e.target.value })}
                   />
                   <FormInput
                     label="PO Number"
@@ -477,7 +375,7 @@ function PurchaseOrder() {
                       name="instituteId"
                       value={formData.instituteId}
                       onChange={handleChange}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
+                      className=" block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
                       required
                     >
                       <option value="">Select Institute</option>
@@ -495,7 +393,7 @@ function PurchaseOrder() {
                       name="financialYearId"
                       value={formData.financialYearId}
                       onChange={handleChange}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
+                      className=" block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
                       required
                     >
                       <option value="">Select Financial Year</option>
@@ -513,7 +411,7 @@ function PurchaseOrder() {
                       name="vendorId"
                       value={formData.vendorId}
                       onChange={handleChange}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
+                      className=" block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
                       required
                     >
                       <option value="">Select Vendor</option>
@@ -663,32 +561,30 @@ function PurchaseOrder() {
               </div>
             )}
             <div>
-              {
-                currentLayout ? (
-                  <Details />
-                ) : (
-                  <Table
-                    columns={poColumns}
-                    data={purchaseOrders}
-                    actions={actions}
-                    onRowClick={handleRowClick}
-                    expandable={{
-                      expandedRowRender: (row) => (
-                        <div className="p-4 bg-gray-50">
-                          <h4 className="text-md font-medium text-brand-secondary mb-2">Order Items</h4>
-                          <Table
-                            columns={orderItemColumns}
-                            data={orderItems.filter((oi) => oi.poId === row.poId)}
-                            actions={[]}
-                          />
-                        </div>
-                      ),
-                      rowExpandable: (row) => orderItems.some((oi) => oi.poId === row.poId),
-                      expandedRowKeys: expandedPoId ? [expandedPoId] : [],
-                    }}
-                  />
-                )}
-
+              {currentLayout ? (
+                <Details />
+              ) : (
+                <Table
+                  columns={poColumns}
+                  data={purchaseOrders}
+                  actions={actions}
+                  onRowClick={handleRowClick}
+                  expandable={{
+                    expandedRowRender: (row) => (
+                      <div className="p-4 bg-gray-50">
+                        <h4 className="text-md font-medium text-brand-secondary mb-2">Order Items</h4>
+                        <Table
+                          columns={orderItemColumns}
+                          data={row.orderItems}
+                          actions={[]}
+                        />
+                      </div>
+                    ),
+                    rowExpandable: (row) => row.orderItems && row.orderItems.length > 0,
+                    expandedRowKeys: expandedPoId ? [expandedPoId] : [],
+                  }}
+                />
+              )}
             </div>
           </div>
         </>

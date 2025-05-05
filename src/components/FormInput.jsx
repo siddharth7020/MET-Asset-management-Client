@@ -2,6 +2,10 @@ import React from 'react';
 import PropTypes from 'prop-types';
 
 function FormInput({ label, type, name, value, onChange, error, options, required }) {
+  console.log(onChange);
+  console.log(value);
+  
+  
   return (
     <div className="mb-4">
       <label htmlFor={name} className="block text-sm font-medium text-gray-700">
@@ -12,7 +16,7 @@ function FormInput({ label, type, name, value, onChange, error, options, require
           id={name}
           name={name}
           value={value}
-          onChange={onChange}
+          onChange={onChange} // Add onChange prop here
           className={`mt-1 block w-full rounded-md border-gray-300 border-black shadow-sm focus:border-brand-primary focus:ring-brand-primary sm:text-sm p-1${
             error ? 'border-red-500' : ''
           }`}
@@ -31,7 +35,7 @@ function FormInput({ label, type, name, value, onChange, error, options, require
           id={name}
           name={name}
           value={value}
-          onChange={onChange}
+          onChange={onChange} // Add onChange prop here
           className={`block w-full rounded-md py-1.5 px-2 ring-1 ring-inset ring-gray-400 focus:text-gray-800 ${
             error ? 'border-red-500' : ''
           }`}
