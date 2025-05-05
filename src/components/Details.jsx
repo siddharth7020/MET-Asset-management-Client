@@ -12,7 +12,7 @@ const Details = ({ purchaseOrder, orderItems, institutesData, financialYears, ve
   // console.log('financialYear', financialYear);
   const vendor = vendors.find((vend) => vend.vendorId === purchaseOrder.vendorId);
   // console.log('vendor', vendor);
-  const item = items.find((itm) => itm.itemId === purchaseOrder.itemId);
+  // const item = items.find((itm) => itm.itemId === purchaseOrder.itemId);
   // console.log('item', item);
   
   
