@@ -2,9 +2,6 @@ import React from 'react';
 import PropTypes from 'prop-types';
 
 function FormInput({ label, type, name, value, onChange, error, options, required }) {
-  console.log(onChange);
-  console.log(value);
-  
   
   return (
     <div className="mb-4">

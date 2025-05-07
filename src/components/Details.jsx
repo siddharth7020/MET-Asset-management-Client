@@ -35,10 +35,6 @@ const Details = ({ purchaseOrder, orderItems, institutesData, financialYears, ve
         <h3 className="text-sm sm:text-base font-medium text-brand-secondary mb-4">Details</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="flex flex-col">
-            <span className="text-xs sm:text-sm font-semibold text-gray-700">Purchase Order ID</span>
-            <span className="text-xs sm:text-sm text-gray-900">{purchaseOrder.poId}</span>
-          </div>
-          <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">PO Number</span>
             <span className="text-xs sm:text-sm text-gray-900">{purchaseOrder.poNo}</span>
           </div>
@@ -98,7 +94,7 @@ const Details = ({ purchaseOrder, orderItems, institutesData, financialYears, ve
                 <strong>Amount:</strong> {item.amount}
               </p>
               <p className="text-xs">
-                <strong>Discount:</strong> {item.discount}
+                <strong>Discount Amount:</strong> {item.discount}
               </p>
               <p className="text-xs">
                 <strong>Total Amount:</strong> {item.totalAmount}
@@ -111,19 +107,17 @@ const Details = ({ purchaseOrder, orderItems, institutesData, financialYears, ve
           <table className="w-full text-sm text-left text-gray-900">
             <thead className="text-xs uppercase bg-gray-200">
               <tr>
-                <th scope="col" className="px-6 py-3">Item ID</th>
                 <th scope="col" className="px-6 py-3">Item Name</th>
                 <th scope="col" className="px-6 py-3">Quantity</th>
                 <th scope="col" className="px-6 py-3">Rate</th>
                 <th scope="col" className="px-6 py-3">Amount</th>
-                <th scope="col" className="px-6 py-3">Discount</th>
+                <th scope="col" className="px-6 py-3">Discount Amount</th>
                 <th scope="col" className="px-6 py-3">Total Amount</th>
               </tr>
             </thead>
             <tbody>
               {orderItems.map((item) => (
                 <tr key={item.id} className="bg-white border-b">
-                  <td className="px-6 py-4">{item.id}</td>
                   <td className="px-6 py-4">{items.find((i) => i.itemId === item.itemId)?.itemName || 'N/A'}</td>
                   <td className="px-6 py-4">{item.quantity}</td>
                   <td className="px-6 py-4">{item.rate}</td>

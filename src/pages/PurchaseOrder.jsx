@@ -30,7 +30,6 @@ function PurchaseOrder() {
   const [expandedPoId, setExpandedPoId] = useState(null);
   const [selectedPoId, setSelectedPoId] = useState(null);
   const [currentLayout, setCurrentLayout] = useState(null);
-  const [inputValue, setInputValue] = useState('');
 
   // Fetch data from APIs
   useEffect(() => {
@@ -98,14 +97,17 @@ function PurchaseOrder() {
     {
       key: 'instituteId',
       label: 'Institute',
+      format: (value) => institutes?.find((inst) => inst.instituteId === value)?.instituteName || 'N/A'
     },
     {
       key: 'financialYearId',
       label: 'Financial Year',
+      format: (value) => financialYears?.find((year) => year.financialYearId === value)?.year || 'N/A'
     },
     {
       key: 'vendorId',
       label: 'Vendor',
+      format: (value) => vendors?.find((vend) => vend.vendorId === value)?.name || 'N/A'
     },
   ];
 
@@ -190,11 +192,6 @@ function PurchaseOrder() {
       className: 'bg-green-500 hover:bg-green-600',
     },
   ];
-
-  // Form handling
-  const handleChange = (e) => {
-    setInputValue(e.target.value);
-  };
 
   const handleOrderItemChange = (index, e) => {
     const { name, value } = e.target;
@@ -356,15 +353,18 @@ function PurchaseOrder() {
                     label="PO Date"
                     type="date"
                     name="poDate"
-                    value={inputValue}
+                    value={formData.poDate}
                     onChange={(e) => setFormData({ ...formData, poDate: e.target.value })}
+                    error={errors.poDate}
+                    required
+                    className="w-full text-xs sm:text-sm"
                   />
                   <FormInput
                     label="PO Number"
                     type="text"
                     name="poNo"
                     value={formData.poNo}
-                    onChange={handleChange}
+                    onChange={(e) => setFormData({ ...formData, poNo: e.target.value })}
                     error={errors.poNo}
                     required
                     className="w-full text-xs sm:text-sm"
@@ -374,7 +374,7 @@ function PurchaseOrder() {
                     <select
                       name="instituteId"
                       value={formData.instituteId}
-                      onChange={handleChange}
+                      onChange={(e) => setFormData({ ...formData, instituteId: e.target.value })}
                       className=" block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
                       required
                     >
@@ -392,7 +392,7 @@ function PurchaseOrder() {
                     <select
                       name="financialYearId"
                       value={formData.financialYearId}
-                      onChange={handleChange}
+                      onChange={(e) => setFormData({ ...formData, financialYearId: e.target.value })}
                       className=" block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
                       required
                     >
@@ -410,7 +410,7 @@ function PurchaseOrder() {
                     <select
                       name="vendorId"
                       value={formData.vendorId}
-                      onChange={handleChange}
+                      onChange={(e) => setFormData({ ...formData, vendorId: e.target.value })}
                       className=" block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
                       required
                     >
@@ -428,7 +428,7 @@ function PurchaseOrder() {
                     type="text"
                     name="document"
                     value={formData.document}
-                    onChange={handleChange}
+                    onChange={(e) => setFormData({ ...formData, document: e.target.value })}
                     error={errors.document}
                     required={false}
                     className="w-full text-xs sm:text-sm"
@@ -438,7 +438,7 @@ function PurchaseOrder() {
                     type="text"
                     name="requestedBy"
                     value={formData.requestedBy}
-                    onChange={handleChange}
+                    onChange={(e) => setFormData({ ...formData, requestedBy: e.target.value })}
                     error={errors.requestedBy}
                     required
                     className="w-full text-xs sm:text-sm"
@@ -448,7 +448,7 @@ function PurchaseOrder() {
                     type="text"
                     name="remark"
                     value={formData.remark}
-                    onChange={handleChange}
+                    onChange={(e) => setFormData({ ...formData, remark: e.target.value })}
                     error={errors.remark}
                     required={false}
                     className="w-full text-xs sm:text-sm"
@@ -474,7 +474,9 @@ function PurchaseOrder() {
                                 </option>
                               ))}
                             </select>
-                            {errors[`orderItems[${index}].itemId`] && <p className="mt-1 text-xs text-red-600">{errors[`orderItems[${index}].itemId`]}</p>}
+                            {errors[`orderItems[${index}].itemId`] && (
+                              <p className="mt-1 text-xs text-red-600">{errors[`orderItems[${index}].itemId`]}</p>
+                            )}
                           </div>
                           <FormInput
                             label="Quantity"
@@ -506,7 +508,7 @@ function PurchaseOrder() {
                             className="w-full text-xs sm:text-sm"
                           />
                           <FormInput
-                            label="Discount"
+                            label="Discount Amount"
                             type="number"
                             name="discount"
                             value={oi.discount}
@@ -551,7 +553,10 @@ function PurchaseOrder() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => { resetForm(); setIsFormVisible(false); }}
+                      onClick={() => {
+                        resetForm();
+                        setIsFormVisible(false);
+                      }}
                       className="w-full sm:w-auto px-4 py-2 text-gray-600 rounded-md hover:bg-gray-100 text-xs sm:text-sm"
                     >
                       Cancel
