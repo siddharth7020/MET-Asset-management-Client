@@ -7,15 +7,33 @@ const Details = ({ purchaseOrder, orderItems, institutesData, financialYears, ve
   }
 
   const institute = institutesData.find((inst) => inst.instituteId === purchaseOrder.instituteId);
-  // console.log('institute', institute);
   const financialYear = financialYears.find((year) => year.financialYearId === purchaseOrder.financialYearId);
-  // console.log('financialYear', financialYear);
   const vendor = vendors.find((vend) => vend.vendorId === purchaseOrder.vendorId);
-  // console.log('vendor', vendor);
-  // const item = items.find((itm) => itm.itemId === purchaseOrder.itemId);
-  // console.log('item', item);
-  
-  
+
+  const handleDocumentDownload = () => {
+    try {
+      // Check if document is a valid URL
+      if (purchaseOrder.document && purchaseOrder.document.startsWith('http')) {
+        const link = document.createElement('a');
+        link.href = purchaseOrder.document;
+        link.target = '_blank';
+        link.download = purchaseOrder.poNo ? `PO_${purchaseOrder.poNo}.pdf` : 'document.pdf';
+        link.click();
+      } else if (purchaseOrder.document && purchaseOrder.document.startsWith('data:')) {
+        // Handle base64 or data URL
+        const link = document.createElement('a');
+        link.href = purchaseOrder.document;
+        link.download = purchaseOrder.poNo ? `PO_${purchaseOrder.poNo}.pdf` : 'document.pdf';
+        link.click();
+      } else {
+        console.error('Invalid document URL or data:', purchaseOrder.document);
+        alert('Unable to download document. Invalid document source.');
+      }
+    } catch (error) {
+      console.error('Error downloading document:', error);
+      alert('Error downloading document. Please try again later.');
+    }
+  };
 
   return (
     <div className="">
@@ -44,7 +62,7 @@ const Details = ({ purchaseOrder, orderItems, institutesData, financialYears, ve
           </div>
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Institute</span>
-             <span className="text-xs sm:text-sm text-gray-900">{institute?.instituteName || 'N/A'}</span>
+            <span className="text-xs sm:text-sm text-gray-900">{institute?.instituteName || 'N/A'}</span>
           </div>
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Financial Year</span>
@@ -62,7 +80,16 @@ const Details = ({ purchaseOrder, orderItems, institutesData, financialYears, ve
           </div>
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Document</span>
-            <span className="text-xs sm:text-sm text-gray-900">{purchaseOrder.document || 'N/A'}</span>
+            {purchaseOrder.document ? (
+              <button
+                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-xs sm:text-sm w-50"
+                onClick={handleDocumentDownload}
+              >
+                Download Document
+              </button>
+            ) : (
+              <span className="text-xs sm:text-sm text-gray-900">No document available</span>
+            )}
           </div>
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Remark</span>
@@ -157,7 +184,7 @@ Details.propTypes = {
       totalAmount: PropTypes.number,
     })
   ).isRequired,
-  institutes: PropTypes.arrayOf(
+  institutesData: PropTypes.arrayOf(
     PropTypes.shape({
       instituteId: PropTypes.number,
       instituteName: PropTypes.string,

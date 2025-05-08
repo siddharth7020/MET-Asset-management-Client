@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-const GrnDetails = ({ grn, grnItems, purchaseOrders, orderItems, onBack }) => {
+const GrnDetails = ({ grn, grnItems, purchaseOrders, orderItem, onBack }) => {
   if (!grn) {
     return <div className="text-center p-6">No GRN selected</div>;
   }
@@ -55,7 +55,17 @@ const GrnDetails = ({ grn, grnItems, purchaseOrders, orderItems, onBack }) => {
           </div>
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Document</span>
-            <span className="text-xs sm:text-sm text-gray-900">{grn.document || 'N/A'}</span>
+            <button
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-xs sm:text-sm w-50"
+              onClick={() => {
+                const link = document.createElement('a');
+                link.href = grn.document;
+                link.download = 'document.pdf'; // or any other filename
+                link.click();
+              }}
+            >
+              Download Document
+            </button>
           </div>
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Remark</span>
@@ -72,11 +82,8 @@ const GrnDetails = ({ grn, grnItems, purchaseOrders, orderItems, onBack }) => {
           {grnItems.map((item) => (
             <div key={item.id} className="p-4 border rounded-md bg-gray-50">
               <p className="text-xs">
-                <strong>Item ID:</strong> {item.id}
-              </p>
-              <p className="text-xs">
                 <strong>Item Name:</strong>{' '}
-                {orderItems.find((oi) => oi.id === item.orderItemId)?.itemName || 'N/A'}
+                {orderItem.find((oi) => oi.id === item.orderItemId)?.itemName || 'N/A'}
               </p>
               <p className="text-xs">
                 <strong>Received Quantity:</strong> {item.receivedQuantity}
@@ -92,7 +99,6 @@ const GrnDetails = ({ grn, grnItems, purchaseOrders, orderItems, onBack }) => {
           <table className="w-full text-sm text-left text-gray-900">
             <thead className="text-xs uppercase bg-gray-200">
               <tr>
-                <th scope="col" className="px-6 py-3">Item ID</th>
                 <th scope="col" className="px-6 py-3">Item Name</th>
                 <th scope="col" className="px-6 py-3">Received Quantity</th>
                 <th scope="col" className="px-6 py-3">Rejected Quantity</th>
@@ -101,9 +107,8 @@ const GrnDetails = ({ grn, grnItems, purchaseOrders, orderItems, onBack }) => {
             <tbody>
               {grnItems.map((item) => (
                 <tr key={item.id} className="bg-white border-b">
-                  <td className="px-6 py-4">{item.id}</td>
                   <td className="px-6 py-4">
-                    {orderItems.find((oi) => oi.id === item.orderItemId)?.itemName || 'N/A'}
+                    {orderItem.find((oi) => oi.id === item.orderItemId)?.itemName || 'N/A'}
                   </td>
                   <td className="px-6 py-4">{item.receivedQuantity}</td>
                   <td className="px-6 py-4">{item.receivedQuantity}</td>

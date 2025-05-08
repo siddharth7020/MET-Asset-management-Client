@@ -1,4 +1,4 @@
-// src/api/purchaseOrderService.js
+// purchaseOrderService.js
 import axios from './axiosInstance';
 
 export const getPurchaseOrders = () => axios.get('/purchase/');

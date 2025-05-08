@@ -3,16 +3,17 @@ import { Link } from 'react-router-dom';
 import Table from '../components/Table';
 import FormInput from '../components/FormInput';
 import GrnDetails from './GRNDetail';
+import { getPurchaseOrders, getPurchaseOrder } from '../api/purchaseOrderService';
+import { getGrns, getGrnById, createGrn, updateGrn, deleteGrn } from '../api/grnService';
 
 function GRN() {
   const [grns, setGrns] = useState([]);
   const [grnItems, setGrnItems] = useState([]);
   const [purchaseOrders, setPurchaseOrders] = useState([]);
-  const [orderItems, setOrderItems] = useState([]);
+  const [orderItem, setOrderItem] = useState([]);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [formData, setFormData] = useState({
-    id: '',
     poId: '',
     grnNo: '',
     grnDate: '',
@@ -27,57 +28,63 @@ function GRN() {
   const [expandedGrnId, setExpandedGrnId] = useState(null);
   const [selectedGrnId, setSelectedGrnId] = useState(null);
 
-  // Initialize dummy data
+  // Fetch purchase orders and GRNs on mount
   useEffect(() => {
-    const grnsData = [
-      {
-        id: 1,
-        poId: 2,
-        grnNo: 'GRN0010',
-        grnDate: '2025-04-16',
-        challanNo: 'CH0003',
-        challanDate: '2025-04-16',
-        document: 'grn_doc.pdf',
-        remark: 'error testing grn',
-        createdAt: '2025-04-24T06:58:36.038Z',
-        updatedAt: '2025-04-24T06:58:36.038Z',
-      },
-    ];
-    const grnItemsData = [
-      {
-        id: 1,
-        grnId: 1,
-        orderItemId: 3,
-        receivedQuantity: 50,
-        rejectedQuantity: 50,
-        createdAt: '2025-04-24T06:58:36.061Z',
-        updatedAt: '2025-04-24T06:58:36.061Z',
-      },
-      {
-        id: 2,
-        grnId: 1,
-        orderItemId: 4,
-        receivedQuantity: 100,
-        rejectedQuantity: 400,
-        createdAt: '2025-04-24T06:58:36.061Z',
-        updatedAt: '2025-04-24T06:58:36.061Z',
-      },
-    ];
-    const purchaseOrdersData = [
-      { poId: 1, poNo: 'PO001' },
-      { poId: 2, poNo: 'PO002' },
-    ];
-    const orderItemsData = [
-      { id: 3, poId: 2, itemId: 3, itemName: 'Notebook' },
-      { id: 4, poId: 2, itemId: 2, itemName: 'Office Chair' },
-    ];
+    const fetchData = async () => {
+      try {
+        const poResponse = await getPurchaseOrders();
+        setPurchaseOrders(poResponse.data);
 
-    setGrns(grnsData);
-    setGrnItems(grnItemsData);
-    setPurchaseOrders(purchaseOrdersData);
-    setOrderItems(orderItemsData);
-    console.log('GRNs:', grnsData, 'GRNItems:', grnItemsData); // Debug
+        const grnResponse = await getGrns();
+        const grnsData = grnResponse.data;
+        const grnItemsData = grnsData.flatMap(grn => grn.grnItems || []);
+
+        setGrns(grnsData);
+        setGrnItems(grnItemsData);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+    fetchData();
   }, []);
+
+  // Fetch order items and pre-populate grnItems when poId changes
+  useEffect(() => {
+    if (formData.poId && !isEditMode) {
+      const fetchOrderItems = async () => {
+        try {
+          const poResponse = await getPurchaseOrder(formData.poId);
+          const items = poResponse.data.orderItems || [];
+          console.log('Fetched order items:', items);
+          setOrderItem(items);
+          console.log('Fetched order items:', orderItem);
+          
+          
+          
+          // Pre-populate grnItems with order items
+          setFormData(prev => ({
+            ...prev,
+            grnItems: items.map(item => ({
+              orderItemId: item.id,
+              receivedQuantity: item.quantity || '',
+              rejectedQuantity: '',
+            })),
+          }));
+        } catch (error) {
+          console.error('Error fetching order items:', error);
+        }
+      };
+      fetchOrderItems();
+    } else {
+      setOrderItem([]);
+      if (!isEditMode) {
+        setFormData(prev => ({
+          ...prev,
+          grnItems: [{ orderItemId: '', receivedQuantity: '' }],
+        }));
+      }
+    }
+  }, [formData.poId, isEditMode]);
 
   // Handle row click to show details
   const handleRowClick = (row) => {
@@ -118,7 +125,7 @@ function GRN() {
     {
       key: 'orderItemId',
       label: 'Item',
-      format: (value) => orderItems.find((oi) => oi.id === value)?.itemName || 'N/A',
+      format: (value) => orderItem.find((oi) => oi.id === value)?.itemName || 'N/A',
     },
     { key: 'receivedQuantity', label: 'Received Quantity' },
     { key: 'rejectedQuantity', label: 'Rejected Quantity' },
@@ -128,39 +135,46 @@ function GRN() {
   const actions = [
     {
       label: 'Edit',
-      onClick: (row) => {
-        setIsEditMode(true);
-        setEditId(row.id);
-        const items = grnItems
-          .filter((gi) => gi.grnId === row.id)
-          .map((gi) => ({
-            id: gi.id,
-            orderItemId: gi.orderItemId,
-            receivedQuantity: gi.receivedQuantity,
-            rejectedQuantity: gi.rejectedQuantity,
-          }));
-        setFormData({
-          id: row.id,
-          poId: row.poId,
-          grnNo: row.grnNo,
-          grnDate: row.grnDate.split('T')[0],
-          challanNo: row.challanNo,
-          challanDate: row.challanDate.split('T')[0],
-          document: row.document,
-          remark: row.remark,
-          grnItems: items.length > 0 ? items : [{ orderItemId: '', receivedQuantity: '' }],
-        });
-        setIsFormVisible(true);
+      onClick: async (row) => {
+        try {
+          const grnResponse = await getGrnById(row.id);
+          const grn = grnResponse.data;
+          setIsEditMode(true);
+          setEditId(row.id);
+          setFormData({
+            poId: grn.poId,
+            grnNo: grn.grnNo,
+            grnDate: grn.grnDate.split('T')[0],
+            challanNo: grn.challanNo,
+            challanDate: grn.challanDate.split('T')[0],
+            document: grn.document || '',
+            remark: grn.remark || '',
+            grnItems: grn.grnItems.map(gi => ({
+              id: gi.id,
+              orderItemId: gi.orderItemId,
+              receivedQuantity: gi.receivedQuantity,
+              rejectedQuantity: gi.rejectedQuantity || '',
+            })) || [{ orderItemId: '', receivedQuantity: '' }],
+          });
+          setIsFormVisible(true);
+        } catch (error) {
+          console.error('Error fetching GRN:', error);
+        }
       },
       className: 'bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-sm',
     },
     {
       label: 'Delete',
-      onClick: (row) => {
+      onClick: async (row) => {
         if (window.confirm(`Delete GRN ${row.grnNo}?`)) {
-          setGrns((prev) => prev.filter((grn) => grn.id !== row.id));
-          setGrnItems((prev) => prev.filter((gi) => gi.grnId !== row.id));
-          resetForm();
+          try {
+            await deleteGrn(row.poId, row.id);
+            setGrns((prev) => prev.filter((grn) => grn.id !== row.id));
+            setGrnItems((prev) => prev.filter((gi) => gi.grnId !== row.id));
+            resetForm();
+          } catch (error) {
+            console.error('Error deleting GRN:', error);
+          }
         }
       },
       className: 'bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-sm',
@@ -189,29 +203,27 @@ function GRN() {
     setErrors((prev) => ({ ...prev, [`grnItems[${index}].${name}`]: '' }));
   };
 
-  const addGrnItem = () => {
-    setFormData((prev) => ({
-      ...prev,
-      grnItems: [...prev.grnItems, { orderItemId: '', receivedQuantity: '' }],
-    }));
-  };
-
-  const removeGrnItem = (index) => {
-    if (formData.grnItems.length === 1) {
-      alert('At least one GRN item is required');
-      return;
-    }
-    setFormData((prev) => ({
-      ...prev,
-      grnItems: prev.grnItems.filter((_, i) => i !== index),
-    }));
+  const resetForm = () => {
+    setFormData({
+      poId: '',
+      grnNo: '',
+      grnDate: '',
+      challanNo: '',
+      challanDate: '',
+      document: '',
+      remark: '',
+      grnItems: [{ orderItemId: '', receivedQuantity: '' }],
+    });
+    setErrors({});
+    setIsEditMode(false);
+    setEditId(null);
   };
 
   const validateForm = () => {
     const newErrors = {};
     if (!formData.poId) newErrors.poId = 'Purchase Order is required';
     if (!formData.grnNo) newErrors.grnNo = 'GRN number is required';
-    else if (grns.some((grn) => grn.grnNo === formData.grnNo && grn.id !== editId)) {
+    else if (!isEditMode && grns.some((grn) => grn.grnNo === formData.grnNo)) {
       newErrors.grnNo = 'GRN number must be unique';
     }
     if (!formData.grnDate) newErrors.grnDate = 'GRN date is required';
@@ -228,7 +240,7 @@ function GRN() {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = validateForm();
     if (Object.keys(newErrors).length > 0) {
@@ -236,64 +248,45 @@ function GRN() {
       return;
     }
 
-    if (isEditMode) {
-      setGrns((prev) =>
-        prev.map((grn) =>
-          grn.id === editId ? { ...formData, id: editId, poId: Number(formData.poId) } : grn
-        )
-      );
-      const existingIds = grnItems.filter((gi) => gi.grnId === editId).map((gi) => gi.id);
-      const updatedItems = formData.grnItems.map((gi, index) => ({
-        id: gi.id || existingIds[index] || Math.max(...grnItems.map((g) => g.id), 0) + index + 1,
-        grnId: editId,
+    const grnData = {
+      grnNo: formData.grnNo,
+      grnDate: formData.grnDate,
+      challanNo: formData.challanNo,
+      challanDate: formData.challanDate,
+      document: formData.document || undefined,
+      remark: formData.remark || undefined,
+      grnItems: formData.grnItems.map(gi => ({
+        ...(isEditMode && gi.id ? { id: gi.id } : {}),
         orderItemId: Number(gi.orderItemId),
         receivedQuantity: Number(gi.receivedQuantity),
         rejectedQuantity: Number(gi.rejectedQuantity || 0),
-      }));
-      setGrnItems((prev) => [...prev.filter((gi) => gi.grnId !== editId), ...updatedItems]);
-    } else {
-      const newGrnId = Math.max(...grns.map((grn) => grn.id), 0) + 1;
-      setGrns((prev) => [
-        ...prev,
-        {
-          ...formData,
-          id: newGrnId,
-          poId: Number(formData.poId),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ]);
-      const newGrnItems = formData.grnItems.map((gi, index) => ({
-        id: Math.max(...grnItems.map((g) => g.id), 0) + index + 1,
-        grnId: newGrnId,
-        orderItemId: Number(gi.orderItemId),
-        receivedQuantity: Number(gi.receivedQuantity),
-        rejectedQuantity: Number(gi.rejectedQuantity || 0),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }));
-      setGrnItems((prev) => [...prev, ...newGrnItems]);
+      })),
+    };
+
+    try {
+      if (isEditMode) {
+        // Update GRN
+        await updateGrn(formData.poId, editId, grnData);
+        const grnResponse = await getGrnById(editId);
+        setGrns((prev) =>
+          prev.map((grn) => (grn.id === editId ? grnResponse.data : grn))
+        );
+        setGrnItems((prev) => [
+          ...prev.filter((gi) => gi.grnId !== editId),
+          ...grnResponse.data.grnItems,
+        ]);
+      } else {
+        // Create GRN
+        const response = await createGrn(formData.poId, grnData);
+        setGrns((prev) => [...prev, response.data]);
+        setGrnItems((prev) => [...prev, ...response.data.grnItems]);
+      }
+      resetForm();
+      setIsFormVisible(false);
+    } catch (error) {
+      console.error('Error saving GRN:', error);
+      setErrors({ submit: 'Failed to save GRN. Please try again.' });
     }
-
-    resetForm();
-    setIsFormVisible(false);
-  };
-
-  const resetForm = () => {
-    setFormData({
-      id: '',
-      poId: '',
-      grnNo: '',
-      grnDate: '',
-      challanNo: '',
-      challanDate: '',
-      document: '',
-      remark: '',
-      grnItems: [{ orderItemId: '', receivedQuantity: '' }],
-    });
-    setErrors({});
-    setIsEditMode(false);
-    setEditId(null);
   };
 
   // Get selected GRN data
@@ -307,7 +300,7 @@ function GRN() {
           grn={selectedGrn}
           grnItems={selectedGrnItems}
           purchaseOrders={purchaseOrders}
-          orderItems={orderItems}
+          orderItem={orderItem}
           onBack={handleBack}
         />
       ) : (
@@ -319,7 +312,7 @@ function GRN() {
                 onClick={() => setIsFormVisible(!isFormVisible)}
                 className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-sm"
               >
-                {isFormVisible ? 'Hide Form' : 'Manage GRN'}
+                {isFormVisible ? 'Hide Form' : 'Create GRN'}
               </button>
             </div>
           </div>
@@ -330,16 +323,6 @@ function GRN() {
                   {isEditMode ? 'Edit GRN' : 'Add GRN'}
                 </h3>
                 <form onSubmit={handleSubmit} className="grid grid-cols-3 gap-4">
-                  <FormInput
-                    label="GRN ID"
-                    type="text"
-                    name="id"
-                    value={formData.id}
-                    onChange={handleChange}
-                    disabled
-                    required={false}
-                    className="w-full text-sm"
-                  />
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Purchase Order</label>
                     <select
@@ -400,7 +383,7 @@ function GRN() {
                   />
                   <FormInput
                     label="Document"
-                    type="text"
+                    type="file"
                     name="document"
                     value={formData.document}
                     onChange={handleChange}
@@ -424,23 +407,13 @@ function GRN() {
                       <div key={index} className="flex flex-col gap-4 mb-4 p-4 border rounded-md">
                         <div className="grid grid-cols-3 gap-4">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700">Order Item</label>
-                            <select
-                              name="orderItemId"
-                              value={gi.orderItemId}
-                              onChange={(e) => handleGrnItemChange(index, e)}
-                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-sm"
-                              required
-                            >
-                              <option value="">Select Item</option>
-                              {orderItems
-                                .filter((oi) => oi.poId === Number(formData.poId))
-                                .map((oi) => (
-                                  <option key={oi.id} value={oi.id}>
-                                    {oi.itemName}
-                                  </option>
-                                ))}
-                            </select>
+                            <label className="block text-sm font-medium text-gray-700">Item Name</label>
+                            <input
+                              type="text"
+                              value={orderItem.find((oi) => oi.id === gi.orderItemId)?.itemName || ''}
+                              disabled
+                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-100 text-sm"
+                            />
                             {errors[`grnItems[${index}].orderItemId`] && (
                               <p className="mt-1 text-sm text-red-600">
                                 {errors[`grnItems[${index}].orderItemId`]}
@@ -467,22 +440,8 @@ function GRN() {
                             className="w-full text-sm"
                           />
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => removeGrnItem(index)}
-                          className="text-red-600 hover:text-red-800 text-sm mt-2"
-                        >
-                          Remove Item
-                        </button>
                       </div>
                     ))}
-                    <button
-                      type="button"
-                      onClick={addGrnItem}
-                      className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 text-sm"
-                    >
-                      Add GRN Item
-                    </button>
                   </div>
                   <div className="col-span-3 flex space-x-4">
                     <button

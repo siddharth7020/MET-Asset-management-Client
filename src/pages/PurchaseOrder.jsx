@@ -423,16 +423,16 @@ function PurchaseOrder() {
                     </select>
                     {errors.vendorId && <p className="mt-1 text-xs text-red-600">{errors.vendorId}</p>}
                   </div>
-                  <FormInput
-                    label="Document"
-                    type="text"
-                    name="document"
-                    value={formData.document}
-                    onChange={(e) => setFormData({ ...formData, document: e.target.value })}
-                    error={errors.document}
-                    required={false}
-                    className="w-full text-xs sm:text-sm"
-                  />
+                <FormInput
+                  label="Document"
+                  type="file"
+                  name="document"
+                  onChange={(e) => setFormData({ ...formData, document: e.target.files[0] })}
+                  accept=".pdf,.doc,.docx,.xls,.xlsx"
+                  error={errors.document}
+                  required={false}
+                  className="w-full text-xs sm:text-sm"
+                />
                   <FormInput
                     label="Requested By"
                     type="text"
