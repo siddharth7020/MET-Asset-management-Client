@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import Table from '../components/Table';
 import FormInput from '../components/FormInput';
 import GrnDetails from './GRNDetail';
 import { getPurchaseOrders, getPurchaseOrder } from '../api/purchaseOrderService';
 import { getGrns, getGrnById, createGrn, updateGrn, deleteGrn } from '../api/grnService';
+import axios from '../api/axiosInstance';
 
 function GRN() {
   const [grns, setGrns] = useState([]);
   const [grnItems, setGrnItems] = useState([]);
   const [purchaseOrders, setPurchaseOrders] = useState([]);
-  const [orderItem, setOrderItem] = useState([]);
+  const [item, setItem] = useState([]);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [formData, setFormData] = useState({
@@ -28,7 +28,6 @@ function GRN() {
   const [expandedGrnId, setExpandedGrnId] = useState(null);
   const [selectedGrnId, setSelectedGrnId] = useState(null);
 
-  // Fetch purchase orders and GRNs on mount
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -38,9 +37,9 @@ function GRN() {
         const grnResponse = await getGrns();
         const grnsData = grnResponse.data;
         const grnItemsData = grnsData.flatMap(grn => grn.grnItems || []);
-
         setGrns(grnsData);
         setGrnItems(grnItemsData);
+
       } catch (error) {
         console.error('Error fetching data:', error);
       }
@@ -48,23 +47,33 @@ function GRN() {
     fetchData();
   }, []);
 
-  // Fetch order items and pre-populate grnItems when poId changes
+
+
+
   useEffect(() => {
     if (formData.poId && !isEditMode) {
       const fetchOrderItems = async () => {
         try {
           const poResponse = await getPurchaseOrder(formData.poId);
-          const items = poResponse.data.orderItems || [];
-          console.log('Fetched order items:', items);
-          setOrderItem(items);
-          console.log('Fetched order items:', orderItem);
-          
-          
-          
-          // Pre-populate grnItems with order items
+          const orderItems = poResponse.data.orderItems || [];
+          const itemsResponse = await axios.get('/items');
+          const itemData = Array.isArray(itemsResponse.data.items) ? itemsResponse.data.items : [];
+          setItem(itemData);
+          try {
+            const singleItem = (value) => item?.find((inst) => inst.itemId === value)?.itemName || 'N/A';
+            console.log(singleItem);
+
+          } catch (error) {
+            console.error('Error fetching items:', error);
+
+          }
+
+
+
+
           setFormData(prev => ({
             ...prev,
-            grnItems: items.map(item => ({
+            grnItems: orderItems.map(item => ({
               orderItemId: item.id,
               receivedQuantity: item.quantity || '',
               rejectedQuantity: '',
@@ -76,7 +85,6 @@ function GRN() {
       };
       fetchOrderItems();
     } else {
-      setOrderItem([]);
       if (!isEditMode) {
         setFormData(prev => ({
           ...prev,
@@ -84,19 +92,16 @@ function GRN() {
         }));
       }
     }
-  }, [formData.poId, isEditMode]);
+  }, [formData.poId, isEditMode, item]);
 
-  // Handle row click to show details
   const handleRowClick = (row) => {
     setSelectedGrnId(row.id);
   };
 
-  // Handle back to table view
   const handleBack = () => {
     setSelectedGrnId(null);
   };
 
-  // Table columns for GRN
   const grnColumns = [
     { key: 'id', label: 'ID' },
     {
@@ -119,19 +124,17 @@ function GRN() {
     { key: 'remark', label: 'Remark' },
   ];
 
-  // Table columns for GRNItem
   const grnItemColumns = [
     { key: 'id', label: 'ID' },
     {
       key: 'orderItemId',
       label: 'Item',
-      format: (value) => orderItem.find((oi) => oi.id === value)?.itemName || 'N/A',
+      format: (value) => (item && Array.isArray(item) ? item.find((item) => item.id === value)?.itemName || 'N/A' : 'N/A'),
     },
     { key: 'receivedQuantity', label: 'Received Quantity' },
     { key: 'rejectedQuantity', label: 'Rejected Quantity' },
   ];
 
-  // Table actions
   const actions = [
     {
       label: 'Edit',
@@ -188,7 +191,6 @@ function GRN() {
     },
   ];
 
-  // Form handling
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -265,7 +267,6 @@ function GRN() {
 
     try {
       if (isEditMode) {
-        // Update GRN
         await updateGrn(formData.poId, editId, grnData);
         const grnResponse = await getGrnById(editId);
         setGrns((prev) =>
@@ -276,7 +277,6 @@ function GRN() {
           ...grnResponse.data.grnItems,
         ]);
       } else {
-        // Create GRN
         const response = await createGrn(formData.poId, grnData);
         setGrns((prev) => [...prev, response.data]);
         setGrnItems((prev) => [...prev, ...response.data.grnItems]);
@@ -289,7 +289,6 @@ function GRN() {
     }
   };
 
-  // Get selected GRN data
   const selectedGrn = grns.find((grn) => grn.id === selectedGrnId);
   const selectedGrnItems = grnItems.filter((gi) => gi.grnId === selectedGrnId);
 
@@ -300,7 +299,7 @@ function GRN() {
           grn={selectedGrn}
           grnItems={selectedGrnItems}
           purchaseOrders={purchaseOrders}
-          orderItem={orderItem}
+          items={item}
           onBack={handleBack}
         />
       ) : (
@@ -410,9 +409,9 @@ function GRN() {
                             <label className="block text-sm font-medium text-gray-700">Item Name</label>
                             <input
                               type="text"
-                              value={orderItem.find((oi) => oi.id === gi.orderItemId)?.itemName || ''}
+                              value={gi.orderItemId}
                               disabled
-                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-100 text-sm"
+                              className=" block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
                             />
                             {errors[`grnItems[${index}].orderItemId`] && (
                               <p className="mt-1 text-sm text-red-600">
@@ -428,15 +427,6 @@ function GRN() {
                             onChange={(e) => handleGrnItemChange(index, e)}
                             error={errors[`grnItems[${index}].receivedQuantity`]}
                             required
-                            className="w-full text-sm"
-                          />
-                          <FormInput
-                            label="Rejected Quantity"
-                            type="number"
-                            name="rejectedQuantity"
-                            value={gi.rejectedQuantity || ''}
-                            onChange={(e) => handleGrnItemChange(index, e)}
-                            required={false}
                             className="w-full text-sm"
                           />
                         </div>

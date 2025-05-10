@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-const GrnDetails = ({ grn, grnItems, purchaseOrders, orderItem, onBack }) => {
+const GrnDetails = ({ grn, grnItems, purchaseOrders, onBack }) => {
   if (!grn) {
     return <div className="text-center p-6">No GRN selected</div>;
   }
@@ -82,8 +82,8 @@ const GrnDetails = ({ grn, grnItems, purchaseOrders, orderItem, onBack }) => {
           {grnItems.map((item) => (
             <div key={item.id} className="p-4 border rounded-md bg-gray-50">
               <p className="text-xs">
-                <strong>Item Name:</strong>{' '}
-                {orderItem.find((oi) => oi.id === item.orderItemId)?.itemName || 'N/A'}
+                <strong>Item Name:</strong>
+                { item.orderItemId}
               </p>
               <p className="text-xs">
                 <strong>Received Quantity:</strong> {item.receivedQuantity}
@@ -108,10 +108,10 @@ const GrnDetails = ({ grn, grnItems, purchaseOrders, orderItem, onBack }) => {
               {grnItems.map((item) => (
                 <tr key={item.id} className="bg-white border-b">
                   <td className="px-6 py-4">
-                    {orderItem.find((oi) => oi.id === item.orderItemId)?.itemName || 'N/A'}
+                    {item.orderItemId}
                   </td>
                   <td className="px-6 py-4">{item.receivedQuantity}</td>
-                  <td className="px-6 py-4">{item.receivedQuantity}</td>
+                  <td className="px-6 py-4">{item.rejectedQuantity}</td>
                 </tr>
               ))}
             </tbody>
