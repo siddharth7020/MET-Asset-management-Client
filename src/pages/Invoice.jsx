@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'; 
 import Table from '../components/Table';
 import FormInput from '../components/FormInput';
 import InvoiceDetails from './InvoiceDetails';
+import { getAllInvoices, createInvoice, updateInvoice } from '../api/invoiceService';
+import { getPurchaseOrders } from '../api/purchaseOrderService';
+import axios from '../api/axiosInstance';
+import Swal from 'sweetalert2';
 
 function Invoice() {
   const [invoices, setInvoices] = useState([]);
@@ -11,7 +15,6 @@ function Invoice() {
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [formData, setFormData] = useState({
-    id: '',
     poId: '',
     invoiceNo: '',
     invoiceDate: '',
@@ -23,126 +26,125 @@ function Invoice() {
   const [selectedInvoiceId, setSelectedInvoiceId] = useState(null);
   const [currentLayout, setCurrentLayout] = useState(null);
 
-  // Initialize dummy data
+  // Fetch data from APIs
   useEffect(() => {
-    const invoicesData = [
-      {
-        id: 1,
-        invoiceNo: 'INV-001',
-        poId: 2,
-        invoiceDate: '2025-04-16',
-        subtotal: 60000.00,
-        totalTax: 7800.00,
-        invoiceAmount: 67800.00,
-        paymentDetails: 'Payment Done',
-        paymentDate: null,
-        createdAt: '2025-04-24T07:14:41.946Z',
-        updatedAt: '2025-04-24T07:14:41.946Z',
-      },
-    ];
-    const invoiceItemsData = [
-      {
-        id: 1,
-        invoiceId: 1,
-        orderItemId: 3,
-        quantity: 100,
-        rate: 100.00,
-        discount: 0.00,
-        taxPercentage: 18.00,
-        taxAmount: 1800.00,
-        totalAmount: 11800.00,
-        createdAt: '2025-04-24T07:14:41.955Z',
-        updatedAt: '2025-04-24T07:14:41.955Z',
-      },
-      {
-        id: 2,
-        invoiceId: 1,
-        orderItemId: 4,
-        quantity: 500,
-        rate: 100.00,
-        discount: 0.00,
-        taxPercentage: 12.00,
-        taxAmount: 6000.00,
-        totalAmount: 56000.00,
-        createdAt: '2025-04-24T07:14:41.955Z',
-        updatedAt: '2025-04-24T07:14:41.955Z',
-      },
-    ];
-    const purchaseOrdersData = [
-      { poId: 1, poNo: 'PO001' },
-      { poId: 2, poNo: 'PO002' },
-    ];
-    const orderItemsData = [
-      { id: 3, poId: 2, itemId: 3, itemName: 'Notebook' },
-      { id: 4, poId: 2, itemId: 2, itemName: 'Office Chair' },
-    ];
+    const fetchData = async () => {
+      try {
+        // Fetch invoices
+        const invoiceResponse = await getAllInvoices();
+        const invoicesData = Array.isArray(invoiceResponse.data.invoices) ? invoiceResponse.data.invoices : [];
+        const invoiceItemsData = invoicesData.flatMap((inv) => inv.items || []);
+        setInvoices(invoicesData);
+        setInvoiceItems(invoiceItemsData);
 
-    setInvoices(invoicesData);
-    setInvoiceItems(invoiceItemsData);
-    setPurchaseOrders(purchaseOrdersData);
-    setOrderItems(orderItemsData);
+        // Fetch purchase orders
+        const poResponse = await getPurchaseOrders();
+        const poData = Array.isArray(poResponse.data) ? poResponse.data : [];
+        setPurchaseOrders(poData);
+
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        alert('Failed to fetch data. Please try again.');
+      }
+    };
+    fetchData();
   }, []);
+
+  // Fetch order items when poId changes
+  useEffect(() => {
+    if (formData.poId && !isEditMode) {
+      const fetchOrderItems = async () => {
+        try {
+          const poResponse = await axios.get(`/purchase/${formData.poId}`);
+          const orderItemsData = Array.isArray(poResponse.data.orderItems) ? poResponse.data.orderItems : [];
+          setOrderItems(orderItemsData);
+          setFormData((prev) => ({
+            ...prev,
+            items: orderItemsData.map((item) => ({
+              orderItemId: item.id,
+              quantity: item.quantity || '',
+              rate: item.rate || '',
+              discount: item.discount || '',
+              taxPercentage: '',
+            })),
+          }));
+        } catch (error) {
+          console.error('Error fetching order items:', error);
+          alert('Failed to fetch order items.');
+        }
+      };
+      fetchOrderItems();
+    } else if (!isEditMode) {
+      setFormData((prev) => ({
+        ...prev,
+        items: [{ orderItemId: '', taxPercentage: '', quantity: '', rate: '', discount: '' }],
+      }));
+      setOrderItems([]);
+    }
+  }, [formData.poId, isEditMode]);
 
   // Table columns for Invoice
   const invoiceColumns = [
-    { key: 'id', label: 'ID' },
     { key: 'invoiceNo', label: 'Invoice Number' },
-    { key: 'poId', label: 'PO Number', format: (value) => purchaseOrders.find((po) => po.poId === value)?.poNo || 'N/A' },
-    { key: 'invoiceDate', label: 'Invoice Date', format: (value) => new Date(value).toLocaleDateString() },
-    { key: 'subtotal', label: 'Subtotal', format: (value) => `₹${parseFloat(value).toFixed(2)}` },
-    { key: 'totalTax', label: 'Total Tax', format: (value) => `₹${parseFloat(value).toFixed(2)}` },
-    { key: 'invoiceAmount', label: 'Invoice Amount', format: (value) => `₹${parseFloat(value).toFixed(2)}` },
-    { key: 'paymentDetails', label: 'Payment Details' },
+    {
+      key: 'poId',
+      label: 'PO Number',
+      format: (value) => purchaseOrders.find((po) => po.poId === value)?.poNo || 'N/A',
+    },
+    {
+      key: 'invoiceDate',
+      label: 'Invoice Date',
+      format: (value) => new Date(value).toLocaleDateString(),
+    },
+    {
+      key: 'invoiceAmount',
+      label: 'Invoice Amount',
+      format: (value) => `₹${parseFloat(value).toFixed(2)}`,
+    },
   ];
 
   // Table actions
   const actions = [
     {
       label: 'Edit',
-      onClick: (row) => {
-        setIsEditMode(true);
-        setEditId(row.id);
-        const items = invoiceItems
-          .filter((ii) => ii.invoiceId === row.id)
-          .map((ii) => ({
-            id: ii.id,
-            orderItemId: ii.orderItemId,
-            quantity: ii.quantity,
-            rate: ii.rate,
-            discount: ii.discount,
-            taxPercentage: ii.taxPercentage,
-            taxAmount: ii.taxAmount,
-            totalAmount: ii.totalAmount,
-          }));
-        setFormData({
-          id: row.id,
-          poId: row.poId,
-          invoiceNo: row.invoiceNo,
-          invoiceDate: row.invoiceDate.split('T')[0],
-          paymentDetails: row.paymentDetails,
-          items: items.length > 0 ? items : [{ orderItemId: '', taxPercentage: '', quantity: '', rate: '', discount: '' }],
-        });
-        setIsFormVisible(true);
-      },
-      className: 'bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs sm:text-sm',
-    },
-    {
-      label: 'Delete',
-      onClick: (row) => {
-        if (window.confirm(`Delete Invoice ${row.invoiceNo}?`)) {
-          setInvoices((prev) => prev.filter((inv) => inv.id !== row.id));
-          setInvoiceItems((prev) => prev.filter((ii) => ii.invoiceId !== row.id));
-          resetForm();
+      onClick: async (row) => {
+        try {
+          const invoiceResponse = await axios.get(`/invoices/${row.id}`);
+          const invoice = invoiceResponse.data;
+          setIsEditMode(true);
+          setEditId(row.id);
+          const poResponse = await axios.get(`/purchase/${invoice.poId}`);
+          const orderItemsData = poResponse.data.orderItems || [];
+          setOrderItems(orderItemsData);
+          setFormData({
+            poId: invoice.poId,
+            invoiceNo: invoice.invoiceNo,
+            invoiceDate: invoice.invoiceDate.split('T')[0],
+            paymentDetails: invoice.paymentDetails,
+            items: invoice.items.map((item) => ({
+              orderItemId: item.orderItemId,
+              quantity: item.quantity,
+              rate: item.rate,
+              discount: item.discount,
+              taxPercentage: item.taxPercentage,
+              taxAmount: item.taxAmount,
+              totalAmount: item.totalAmount,
+            })),
+          });
+          setIsFormVisible(true);
+        } catch (error) {
+          console.error('Error fetching invoice:', error);
+          alert('Failed to fetch invoice details.');
         }
       },
-      className: 'bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs sm:text-sm',
+      className: 'bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs sm:text-sm',
     },
   ];
 
   // Handle row click to show details
   const handleRowClick = (row) => {
     setSelectedInvoiceId(row.id);
-  setCurrentLayout('details');
+    setCurrentLayout('details');
   };
 
   // Handle back to table view
@@ -207,6 +209,11 @@ function Invoice() {
     }
     if (!formData.invoiceDate) newErrors.invoiceDate = 'Invoice date is required';
 
+    // Check if an invoice already exists for the selected PO (only for create mode)
+    if (!isEditMode && formData.poId && invoices.some((inv) => inv.poId === Number(formData.poId))) {
+      newErrors.poId = 'This Purchase Order already has an invoice.';
+    }
+
     formData.items.forEach((item, index) => {
       if (!item.orderItemId) newErrors[`items[${index}].orderItemId`] = 'Order item is required';
       if (!item.quantity || item.quantity <= 0) newErrors[`items[${index}].quantity`] = 'Quantity must be positive';
@@ -251,36 +258,32 @@ function Invoice() {
     };
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = validateForm();
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      if (newErrors.poId === 'This Purchase Order already has an invoice.') {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invoice Already Exists',
+          text: 'This Purchase Order already has an invoice. Please select a different Purchase Order.',
+        });
+      }
       return;
     }
 
     const { items, subtotal, totalTax, invoiceAmount } = calculateTotals(formData.items);
 
-    if (isEditMode) {
-      setInvoices((prev) =>
-        prev.map((inv) =>
-          inv.id === editId
-            ? {
-                ...formData,
-                id: editId,
-                poId: Number(formData.poId),
-                subtotal,
-                totalTax,
-                invoiceAmount,
-                updatedAt: new Date().toISOString(),
-              }
-            : inv
-        )
-      );
-      const existingIds = invoiceItems.filter((ii) => ii.invoiceId === editId).map((ii) => ii.id);
-      const updatedItems = items.map((item, index) => ({
-        id: item.id || existingIds[index] || Math.max(...invoiceItems.map((i) => i.id), 0) + index + 1,
-        invoiceId: editId,
+    const payload = {
+      poId: Number(formData.poId),
+      invoiceNo: formData.invoiceNo,
+      invoiceDate: formData.invoiceDate,
+      paymentDetails: formData.paymentDetails || '',
+      subtotal,
+      totalTax,
+      invoiceAmount,
+      items: items.map((item) => ({
         orderItemId: Number(item.orderItemId),
         quantity: Number(item.quantity),
         rate: Number(item.rate),
@@ -288,51 +291,35 @@ function Invoice() {
         taxPercentage: Number(item.taxPercentage),
         taxAmount: Number(item.taxAmount),
         totalAmount: Number(item.totalAmount),
-        createdAt: item.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }));
-      setInvoiceItems((prev) => [
-        ...prev.filter((ii) => ii.invoiceId !== editId),
-        ...updatedItems,
-      ]);
-    } else {
-      const newInvoiceId = Math.max(...invoices.map((inv) => inv.id), 0) + 1;
-      setInvoices((prev) => [
-        ...prev,
-        {
-          ...formData,
-          id: newInvoiceId,
-          poId: Number(formData.poId),
-          subtotal,
-          totalTax,
-          invoiceAmount,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ]);
-      const newInvoiceItems = items.map((item, index) => ({
-        id: Math.max(...invoiceItems.map((i) => i.id), 0) + index + 1,
-        invoiceId: newInvoiceId,
-        orderItemId: Number(item.orderItemId),
-        quantity: Number(item.quantity),
-        rate: Number(item.rate),
-        discount: Number(item.discount),
-        taxPercentage: Number(item.taxPercentage),
-        taxAmount: Number(item.taxAmount),
-        totalAmount: Number(item.totalAmount),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }));
-      setInvoiceItems((prev) => [...prev, ...newInvoiceItems]);
-    }
+      })),
+    };
 
-    resetForm();
-    setIsFormVisible(false);
+    try {
+      if (isEditMode) {
+        await updateInvoice(editId, payload);
+        const invoiceResponse = await axios.get(`/invoices/${editId}`);
+        setInvoices((prev) =>
+          prev.map((inv) => (inv.id === editId ? invoiceResponse.data : inv))
+        );
+        setInvoiceItems((prev) => [
+          ...prev.filter((ii) => ii.invoiceId !== editId),
+          ...invoiceResponse.data.items,
+        ]);
+      } else {
+        const response = await createInvoice(payload);
+        setInvoices((prev) => [...prev, response.data]);
+        setInvoiceItems((prev) => [...prev, ...response.data.items]);
+      }
+      resetForm();
+      setIsFormVisible(false);
+    } catch (error) {
+      console.error('Error saving invoice:', error);
+      setErrors({ submit: 'Failed to save invoice. Please try again.' });
+    }
   };
 
   const resetForm = () => {
     setFormData({
-      id: '',
       poId: '',
       invoiceNo: '',
       invoiceDate: '',
@@ -342,6 +329,7 @@ function Invoice() {
     setErrors({});
     setIsEditMode(false);
     setEditId(null);
+    setOrderItems([]);
   };
 
   // Get selected invoice data
@@ -378,16 +366,6 @@ function Invoice() {
                   {isEditMode ? 'Edit Invoice' : 'Add Invoice'}
                 </h3>
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <FormInput
-                    label="Invoice ID"
-                    type="text"
-                    name="id"
-                    value={formData.id}
-                    onChange={handleChange}
-                    disabled
-                    required={false}
-                    className="w-full text-xs sm:text-sm"
-                  />
                   <div>
                     <label className="block text-xs sm:text-sm font-medium text-gray-700">Purchase Order</label>
                     <select
@@ -404,7 +382,7 @@ function Invoice() {
                         </option>
                       ))}
                     </select>
-                    
+                    {errors.poId && <p className="mt-1 text-xs text-red-600">{errors.poId}</p>}
                   </div>
                   <FormInput
                     label="Invoice Number"
@@ -451,13 +429,11 @@ function Invoice() {
                               required
                             >
                               <option value="">Select Item</option>
-                              {orderItems
-                                .filter((oi) => oi.poId === Number(formData.poId))
-                                .map((oi) => (
-                                  <option key={oi.id} value={oi.id}>
-                                    {oi.itemName}
-                                  </option>
-                                ))}
+                              {orderItems.map((oi) => (
+                                <option key={oi.id} value={oi.id}>
+                                  {oi.itemName || 'N/A'}
+                                </option>
+                              ))}
                             </select>
                             {errors[`items[${index}].orderItemId`] && (
                               <p className="mt-1 text-xs text-red-600">{errors[`items[${index}].orderItemId`]}</p>

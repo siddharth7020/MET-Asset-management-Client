@@ -69,11 +69,9 @@ const InvoiceDetails = ({ invoice, invoiceItems, purchaseOrders, orderItems, onB
         <div className="sm:hidden space-y-4">
           {invoiceItems.map((item) => (
             <div key={item.id} className="p-4 border rounded-md bg-gray-50">
+          
               <p className="text-xs">
-                <strong>Item ID:</strong> {item.id}
-              </p>
-              <p className="text-xs">
-                <strong>Item Name:</strong> {orderItems.find((oi) => oi.id === item.orderItemId)?.itemName || 'N/A'}
+                <strong>Item Name:</strong> {item.orderItemId}
               </p>
               <p className="text-xs">
                 <strong>Quantity:</strong> {item.quantity}
@@ -101,7 +99,6 @@ const InvoiceDetails = ({ invoice, invoiceItems, purchaseOrders, orderItems, onB
           <table className="w-full text-sm text-left text-gray-900">
             <thead className="text-xs uppercase bg-gray-200">
               <tr>
-                <th scope="col" className="px-6 py-3">Item ID</th>
                 <th scope="col" className="px-6 py-3">Item Name</th>
                 <th scope="col" className="px-6 py-3">Quantity</th>
                 <th scope="col" className="px-6 py-3">Rate</th>
@@ -114,7 +111,6 @@ const InvoiceDetails = ({ invoice, invoiceItems, purchaseOrders, orderItems, onB
             <tbody>
               {invoiceItems.map((item) => (
                 <tr key={item.id} className="bg-white border-b">
-                  <td className="px-6 py-4">{item.id}</td>
                   <td className="px-6 py-4">{orderItems.find((oi) => oi.id === item.orderItemId)?.itemName || 'N/A'}</td>
                   <td className="px-6 py-4">{item.quantity}</td>
                   <td className="px-6 py-4">₹{parseFloat(item.rate).toFixed(2)}</td>
