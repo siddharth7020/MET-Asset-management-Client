@@ -41,6 +41,8 @@ function Invoice() {
         const poResponse = await getPurchaseOrders();
         const poData = Array.isArray(poResponse.data) ? poResponse.data : [];
         setPurchaseOrders(poData);
+        console.log(poData);
+        
 
       } catch (error) {
         console.error('Error fetching data:', error);
