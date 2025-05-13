@@ -3,14 +3,14 @@ import Table from '../components/Table';
 import FormInput from '../components/FormInput';
 import GrnDetails from './GRNDetail';
 import { getPurchaseOrders, getPurchaseOrder } from '../api/purchaseOrderService';
-import { getGrns, getGrnById, createGrn, updateGrn, deleteGrn } from '../api/grnService';
-import axios from '../api/axiosInstance';
+import { getGrns, getGrnById, createGrn, updateGrn } from '../api/grnService';
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
 
 function GRN() {
   const [grns, setGrns] = useState([]);
   const [grnItems, setGrnItems] = useState([]);
   const [purchaseOrders, setPurchaseOrders] = useState([]);
-  const [item, setItem] = useState([]);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [formData, setFormData] = useState({
@@ -21,12 +21,13 @@ function GRN() {
     challanDate: '',
     document: '',
     remark: '',
-    grnItems: [{ orderItemId: '', receivedQuantity: '' }],
+    grnItems: [{ orderItemId: '', receivedQuantity: '', rejectedQuantity: '' }],
   });
   const [errors, setErrors] = useState({});
   const [editId, setEditId] = useState(null);
-  const [expandedGrnId, setExpandedGrnId] = useState(null);
   const [selectedGrnId, setSelectedGrnId] = useState(null);
+
+  const MySwal = withReactContent(Swal);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -39,16 +40,17 @@ function GRN() {
         const grnItemsData = grnsData.flatMap(grn => grn.grnItems || []);
         setGrns(grnsData);
         setGrnItems(grnItemsData);
-
       } catch (error) {
         console.error('Error fetching data:', error);
+        MySwal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Failed to fetch data. Please try again.',
+        });
       }
     };
     fetchData();
   }, []);
-
-
-
 
   useEffect(() => {
     if (formData.poId && !isEditMode) {
@@ -56,21 +58,6 @@ function GRN() {
         try {
           const poResponse = await getPurchaseOrder(formData.poId);
           const orderItems = poResponse.data.orderItems || [];
-          const itemsResponse = await axios.get('/items');
-          const itemData = Array.isArray(itemsResponse.data.items) ? itemsResponse.data.items : [];
-          setItem(itemData);
-          try {
-            const singleItem = (value) => item?.find((inst) => inst.itemId === value)?.itemName || 'N/A';
-            console.log(singleItem);
-
-          } catch (error) {
-            console.error('Error fetching items:', error);
-
-          }
-
-
-
-
           setFormData(prev => ({
             ...prev,
             grnItems: orderItems.map(item => ({
@@ -81,6 +68,11 @@ function GRN() {
           }));
         } catch (error) {
           console.error('Error fetching order items:', error);
+          MySwal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Failed to fetch order items. Please try again.',
+          });
         }
       };
       fetchOrderItems();
@@ -88,11 +80,11 @@ function GRN() {
       if (!isEditMode) {
         setFormData(prev => ({
           ...prev,
-          grnItems: [{ orderItemId: '', receivedQuantity: '' }],
+          grnItems: [{ orderItemId: '', receivedQuantity: '', rejectedQuantity: '' }],
         }));
       }
     }
-  }, [formData.poId, isEditMode, item]);
+  }, [formData.poId, isEditMode]);
 
   const handleRowClick = (row) => {
     setSelectedGrnId(row.id);
@@ -103,7 +95,6 @@ function GRN() {
   };
 
   const grnColumns = [
-    { key: 'id', label: 'ID' },
     {
       key: 'poId',
       label: 'PO Number',
@@ -121,18 +112,6 @@ function GRN() {
       label: 'Challan Date',
       format: (value) => new Date(value).toLocaleDateString(),
     },
-    { key: 'remark', label: 'Remark' },
-  ];
-
-  const grnItemColumns = [
-    { key: 'id', label: 'ID' },
-    {
-      key: 'orderItemId',
-      label: 'Item',
-      format: (value) => (item && Array.isArray(item) ? item.find((item) => item.id === value)?.itemName || 'N/A' : 'N/A'),
-    },
-    { key: 'receivedQuantity', label: 'Received Quantity' },
-    { key: 'rejectedQuantity', label: 'Rejected Quantity' },
   ];
 
   const actions = [
@@ -157,37 +136,19 @@ function GRN() {
               orderItemId: gi.orderItemId,
               receivedQuantity: gi.receivedQuantity,
               rejectedQuantity: gi.rejectedQuantity || '',
-            })) || [{ orderItemId: '', receivedQuantity: '' }],
+            })) || [{ orderItemId: '', receivedQuantity: '', rejectedQuantity: '' }],
           });
           setIsFormVisible(true);
         } catch (error) {
           console.error('Error fetching GRN:', error);
+          MySwal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Failed to fetch GRN details. Please try again.',
+          });
         }
       },
       className: 'bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-sm',
-    },
-    {
-      label: 'Delete',
-      onClick: async (row) => {
-        if (window.confirm(`Delete GRN ${row.grnNo}?`)) {
-          try {
-            await deleteGrn(row.poId, row.id);
-            setGrns((prev) => prev.filter((grn) => grn.id !== row.id));
-            setGrnItems((prev) => prev.filter((gi) => gi.grnId !== row.id));
-            resetForm();
-          } catch (error) {
-            console.error('Error deleting GRN:', error);
-          }
-        }
-      },
-      className: 'bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-sm',
-    },
-    {
-      label: 'View Items',
-      onClick: (row) => {
-        setExpandedGrnId(expandedGrnId === row.id ? null : row.id);
-      },
-      className: 'bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-sm',
     },
   ];
 
@@ -214,7 +175,7 @@ function GRN() {
       challanDate: '',
       document: '',
       remark: '',
-      grnItems: [{ orderItemId: '', receivedQuantity: '' }],
+      grnItems: [{ orderItemId: '', receivedQuantity: '', rejectedQuantity: '' }],
     });
     setErrors({});
     setIsEditMode(false);
@@ -237,6 +198,9 @@ function GRN() {
       if (!gi.receivedQuantity || gi.receivedQuantity < 0) {
         newErrors[`grnItems[${index}].receivedQuantity`] = 'Received quantity must be non-negative';
       }
+      if (gi.rejectedQuantity && gi.rejectedQuantity < 0) {
+        newErrors[`grnItems[${index}].rejectedQuantity`] = 'Rejected quantity must be non-negative';
+      }
     });
 
     return newErrors;
@@ -247,6 +211,11 @@ function GRN() {
     const newErrors = validateForm();
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      MySwal.fire({
+        icon: 'error',
+        title: 'Validation Error',
+        text: 'Please fill all required fields correctly.',
+      });
       return;
     }
 
@@ -261,7 +230,7 @@ function GRN() {
         ...(isEditMode && gi.id ? { id: gi.id } : {}),
         orderItemId: Number(gi.orderItemId),
         receivedQuantity: Number(gi.receivedQuantity),
-        rejectedQuantity: Number(gi.rejectedQuantity || 0),
+        rejectedQuantity: gi.rejectedQuantity ? Number(gi.rejectedQuantity) : 0,
       })),
     };
 
@@ -276,17 +245,58 @@ function GRN() {
           ...prev.filter((gi) => gi.grnId !== editId),
           ...grnResponse.data.grnItems,
         ]);
+        MySwal.fire({
+          icon: 'success',
+          title: 'Success',
+          text: 'GRN updated successfully!',
+        });
       } else {
         const response = await createGrn(formData.poId, grnData);
         setGrns((prev) => [...prev, response.data]);
         setGrnItems((prev) => [...prev, ...response.data.grnItems]);
+        MySwal.fire({
+          icon: 'success',
+          title: 'Success',
+          text: 'GRN created successfully!',
+        });
       }
       resetForm();
       setIsFormVisible(false);
     } catch (error) {
       console.error('Error saving GRN:', error);
-      setErrors({ submit: 'Failed to save GRN. Please try again.' });
+      MySwal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Items quantity must be less than order quantity .',
+      });
     }
+  };
+
+  const handleCancel = async () => {
+    const hasChanges = Object.values(formData).some(
+      (value) => typeof value === 'string' && value !== '' || 
+      (Array.isArray(value) && value.some(item => 
+        Object.values(item).some(v => v !== '')))
+    );
+    
+    if (hasChanges) {
+      const result = await MySwal.fire({
+        title: 'Are you sure?',
+        text: 'You have unsaved changes. Do you want to cancel?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, cancel',
+        cancelButtonText: 'No, keep editing',
+        reverseButtons: true,
+      });
+
+      if (!result.isConfirmed) {
+        return;
+      }
+    }
+
+    resetForm();
+    setIsFormVisible(false);
   };
 
   const selectedGrn = grns.find((grn) => grn.id === selectedGrnId);
@@ -299,7 +309,6 @@ function GRN() {
           grn={selectedGrn}
           grnItems={selectedGrnItems}
           purchaseOrders={purchaseOrders}
-          items={item}
           onBack={handleBack}
         />
       ) : (
@@ -384,8 +393,7 @@ function GRN() {
                     label="Document"
                     type="file"
                     name="document"
-                    value={formData.document}
-                    onChange={handleChange}
+                    onChange={(e) => setFormData({ ...formData, document: e.target.files[0] })}
                     error={errors.document}
                     required={false}
                     className="w-full text-sm"
@@ -411,7 +419,7 @@ function GRN() {
                               type="text"
                               value={gi.orderItemId}
                               disabled
-                              className=" block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                              className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
                             />
                             {errors[`grnItems[${index}].orderItemId`] && (
                               <p className="mt-1 text-sm text-red-600">
@@ -429,6 +437,16 @@ function GRN() {
                             required
                             className="w-full text-sm"
                           />
+                          <FormInput
+                            label="Rejected Quantity"
+                            type="number"
+                            name="rejectedQuantity"
+                            value={gi.rejectedQuantity}
+                            onChange={(e) => handleGrnItemChange(index, e)}
+                            error={errors[`grnItems[${index}].rejectedQuantity`]}
+                            required={false}
+                            className="w-full text-sm"
+                          />
                         </div>
                       </div>
                     ))}
@@ -442,10 +460,7 @@ function GRN() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        resetForm();
-                        setIsFormVisible(false);
-                      }}
+                      onClick={handleCancel}
                       className="px-4 py-2 text-gray-600 rounded-md hover:bg-gray-100 text-sm"
                     >
                       Cancel
@@ -460,20 +475,6 @@ function GRN() {
                 data={grns}
                 actions={actions}
                 onRowClick={handleRowClick}
-                expandable={{
-                  expandedRowRender: (row) => (
-                    <div className="p-4 bg-gray-50">
-                      <h4 className="text-md font-medium text-brand-secondary mb-2">GRN Items</h4>
-                      <Table
-                        columns={grnItemColumns}
-                        data={grnItems.filter((gi) => gi.grnId === row.id)}
-                        actions={[]}
-                      />
-                    </div>
-                  ),
-                  rowExpandable: (row) => grnItems.some((gi) => gi.grnId === row.id),
-                  expandedRowKeys: expandedGrnId ? [expandedGrnId] : [],
-                }}
               />
             </div>
           </div>
