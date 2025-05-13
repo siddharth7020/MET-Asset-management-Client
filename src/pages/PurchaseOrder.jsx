@@ -4,6 +4,8 @@ import FormInput from '../components/FormInput';
 import Details from '../components/Details';
 import { getPurchaseOrders, createPurchaseOrder, updatePurchaseOrder, deletePurchaseOrder } from '../api/purchaseOrderService';
 import axios from '../api/axiosInstance';
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
 
 function PurchaseOrder() {
   const [purchaseOrders, setPurchaseOrders] = useState([]);
@@ -31,6 +33,8 @@ function PurchaseOrder() {
   const [selectedPoId, setSelectedPoId] = useState(null);
   const [currentLayout, setCurrentLayout] = useState(null);
 
+  const MySwal = withReactContent(Swal);
+
   // Fetch data from APIs
   useEffect(() => {
     const fetchData = async () => {
@@ -38,13 +42,10 @@ function PurchaseOrder() {
         // Fetch purchase orders
         const poResponse = await getPurchaseOrders();
         setPurchaseOrders(poResponse.data);
-        // console.log(poResponse.data);
 
         const institutesResponse = await axios.get('/institutes');
         if (Array.isArray(institutesResponse.data.data)) {
-          const institutesData = institutesResponse.data.data;
-          setInstitutes(institutesData);
-          // console.log('Institutes:', institutesData);
+          setInstitutes(institutesResponse.data.data);
         } else {
           console.error('Expected institutes data to be an array, but got:', institutesResponse.data.data);
         }
@@ -52,9 +53,7 @@ function PurchaseOrder() {
         // Fetch financial years
         const fyResponse = await axios.get('/financialYears');
         if (Array.isArray(fyResponse.data.data)) {
-          const financialYearsData = fyResponse.data.data;
-          setFinancialYears(financialYearsData);
-          // console.log('Financial Years:', financialYearsData);
+          setFinancialYears(fyResponse.data.data);
         } else {
           console.error('Expected financial years data to be an array, but got:', fyResponse.data.data);
         }
@@ -63,7 +62,6 @@ function PurchaseOrder() {
         const vendorsResponse = await axios.get('/vendors');
         if (Array.isArray(vendorsResponse.data.data)) {
           setVendors(vendorsResponse.data.data);
-          // console.log('Vendors:', vendorsResponse.data.data);
         } else {
           console.error('Expected vendors data to be an array, but got:', vendorsResponse.data.data);
         }
@@ -72,14 +70,16 @@ function PurchaseOrder() {
         const itemsResponse = await axios.get('/items');
         if (Array.isArray(itemsResponse.data.items)) {
           setItems(itemsResponse.data.items);
-          // console.log('Items:', itemsResponse.data.items);
         } else {
           console.error('Expected items data to be an array, but got:', itemsResponse.data.items);
         }
-
       } catch (error) {
         console.error('Error fetching data:', error);
-        alert('Failed to fetch data. Please try again.');
+        MySwal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Failed to fetch data. Please try again.',
+        });
       }
     };
 
@@ -97,17 +97,17 @@ function PurchaseOrder() {
     {
       key: 'instituteId',
       label: 'Institute',
-      format: (value) => institutes?.find((inst) => inst.instituteId === value)?.instituteName || 'N/A'
+      format: (value) => institutes?.find((inst) => inst.instituteId === value)?.instituteName || 'N/A',
     },
     {
       key: 'financialYearId',
       label: 'Financial Year',
-      format: (value) => financialYears?.find((year) => year.financialYearId === value)?.year || 'N/A'
+      format: (value) => financialYears?.find((year) => year.financialYearId === value)?.year || 'N/A',
     },
     {
       key: 'vendorId',
       label: 'Vendor',
-      format: (value) => vendors?.find((vend) => vend.vendorId === value)?.name || 'N/A'
+      format: (value) => vendors?.find((vend) => vend.vendorId === value)?.name || 'N/A',
     },
   ];
 
@@ -116,7 +116,7 @@ function PurchaseOrder() {
     {
       key: 'itemId',
       label: 'Item',
-      format: (value) => items?.find((item) => item.itemId === value)?.itemName || 'N/A'
+      format: (value) => items?.find((item) => item.itemId === value)?.itemName || 'N/A',
     },
     { key: 'quantity', label: 'Quantity' },
     { key: 'rate', label: 'Rate' },
@@ -171,14 +171,33 @@ function PurchaseOrder() {
     {
       label: 'Delete',
       onClick: async (row) => {
-        if (window.confirm(`Delete purchase order ${row.poNo}?`)) {
+        const result = await MySwal.fire({
+          title: 'Are you sure?',
+          text: `Do you want to delete purchase order ${row.poNo}?`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Yes, delete it!',
+          cancelButtonText: 'No, cancel!',
+          reverseButtons: true,
+        });
+
+        if (result.isConfirmed) {
           try {
             await deletePurchaseOrder(row.poId);
             setPurchaseOrders((prev) => prev.filter((po) => po.poId !== row.poId));
             resetForm();
+            MySwal.fire({
+              icon: 'success',
+              title: 'Deleted!',
+              text: 'Purchase order has been deleted successfully.',
+            });
           } catch (error) {
             console.error('Error deleting purchase order:', error);
-            alert('Failed to delete purchase order. Please try again.');
+            MySwal.fire({
+              icon: 'error',
+              title: 'Error',
+              text: 'Failed to delete purchase order. Please try again.',
+            });
           }
         }
       },
@@ -221,7 +240,11 @@ function PurchaseOrder() {
 
   const removeOrderItem = (index) => {
     if (formData.orderItems.length === 1) {
-      alert('At least one order item is required');
+      MySwal.fire({
+        icon: 'warning',
+        title: 'Cannot Remove',
+        text: 'At least one order item is required.',
+      });
       return;
     }
     setFormData((prev) => ({
@@ -257,6 +280,11 @@ function PurchaseOrder() {
     const newErrors = validateForm();
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      MySwal.fire({
+        icon: 'error',
+        title: 'Validation Error',
+        text: 'Please fill all required fields correctly.',
+      });
       return;
     }
 
@@ -282,16 +310,30 @@ function PurchaseOrder() {
         setPurchaseOrders((prev) =>
           prev.map((po) => (po.poId === editId ? { ...payload, poId: editId } : po))
         );
+        MySwal.fire({
+          icon: 'success',
+          title: 'Success',
+          text: 'Purchase order updated successfully!',
+        });
       } else {
         // Add new PurchaseOrder
         const response = await createPurchaseOrder(payload);
         setPurchaseOrders((prev) => [...prev, response.data]);
+        MySwal.fire({
+          icon: 'success',
+          title: 'Success',
+          text: 'Purchase order created successfully!',
+        });
       }
       resetForm();
       setIsFormVisible(false);
     } catch (error) {
       console.error('Error saving purchase order:', error);
-      alert('Failed to save purchase order. Please try again.');
+      MySwal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to save purchase order. Please try again.',
+      });
     }
   };
 
@@ -375,7 +417,7 @@ function PurchaseOrder() {
                       name="instituteId"
                       value={formData.instituteId}
                       onChange={(e) => setFormData({ ...formData, instituteId: e.target.value })}
-                      className=" block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
+                      className="block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
                       required
                     >
                       <option value="">Select Institute</option>
@@ -393,7 +435,7 @@ function PurchaseOrder() {
                       name="financialYearId"
                       value={formData.financialYearId}
                       onChange={(e) => setFormData({ ...formData, financialYearId: e.target.value })}
-                      className=" block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
+                      className="block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
                       required
                     >
                       <option value="">Select Financial Year</option>
@@ -411,7 +453,7 @@ function PurchaseOrder() {
                       name="vendorId"
                       value={formData.vendorId}
                       onChange={(e) => setFormData({ ...formData, vendorId: e.target.value })}
-                      className=" block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
+                      className="block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
                       required
                     >
                       <option value="">Select Vendor</option>
@@ -423,16 +465,16 @@ function PurchaseOrder() {
                     </select>
                     {errors.vendorId && <p className="mt-1 text-xs text-red-600">{errors.vendorId}</p>}
                   </div>
-                <FormInput
-                  label="Document"
-                  type="file"
-                  name="document"
-                  onChange={(e) => setFormData({ ...formData, document: e.target.files[0] })}
-                  accept=".pdf,.doc,.docx,.xls,.xlsx"
-                  error={errors.document}
-                  required={false}
-                  className="w-full text-xs sm:text-sm"
-                />
+                  <FormInput
+                    label="Document"
+                    type="file"
+                    name="document"
+                    onChange={(e) => setFormData({ ...formData, document: e.target.files[0] })}
+                    accept=".pdf,.doc,.docx,.xls,.xlsx"
+                    error={errors.document}
+                    required={false}
+                    className="w-full text-xs sm:text-sm"
+                  />
                   <FormInput
                     label="Requested By"
                     type="text"
@@ -578,11 +620,7 @@ function PurchaseOrder() {
                     expandedRowRender: (row) => (
                       <div className="p-4 bg-gray-50">
                         <h4 className="text-md font-medium text-brand-secondary mb-2">Order Items</h4>
-                        <Table
-                          columns={orderItemColumns}
-                          data={row.orderItems}
-                          actions={[]}
-                        />
+                        <Table columns={orderItemColumns} data={row.orderItems} actions={[]} />
                       </div>
                     ),
                     rowExpandable: (row) => row.orderItems && row.orderItems.length > 0,
