@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react'; 
+import React, { useState, useEffect } from 'react';
 import Table from '../components/Table';
 import FormInput from '../components/FormInput';
 import InvoiceDetails from './InvoiceDetails';
-import { getAllInvoices, createInvoice, updateInvoice } from '../api/invoiceService';
+import { getAllInvoices, createInvoice, updateInvoice, getInvoiceById } from '../api/invoiceService';
 import { getPurchaseOrders } from '../api/purchaseOrderService';
 import axios from '../api/axiosInstance';
 import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
 
 function Invoice() {
   const [invoices, setInvoices] = useState([]);
@@ -26,6 +27,8 @@ function Invoice() {
   const [selectedInvoiceId, setSelectedInvoiceId] = useState(null);
   const [currentLayout, setCurrentLayout] = useState(null);
 
+  const MySwal = withReactContent(Swal);
+
   // Fetch data from APIs
   useEffect(() => {
     const fetchData = async () => {
@@ -41,12 +44,13 @@ function Invoice() {
         const poResponse = await getPurchaseOrders();
         const poData = Array.isArray(poResponse.data) ? poResponse.data : [];
         setPurchaseOrders(poData);
-        console.log(poData);
-        
-
       } catch (error) {
         console.error('Error fetching data:', error);
-        alert('Failed to fetch data. Please try again.');
+        MySwal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Failed to fetch data. Please try again.',
+        });
       }
     };
     fetchData();
@@ -72,7 +76,11 @@ function Invoice() {
           }));
         } catch (error) {
           console.error('Error fetching order items:', error);
-          alert('Failed to fetch order items.');
+          MySwal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Failed to fetch order items. Please try again.',
+          });
         }
       };
       fetchOrderItems();
@@ -111,19 +119,29 @@ function Invoice() {
       label: 'Edit',
       onClick: async (row) => {
         try {
-          const invoiceResponse = await axios.get(`/invoices/${row.id}`);
+          const invoiceResponse = await getInvoiceById(row.id);
+          if (!invoiceResponse.data) {
+            MySwal.fire({
+              icon: 'error',
+              title: 'Error',
+              text: 'Invoice not found.',
+            });
+            return;
+          }
           const invoice = invoiceResponse.data;
+          console.log('Fetched Invoice for Edit:', invoice);
           setIsEditMode(true);
           setEditId(row.id);
           const poResponse = await axios.get(`/purchase/${invoice.poId}`);
           const orderItemsData = poResponse.data.orderItems || [];
           setOrderItems(orderItemsData);
-          setFormData({
+          const updatedFormData = {
             poId: invoice.poId,
             invoiceNo: invoice.invoiceNo,
             invoiceDate: invoice.invoiceDate.split('T')[0],
             paymentDetails: invoice.paymentDetails,
             items: invoice.items.map((item) => ({
+              id: item.id, // Include the item ID
               orderItemId: item.orderItemId,
               quantity: item.quantity,
               rate: item.rate,
@@ -132,17 +150,22 @@ function Invoice() {
               taxAmount: item.taxAmount,
               totalAmount: item.totalAmount,
             })),
-          });
+          };
+          console.log('Form Data for Edit:', updatedFormData);
+          setFormData(updatedFormData);
           setIsFormVisible(true);
         } catch (error) {
           console.error('Error fetching invoice:', error);
-          alert('Failed to fetch invoice details.');
+          MySwal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Failed to fetch invoice details. Please try again.',
+          });
         }
       },
       className: 'bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs sm:text-sm',
     },
   ];
-
   // Handle row click to show details
   const handleRowClick = (row) => {
     setSelectedInvoiceId(row.id);
@@ -187,13 +210,28 @@ function Invoice() {
   const addItem = () => {
     setFormData((prev) => ({
       ...prev,
-      items: [...prev.items, { orderItemId: '', taxPercentage: '', quantity: '', rate: '', discount: '', taxAmount: '', totalAmount: '' }],
+      items: [
+        ...prev.items,
+        {
+          orderItemId: '',
+          taxPercentage: '',
+          quantity: '',
+          rate: '',
+          discount: '',
+          taxAmount: '',
+          totalAmount: '',
+        }, // No id for new items
+      ],
     }));
   };
 
   const removeItem = (index) => {
     if (formData.items.length === 1) {
-      alert('At least one invoice item is required');
+      MySwal.fire({
+        icon: 'warning',
+        title: 'Cannot Remove',
+        text: 'At least one invoice item is required.',
+      });
       return;
     }
     setFormData((prev) => ({
@@ -266,17 +304,23 @@ function Invoice() {
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       if (newErrors.poId === 'This Purchase Order already has an invoice.') {
-        Swal.fire({
+        MySwal.fire({
           icon: 'error',
           title: 'Invoice Already Exists',
           text: 'This Purchase Order already has an invoice. Please select a different Purchase Order.',
         });
+      } else {
+        MySwal.fire({
+          icon: 'error',
+          title: 'Validation Error',
+          text: 'Please fill all required fields correctly.',
+        });
       }
       return;
     }
-
+  
     const { items, subtotal, totalTax, invoiceAmount } = calculateTotals(formData.items);
-
+  
     const payload = {
       poId: Number(formData.poId),
       invoiceNo: formData.invoiceNo,
@@ -286,38 +330,91 @@ function Invoice() {
       totalTax,
       invoiceAmount,
       items: items.map((item) => ({
+        id: item.id || undefined, // Include id if it exists, otherwise undefined
         orderItemId: Number(item.orderItemId),
         quantity: Number(item.quantity),
         rate: Number(item.rate),
-        discount: Number(item.discount),
+        discount: Number(item.discount || 0),
         taxPercentage: Number(item.taxPercentage),
         taxAmount: Number(item.taxAmount),
         totalAmount: Number(item.totalAmount),
       })),
     };
-
+  
+    console.log('Submitting Payload:', payload); // Log payload for debugging
+  
     try {
       if (isEditMode) {
         await updateInvoice(editId, payload);
-        const invoiceResponse = await axios.get(`/invoices/${editId}`);
+        const invoiceResponse = await getInvoiceById(editId);
+        console.log('Updated Invoice Response:', invoiceResponse.data); // Log response
+        if (!invoiceResponse.data) {
+          MySwal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Invoice not found.',
+          });
+          return;
+        }
         setInvoices((prev) =>
           prev.map((inv) => (inv.id === editId ? invoiceResponse.data : inv))
         );
         setInvoiceItems((prev) => [
           ...prev.filter((ii) => ii.invoiceId !== editId),
-          ...invoiceResponse.data.items,
+          ...(Array.isArray(invoiceResponse.data.items) ? invoiceResponse.data.items : []),
         ]);
+        MySwal.fire({
+          icon: 'success',
+          title: 'Success',
+          text: 'Invoice updated successfully!',
+        });
       } else {
         const response = await createInvoice(payload);
         setInvoices((prev) => [...prev, response.data]);
-        setInvoiceItems((prev) => [...prev, ...response.data.items]);
+        setInvoiceItems((prev) => [...prev, ...(Array.isArray(response.data.items) ? response.data.items : [])]);
+        MySwal.fire({
+          icon: 'success',
+          title: 'Success',
+          text: 'Invoice created successfully!',
+        });
       }
       resetForm();
       setIsFormVisible(false);
     } catch (error) {
       console.error('Error saving invoice:', error);
-      setErrors({ submit: 'Failed to save invoice. Please try again.' });
+      MySwal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to save invoice. Please try again.',
+      });
     }
+  };
+
+  const handleCancel = async () => {
+    const hasChanges = Object.values(formData).some(
+      (value) =>
+        (typeof value === 'string' && value !== '') ||
+        (Array.isArray(value) && value.some((item) => Object.values(item).some((v) => v !== '')))
+    );
+
+    if (hasChanges) {
+      const result = await MySwal.fire({
+        title: 'Are you sure?',
+        text: 'You have unsaved changes. Do you want to cancel?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, cancel',
+        cancelButtonText: 'No, keep editing',
+        reverseButtons: true,
+      });
+
+      if (!result.isConfirmed) {
+        return;
+      }
+    }
+
+    resetForm();
+    setIsFormVisible(false);
   };
 
   const resetForm = () => {
@@ -517,7 +614,7 @@ function Invoice() {
                       Add Invoice Item
                     </button>
                   </div>
-                  <div className="col-span-1 sm:col-span-2 lg:col-span-3 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+                  <div className="col-span-1 sm:col-span-2 lg:col-span-3 flex flex-col sm:flex-row пространство-y-2 sm:space-y-0 sm:space-x-4">
                     <button
                       type="submit"
                       className="w-full sm:w-auto bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-xs sm:text-sm"
@@ -526,10 +623,7 @@ function Invoice() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        resetForm();
-                        setIsFormVisible(false);
-                      }}
+                      onClick={handleCancel}
                       className="w-full sm:w-auto px-4 py-2 text-gray-600 rounded-md hover:bg-gray-100 text-xs sm:text-sm"
                     >
                       Cancel
