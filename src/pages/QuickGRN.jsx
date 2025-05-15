@@ -2,10 +2,18 @@ import React, { useState, useEffect } from 'react';
 import Table from '../components/Table';
 import FormInput from '../components/FormInput';
 import QuickGRNDetails from './QuickGRNDetails';
+import {
+  getQuickGRNs,
+  getQuickGRNById,
+  createQuickGRN,
+  updateQuickGRN,
+  deleteQuickGRN,
+} from '../api/quickGRNServices'; // Adjust path as needed
+import axios from '../api/axiosInstance'; // Adjust path as needed
+import Swal from 'sweetalert2';
 
 function QuickGRN() {
   const [quickGRNs, setQuickGRNs] = useState([]);
-  const [quickGRNItems, setQuickGRNItems] = useState([]);
   const [institutes, setInstitutes] = useState([]);
   const [financialYears, setFinancialYears] = useState([]);
   const [vendors, setVendors] = useState([]);
@@ -31,104 +39,104 @@ function QuickGRN() {
   const [selectedQGRNId, setSelectedQGRNId] = useState(null);
   const [currentLayout, setCurrentLayout] = useState(null);
 
-  // Initialize dummy data
+  // Fetch all necessary data on component mount
   useEffect(() => {
-    const quickGRNsData = [
-      {
-        qGRNId: 1,
-        qGRNDate: '2025-04-17',
-        qGRNNo: 'QGRN001',
-        instituteId: 2,
-        financialYearId: 1,
-        vendorId: 1,
-        document: 'po_doc.pdf',
-        challanNo: 'CH001',
-        challanDate: '2025-03-26',
-        requestedBy: 'John Doe',
-        remark: 'invoice 17-04',
-        createdAt: '2025-04-24T07:42:42.587Z',
-        updatedAt: '2025-04-24T07:42:42.587Z',
-      },
-      {
-        qGRNId: 2,
-        qGRNDate: '2025-04-17',
-        qGRNNo: 'QGRN001',
-        instituteId: 2,
-        financialYearId: 1,
-        vendorId: 1,
-        document: 'po_doc.pdf',
-        challanNo: 'CH001',
-        challanDate: '2025-03-26',
-        requestedBy: 'John Doe',
-        remark: 'invoice 17-04',
-        createdAt: '2025-04-24T07:42:42.587Z',
-        updatedAt: '2025-04-24T07:42:42.587Z',
-      }
-    ];
-    const quickGRNItemsData = [
-      {
-        qGRNItemid: 1,
-        qGRNId: 1,
-        itemId: 1,
-        quantity: 100,
-        rate: 100.00,
-        amount: 10000.00,
-        discount: 0.00,
-        totalAmount: 10000.00,
-        receivedQuantity: 100,
-        rejectedQuantity: 0,
-        createdAt: '2025-04-24T07:42:42.593Z',
-        updatedAt: '2025-04-24T07:42:42.593Z',
-      },
-      {
-        qGRNItemid: 2,
-        qGRNId: 2,
-        itemId: 2,
-        quantity: 100,
-        rate: 100.00,
-        amount: 10000.00,
-        discount: 0.00,
-        totalAmount: 10000.00,
-        receivedQuantity: 100,
-        rejectedQuantity: 0,
-        createdAt: '2025-04-24T07:42:42.593Z',
-        updatedAt: '2025-04-24T07:42:42.593Z',
-      }
-    ];
-    const institutesData = [
-      { id: 1, name: 'Institute A' },
-      { id: 2, name: 'Institute B' },
-    ];
-    const financialYearsData = [
-      { id: 1, year: '2024-2025' },
-      { id: 2, year: '2025-2026' },
-    ];
-    const vendorsData = [
-      { id: 1, name: 'Vendor X' },
-      { id: 2, name: 'Vendor Y' },
-    ];
-    const itemsData = [
-      { id: 1, name: 'Pen' },
-      { id: 2, name: 'Notebook' },
-    ];
+    const fetchData = async () => {
+      try {
+        // Fetch Quick GRNs
+        const quickGRNsResponse = await getQuickGRNs();
+        const quickGRNsData = quickGRNsResponse.data;
+        setQuickGRNs(quickGRNsData);
+        console.log('Quick GRNs:', quickGRNsData);
 
-    setQuickGRNs(quickGRNsData);
-    setQuickGRNItems(quickGRNItemsData);
-    setInstitutes(institutesData);
-    setFinancialYears(financialYearsData);
-    setVendors(vendorsData);
-    setItems(itemsData);
+        // Fetch institutes
+        const institutesResponse = await axios.get('/institutes');
+        if (Array.isArray(institutesResponse.data.data)) {
+          setInstitutes(institutesResponse.data.data);
+        } else {
+          console.error('Expected institutes data to be an array, but got:', institutesResponse.data.data);
+          Swal.fire({
+            icon: 'error',
+            title: 'Data Error',
+            text: 'Failed to load institutes data.',
+          });
+        }
+
+        // Fetch financial years
+        const fyResponse = await axios.get('/financialYears');
+        if (Array.isArray(fyResponse.data.data)) {
+          setFinancialYears(fyResponse.data.data);
+        } else {
+          console.error('Expected financial years data to be an array, but got:', fyResponse.data.data);
+          Swal.fire({
+            icon: 'error',
+            title: 'Data Error',
+            text: 'Failed to load financial years data.',
+          });
+        }
+
+        // Fetch vendors
+        const vendorsResponse = await axios.get('/vendors');
+        if (Array.isArray(vendorsResponse.data.data)) {
+          setVendors(vendorsResponse.data.data);
+        } else {
+          console.error('Expected vendors data to be an array, but got:', vendorsResponse.data.data);
+          Swal.fire({
+            icon: 'error',
+            title: 'Data Error',
+            text: 'Failed to load vendors data.',
+          });
+        }
+
+        // Fetch items
+        const itemsResponse = await axios.get('/items');
+        if (Array.isArray(itemsResponse.data.items)) {
+          setItems(itemsResponse.data.items);
+        } else {
+          console.error('Expected items data to be an array, but got:', itemsResponse.data.items);
+          Swal.fire({
+            icon: 'error',
+            title: 'Data Error',
+            text: 'Failed to load items data.',
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Fetch Error',
+          text: 'Failed to load data. Please try again.',
+        });
+      }
+    };
+
+    fetchData();
   }, []);
 
   // Table columns for QuickGRN
   const quickGRNColumns = [
     { key: 'qGRNNo', label: 'Quick GRN No' },
-    { key: 'qGRNDate', label: 'Quick GRN Date', format: (value) => new Date(value).toLocaleDateString() },
-    { key: 'instituteId', label: 'Institute', format: (value) => institutes.find((i) => i.id === value)?.name || 'N/A' },
-    { key: 'financialYearId', label: 'Financial Year', format: (value) => financialYears.find((fy) => fy.id === value)?.year || 'N/A' },
-    { key: 'vendorId', label: 'Vendor', format: (value) => vendors.find((v) => v.id === value)?.name || 'N/A' },
+    {
+      key: 'qGRNDate',
+      label: 'Quick GRN Date',
+      format: (value) => new Date(value).toLocaleDateString(),
+    },
+    {
+      key: 'instituteId',
+      label: 'Institute',
+      format: (value) => institutes.find((inst) => inst.instituteId === value)?.instituteName || 'N/A',
+    },
+    {
+      key: 'financialYearId',
+      label: 'Financial Year',
+      format: (value) => financialYears.find((year) => year.financialYearId === value)?.year || 'N/A',
+    },
+    {
+      key: 'vendorId',
+      label: 'Vendor',
+      format: (value) => vendors.find((v) => v.vendorId === value)?.name || 'N/A',
+    },
     { key: 'challanNo', label: 'Challan No' },
-    { key: 'challanDate', label: 'Challan Date', format: (value) => value ? new Date(value).toLocaleDateString() : 'N/A' },
     { key: 'requestedBy', label: 'Requested By' },
   ];
 
@@ -136,48 +144,85 @@ function QuickGRN() {
   const actions = [
     {
       label: 'Edit',
-      onClick: (row) => {
-        setIsEditMode(true);
-        setEditId(row.qGRNId);
-        const items = quickGRNItems
-          .filter((qi) => qi.qGRNId === row.qGRNId)
-          .map((qi) => ({
-            qGRNItemid: qi.qGRNItemid,
-            itemId: qi.itemId,
-            quantity: qi.quantity,
-            rate: qi.rate,
-            receivedQuantity: qi.receivedQuantity,
-            rejectedQuantity: qi.rejectedQuantity,
-            discount: qi.discount,
-            amount: qi.amount,
-            totalAmount: qi.totalAmount,
-          }));
-        setFormData({
-          qGRNId: row.qGRNId,
-          qGRNNo: row.qGRNNo,
-          qGRNDate: row.qGRNDate.split('T')[0],
-          instituteId: row.instituteId,
-          financialYearId: row.financialYearId,
-          vendorId: row.vendorId,
-          document: row.document,
-          challanNo: row.challanNo,
-          challanDate: row.challanDate ? row.challanDate.split('T')[0] : '',
-          requestedBy: row.requestedBy,
-          remark: row.remark,
-          quickGRNItems: items.length > 0 ? items : [{ itemId: '', quantity: '', rate: '', receivedQuantity: '', rejectedQuantity: '', discount: '', amount: '', totalAmount: '' }],
-        });
-        setIsFormVisible(true);
+      onClick: async (row) => {
+        try {
+          const response = await getQuickGRNById(row.qGRNId);
+          const qgrn = response.data;
+          const items = qgrn.items || [];
+          setIsEditMode(true);
+          setEditId(row.qGRNId);
+          setFormData({
+            qGRNId: qgrn.qGRNId,
+            qGRNNo: qgrn.qGRNNo,
+            qGRNDate: qgrn.qGRNDate.split('T')[0],
+            instituteId: qgrn.instituteId ? String(qgrn.instituteId) : '',
+            financialYearId: qgrn.financialYearId ? String(qgrn.financialYearId) : '',
+            vendorId: qgrn.vendorId ? String(qgrn.vendorId) : '',
+            document: qgrn.document || '',
+            challanNo: qgrn.challanNo || '',
+            challanDate: qgrn.challanDate ? qgrn.challanDate.split('T')[0] : '',
+            requestedBy: qgrn.requestedBy || '',
+            remark: qgrn.remark || '',
+            quickGRNItems: items.length > 0
+              ? items.map((qi) => ({
+                  qGRNItemid: qi.qGRNItemid,
+                  itemId: qi.itemId ? String(qi.itemId) : '',
+                  quantity: qi.quantity || '',
+                  rate: qi.rate || '',
+                  receivedQuantity: qi.receivedQuantity || '',
+                  rejectedQuantity: qi.rejectedQuantity || '',
+                  discount: qi.discount || '',
+                  amount: qi.amount || '',
+                  totalAmount: qi.totalAmount || '',
+                }))
+              : [{ itemId: '', quantity: '', rate: '', receivedQuantity: '', rejectedQuantity: '', discount: '', amount: '', totalAmount: '' }],
+          });
+          setIsFormVisible(true);
+        } catch (error) {
+          console.error('Error fetching Quick GRN for edit:', error);
+          Swal.fire({
+            icon: 'error',
+            title: 'Edit Error',
+            text: 'Failed to load Quick GRN data.',
+          });
+        }
       },
       className: 'bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs sm:text-sm',
     },
     {
       label: 'Delete',
-      onClick: (row) => {
-        if (window.confirm(`Delete Quick GRN ${row.qGRNNo}?`)) {
-          setQuickGRNs((prev) => prev.filter((qgrn) => qgrn.qGRNId !== row.qGRNId));
-          setQuickGRNItems((prev) => prev.filter((qi) => qi.qGRNId !== row.qGRNId));
-          resetForm();
-        }
+      onClick: async (row) => {
+        Swal.fire({
+          title: 'Are you sure?',
+          text: `Do you want to delete Quick GRN ${row.qGRNNo}?`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6',
+          confirmButtonText: 'Yes, delete it!',
+          cancelButtonText: 'Cancel',
+        }).then(async (result) => {
+          if (result.isConfirmed) {
+            try {
+              await deleteQuickGRN(row.qGRNId);
+              setQuickGRNs((prev) => prev.filter((qgrn) => qgrn.qGRNId !== row.qGRNId));
+              Swal.fire({
+                icon: 'success',
+                title: 'Deleted!',
+                text: `Quick GRN ${row.qGRNNo} has been deleted.`,
+                timer: 1500,
+                showConfirmButton: false,
+              });
+            } catch (error) {
+              console.error('Error deleting Quick GRN:', error);
+              Swal.fire({
+                icon: 'error',
+                title: 'Delete Error',
+                text: 'Failed to delete Quick GRN.',
+              });
+            }
+          }
+        });
       },
       className: 'bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs sm:text-sm',
     },
@@ -230,7 +275,11 @@ function QuickGRN() {
 
   const removeItem = (index) => {
     if (formData.quickGRNItems.length === 1) {
-      alert('At least one Quick GRN item is required');
+      Swal.fire({
+        icon: 'warning',
+        title: 'Cannot Remove',
+        text: 'At least one Quick GRN item is required.',
+      });
       return;
     }
     setFormData((prev) => ({
@@ -241,103 +290,111 @@ function QuickGRN() {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.qGRNNo) newErrors.qGRNNo = 'Quick GRN number is required';
-    else if (quickGRNs.some((qgrn) => qgrn.qGRNNo === formData.qGRNNo && qgrn.qGRNId !== editId)) {
+    if (!formData.qGRNNo.trim()) newErrors.qGRNNo = 'Quick GRN number is required';
+    else if (!isEditMode && quickGRNs.some((qgrn) => qgrn.qGRNNo === formData.qGRNNo)) {
       newErrors.qGRNNo = 'Quick GRN number must be unique';
     }
     if (!formData.qGRNDate) newErrors.qGRNDate = 'Quick GRN date is required';
-    if (!formData.instituteId) newErrors.instituteId = 'Institute is required';
-    if (!formData.financialYearId) newErrors.financialYearId = 'Financial Year is required';
-    if (!formData.vendorId) newErrors.vendorId = 'Vendor is required';
-    if (!formData.requestedBy) newErrors.requestedBy = 'Requested By is required';
+    if (!formData.instituteId || Number(formData.instituteId) <= 0 || !institutes.some((inst) => inst.instituteId === Number(formData.instituteId))) {
+      newErrors.instituteId = 'A valid institute is required';
+    }
+    if (!formData.financialYearId || Number(formData.financialYearId) <= 0 || !financialYears.some((fy) => fy.financialYearId === Number(formData.financialYearId))) {
+      newErrors.financialYearId = 'A valid financial year is required';
+    }
+    if (!formData.vendorId || Number(formData.vendorId) <= 0 || !vendors.some((v) => v.vendorId === Number(formData.vendorId))) {
+      newErrors.vendorId = 'A valid vendor is required';
+    }
+    if (!formData.requestedBy.trim()) newErrors.requestedBy = 'Requested By is required';
 
     formData.quickGRNItems.forEach((item, index) => {
-      if (!item.itemId) newErrors[`quickGRNItems[${index}].itemId`] = 'Item is required';
-      if (!item.quantity || item.quantity < 0) newErrors[`quickGRNItems[${index}].quantity`] = 'Quantity must be non-negative';
-      if (!item.rate || item.rate < 0) newErrors[`quickGRNItems[${index}].rate`] = 'Rate must be non-negative';
-      if (!item.receivedQuantity || item.receivedQuantity < 0) newErrors[`quickGRNItems[${index}].receivedQuantity`] = 'Received quantity must be non-negative';
-      if (item.rejectedQuantity < 0) newErrors[`quickGRNItems[${index}].rejectedQuantity`] = 'Rejected quantity must be non-negative';
-      if (item.discount < 0) newErrors[`quickGRNItems[${index}].discount`] = 'Discount cannot be negative';
+      if (!item.itemId || Number(item.itemId) <= 0 || !items.some((it) => it.itemId === Number(item.itemId))) {
+        newErrors[`quickGRNItems[${index}].itemId`] = 'A valid item is required';
+      }
+      if (!item.quantity || Number(item.quantity) <= 0) newErrors[`quickGRNItems[${index}].quantity`] = 'Quantity must be positive';
+      if (!item.rate || Number(item.rate) <= 0) newErrors[`quickGRNItems[${index}].rate`] = 'Rate must be positive';
+      if (!item.receivedQuantity || Number(item.receivedQuantity) < 0) newErrors[`quickGRNItems[${index}].receivedQuantity`] = 'Received quantity must be non-negative';
+      if (item.rejectedQuantity && Number(item.rejectedQuantity) < 0) newErrors[`quickGRNItems[${index}].rejectedQuantity`] = 'Rejected quantity must be non-negative';
+      if (item.discount && Number(item.discount) < 0) newErrors[`quickGRNItems[${index}].discount`] = 'Discount cannot be negative';
     });
 
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = validateForm();
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      console.log('Validation errors:', newErrors);
+      Swal.fire({
+        icon: 'error',
+        title: 'Validation Error',
+        html: Object.values(newErrors).map((err) => `<p>${err}</p>`).join(''),
+        confirmButtonColor: '#d33',
+      });
       return;
     }
 
-    if (isEditMode) {
-      setQuickGRNs((prev) =>
-        prev.map((qgrn) =>
-          qgrn.qGRNId === editId
-            ? {
-                ...formData,
-                qGRNId: editId,
-                instituteId: Number(formData.instituteId),
-                financialYearId: Number(formData.financialYearId),
-                vendorId: Number(formData.vendorId),
-                updatedAt: new Date().toISOString(),
-              }
-            : qgrn
-        )
-      );
-      const existingIds = quickGRNItems.filter((qi) => qi.qGRNId === editId).map((qi) => qi.qGRNItemid);
-      const updatedItems = formData.quickGRNItems.map((item, index) => ({
-        qGRNItemid: item.qGRNItemid || existingIds[index] || Math.max(...quickGRNItems.map((i) => i.qGRNItemid), 0) + index + 1,
-        qGRNId: editId,
+    const payload = {
+      qGRNDate: formData.qGRNDate,
+      qGRNNo: formData.qGRNNo.trim(),
+      instituteId: Number(formData.instituteId),
+      financialYearId: Number(formData.financialYearId),
+      vendorId: Number(formData.vendorId),
+      document: formData.document.trim() || null,
+      challanNo: formData.challanNo.trim() || null,
+      challanDate: formData.challanDate || null,
+      requestedBy: formData.requestedBy.trim(),
+      remark: formData.remark.trim() || null,
+      quickGRNItems: formData.quickGRNItems.map((item) => ({
+        qGRNItemid: item.qGRNItemid || undefined,
         itemId: Number(item.itemId),
         quantity: Number(item.quantity),
         rate: Number(item.rate),
-        amount: Number(item.amount),
-        discount: Number(item.discount),
-        totalAmount: Number(item.totalAmount),
+        discount: Number(item.discount) || 0,
         receivedQuantity: Number(item.receivedQuantity),
-        rejectedQuantity: Number(item.rejectedQuantity || 0),
-        createdAt: item.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }));
-      setQuickGRNItems((prev) => [
-        ...prev.filter((qi) => qi.qGRNId !== editId),
-        ...updatedItems,
-      ]);
-    } else {
-      const newQGRNId = Math.max(...quickGRNs.map((qgrn) => qgrn.qGRNId), 0) + 1;
-      setQuickGRNs((prev) => [
-        ...prev,
-        {
-          ...formData,
-          qGRNId: newQGRNId,
-          instituteId: Number(formData.instituteId),
-          financialYearId: Number(formData.financialYearId),
-          vendorId: Number(formData.vendorId),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ]);
-      const newQuickGRNItems = formData.quickGRNItems.map((item, index) => ({
-        qGRNItemid: Math.max(...quickGRNItems.map((i) => i.qGRNItemid), 0) + index + 1,
-        qGRNId: newQGRNId,
-        itemId: Number(item.itemId),
-        quantity: Number(item.quantity),
-        rate: Number(item.rate),
-        amount: Number(item.amount),
-        discount: Number(item.discount),
-        totalAmount: Number(item.totalAmount),
-        receivedQuantity: Number(item.receivedQuantity),
-        rejectedQuantity: Number(item.rejectedQuantity || 0),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }));
-      setQuickGRNItems((prev) => [...prev, ...newQuickGRNItems]);
-    }
+        rejectedQuantity: Number(item.rejectedQuantity) || 0,
+      })),
+    };
 
-    resetForm();
-    setIsFormVisible(false);
+    console.log('Submitting payload:', payload);
+
+    try {
+      if (isEditMode) {
+        const response = await updateQuickGRN(editId, payload);
+        const updatedQGRN = response.data;
+        setQuickGRNs((prev) =>
+          prev.map((qgrn) => (qgrn.qGRNId === editId ? updatedQGRN : qgrn))
+        );
+        Swal.fire({
+          icon: 'success',
+          title: 'Success',
+          text: 'Quick GRN updated successfully.',
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      } else {
+        const response = await createQuickGRN(payload);
+        const newQGRN = response.data;
+        setQuickGRNs((prev) => [...prev, newQGRN]);
+        Swal.fire({
+          icon: 'success',
+          title: 'Success',
+          text: 'Quick GRN created successfully.',
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      }
+      resetForm();
+      setIsFormVisible(false);
+    } catch (error) {
+      console.error('Error submitting Quick GRN:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Submission Error',
+        text: `Failed to ${isEditMode ? 'update' : 'create'} Quick GRN: ${error.response?.data?.message || error.message}`,
+      });
+    }
   };
 
   const resetForm = () => {
@@ -360,9 +417,27 @@ function QuickGRN() {
     setEditId(null);
   };
 
+  const handleCancel = () => {
+    Swal.fire({
+      title: 'Cancel Form?',
+      text: 'Are you sure you want to cancel? All unsaved changes will be lost.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, cancel',
+      cancelButtonText: 'Stay',
+    }).then((result) => {
+      if (result.isConfirmed) {
+        resetForm();
+        setIsFormVisible(false);
+      }
+    });
+  };
+
   // Get selected Quick GRN data
   const selectedQGRN = quickGRNs.find((qgrn) => qgrn.qGRNId === selectedQGRNId);
-  const selectedQGRNItems = quickGRNItems.filter((qi) => qi.qGRNId === selectedQGRNId);
+  const selectedQGRNItems = selectedQGRN?.items || [];
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
@@ -397,16 +472,6 @@ function QuickGRN() {
                 </h3>
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <FormInput
-                    label="Quick GRN ID"
-                    type="text"
-                    name="qGRNId"
-                    value={formData.qGRNId}
-                    onChange={handleChange}
-                    disabled
-                    required={false}
-                    className="w-full text-xs sm:text-sm"
-                  />
-                  <FormInput
                     label="Quick GRN Number"
                     type="text"
                     name="qGRNNo"
@@ -437,8 +502,8 @@ function QuickGRN() {
                     >
                       <option value="">Select Institute</option>
                       {institutes.map((inst) => (
-                        <option key={inst.id} value={inst.id}>
-                          {inst.name}
+                        <option key={inst.instituteId} value={inst.instituteId}>
+                          {inst.instituteName}
                         </option>
                       ))}
                     </select>
@@ -457,7 +522,7 @@ function QuickGRN() {
                     >
                       <option value="">Select Financial Year</option>
                       {financialYears.map((fy) => (
-                        <option key={fy.id} value={fy.id}>
+                        <option key={fy.financialYearId} value={fy.financialYearId}>
                           {fy.year}
                         </option>
                       ))}
@@ -477,7 +542,7 @@ function QuickGRN() {
                     >
                       <option value="">Select Vendor</option>
                       {vendors.map((vendor) => (
-                        <option key={vendor.id} value={vendor.id}>
+                        <option key={vendor.vendorId} value={vendor.vendorId}>
                           {vendor.name}
                         </option>
                       ))}
@@ -552,8 +617,8 @@ function QuickGRN() {
                             >
                               <option value="">Select Item</option>
                               {items.map((it) => (
-                                <option key={it.id} value={it.id}>
-                                  {it.name}
+                                <option key={it.itemId} value={it.itemId}>
+                                  {it.itemName}
                                 </option>
                               ))}
                             </select>
@@ -623,7 +688,7 @@ function QuickGRN() {
                             label="Rejected Quantity"
                             type="number"
                             name="rejectedQuantity"
-                            value={item.rejectedQuantity}
+                            value={item.receivedQuantity}
                             onChange={(e) => handleItemChange(index, e)}
                             error={errors[`quickGRNItems[${index}].rejectedQuantity`]}
                             required={false}
@@ -656,10 +721,7 @@ function QuickGRN() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        resetForm();
-                        setIsFormVisible(false);
-                      }}
+                      onClick={handleCancel}
                       className="w-full sm:w-auto px-4 py-2 text-gray-600 rounded-md hover:bg-gray-100 text-xs sm:text-sm"
                     >
                       Cancel
@@ -670,7 +732,15 @@ function QuickGRN() {
             )}
             <div>
               {currentLayout ? (
-                <QuickGRNDetails />
+                <QuickGRNDetails
+                  quickGRN={selectedQGRN}
+                  quickGRNItems={selectedQGRNItems}
+                  institutes={institutes}
+                  financialYears={financialYears}
+                  vendors={vendors}
+                  items={items}
+                  onBack={handleBack}
+                />
               ) : (
                 <Table
                   columns={quickGRNColumns}

@@ -5,10 +5,11 @@ const QuickGRNDetails = ({ quickGRN, quickGRNItems, institutes, financialYears, 
   if (!quickGRN) {
     return <div className="text-center p-6">No Quick GRN selected</div>;
   }
+  
 
-  const institute = institutes.find((inst) => inst.id === quickGRN.instituteId);
-  const financialYear = financialYears.find((fy) => fy.id === quickGRN.financialYearId);
-  const vendor = vendors.find((v) => v.id === quickGRN.vendorId);
+  const institute = institutes.find((inst) => inst.instituteId === quickGRN.instituteId);
+  const financialYear = financialYears.find((year) => year.financialYearId === quickGRN.financialYearId);
+  const vendor = vendors.find((vend) => vend.vendorId === quickGRN.vendorId);
 
   return (
     <div className="">
@@ -27,10 +28,7 @@ const QuickGRNDetails = ({ quickGRN, quickGRNItems, institutes, financialYears, 
       <div className="p-6 bg-gray-50 rounded-md shadow mb-6">
         <h3 className="text-sm sm:text-base font-medium text-brand-secondary mb-4">Details</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="flex flex-col">
-            <span className="text-xs sm:text-sm font-semibold text-gray-700">Quick GRN ID</span>
-            <span className="text-xs sm:text-sm text-gray-900">{quickGRN.qGRNId}</span>
-          </div>
+        
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Quick GRN Number</span>
             <span className="text-xs sm:text-sm text-gray-900">{quickGRN.qGRNNo}</span>
@@ -43,7 +41,7 @@ const QuickGRNDetails = ({ quickGRN, quickGRNItems, institutes, financialYears, 
           </div>
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Institute</span>
-            <span className="text-xs sm:text-sm text-gray-900">{institute?.name || 'N/A'}</span>
+            <span className="text-xs sm:text-sm text-gray-900">{institute?.instituteName || 'N/A'}</span>
           </div>
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Financial Year</span>
@@ -89,7 +87,7 @@ const QuickGRNDetails = ({ quickGRN, quickGRNItems, institutes, financialYears, 
                 <strong>Item ID:</strong> {item.qGRNItemid}
               </p>
               <p className="text-xs">
-                <strong>Item Name:</strong> {items.find((i) => i.id === item.itemId)?.name || 'N/A'}
+              <strong>Item Name:</strong> {items.find((i) => i.itemId === item.itemId)?.itemName || 'N/A'}
               </p>
               <p className="text-xs">
                 <strong>Quantity:</strong> {item.quantity}
@@ -120,7 +118,6 @@ const QuickGRNDetails = ({ quickGRN, quickGRNItems, institutes, financialYears, 
           <table className="w-full text-sm text-left text-gray-900">
             <thead className="text-xs uppercase bg-gray-200">
               <tr>
-                <th scope="col" className="px-6 py-3">Item ID</th>
                 <th scope="col" className="px-6 py-3">Item Name</th>
                 <th scope="col" className="px-6 py-3">Quantity</th>
                 <th scope="col" className="px-6 py-3">Rate</th>
@@ -134,8 +131,7 @@ const QuickGRNDetails = ({ quickGRN, quickGRNItems, institutes, financialYears, 
             <tbody>
               {quickGRNItems.map((item) => (
                 <tr key={item.qGRNItemid} className="bg-white border-b">
-                  <td className="px-6 py-4">{item.qGRNItemid}</td>
-                  <td className="px-6 py-4">{items.find((i) => i.id === item.itemId)?.name || 'N/A'}</td>
+                  <td className="px-6 py-4">{items.find((i) => i.itemId === item.itemId)?.itemName || 'N/A'}</td>
                   <td className="px-6 py-4">{item.quantity}</td>
                   <td className="px-6 py-4">₹{parseFloat(item.rate).toFixed(2)}</td>
                   <td className="px-6 py-4">₹{parseFloat(item.amount).toFixed(2)}</td>
