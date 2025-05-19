@@ -688,7 +688,7 @@ function QuickGRN() {
                             label="Rejected Quantity"
                             type="number"
                             name="rejectedQuantity"
-                            value={item.receivedQuantity}
+                            value={item.rejectedQuantity}
                             onChange={(e) => handleItemChange(index, e)}
                             error={errors[`quickGRNItems[${index}].rejectedQuantity`]}
                             required={false}

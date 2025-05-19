@@ -1,7 +1,12 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import PropTypes from 'prop-types';
 
 const QuickInvoiceDetails = ({ quickInvoice, quickInvoiceItems, quickGRNs, items, onBack }) => {
+  // Debug log for items prop
+  useEffect(() => {
+    console.log('Items prop:', items);
+  }, [items]);
+
   if (!quickInvoice) {
     return <div className="text-center p-6">No Quick Invoice selected</div>;
   }
@@ -75,7 +80,7 @@ const QuickInvoiceDetails = ({ quickInvoice, quickInvoiceItems, quickGRNs, items
                 <strong>GRN Item ID:</strong> {item.qGRNItemid}
               </p>
               <p className="text-xs">
-                <strong>Item Name:</strong> {items.find((i) => i.id === item.itemId)?.name || 'N/A'}
+                <strong>Item Name:</strong> {items.itemId}
               </p>
               <p className="text-xs">
                 <strong>Quantity:</strong> {item.quantity}
@@ -103,8 +108,6 @@ const QuickInvoiceDetails = ({ quickInvoice, quickInvoiceItems, quickGRNs, items
           <table className="w-full text-sm text-left text-gray-900">
             <thead className="text-xs uppercase bg-gray-200">
               <tr>
-                <th scope="col" className="px-6 py-3">Item ID</th>
-                <th scope="col" className="px-6 py-3">Quick GRN</th>
                 <th scope="col" className="px-6 py-3">GRN Item ID</th>
                 <th scope="col" className="px-6 py-3">Item Name</th>
                 <th scope="col" className="px-6 py-3">Quantity</th>
@@ -118,10 +121,8 @@ const QuickInvoiceDetails = ({ quickInvoice, quickInvoiceItems, quickGRNs, items
             <tbody>
               {quickInvoiceItems.map((item) => (
                 <tr key={item.qInvoiceItemId} className="bg-white border-b">
-                  <td className="px-6 py-4">{item.qInvoiceItemId}</td>
-                  <td className="px-6 py-4">{quickGRNs.find((g) => g.qGRNId === item.qGRNId)?.qGRNNo || item.qGRNId}</td>
                   <td className="px-6 py-4">{item.qGRNItemid}</td>
-                  <td className="px-6 py-4">{items.find((i) => i.id === item.itemId)?.name || 'N/A'}</td>
+                  <td className="px-6 py-4">{items.itemId}</td>
                   <td className="px-6 py-4">{item.quantity}</td>
                   <td className="px-6 py-4">₹{parseFloat(item.rate).toFixed(2)}</td>
                   <td className="px-6 py-4">₹{parseFloat(item.discount).toFixed(2)}</td>
@@ -170,13 +171,6 @@ QuickInvoiceDetails.propTypes = {
     PropTypes.shape({
       qGRNId: PropTypes.number,
       qGRNNo: PropTypes.string,
-    })
-  ).isRequired,
-  quickGRNItems: PropTypes.arrayOf(
-    PropTypes.shape({
-      qGRNItemid: PropTypes.number,
-      qGRNId: PropTypes.number,
-      itemId: PropTypes.number,
     })
   ).isRequired,
   items: PropTypes.arrayOf(
