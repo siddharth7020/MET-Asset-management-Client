@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Table from '../components/Table';
 import { getAllStockStorage, getStockStorageByItemId } from '../api/stockService';
-import { getGrns, getGrnById } from '../api/grnService';
-import { getQuickGRNs, getQuickGRNById } from '../api/quickGRNServices';
+import { getGrns } from '../api/grnService';
+import { getQuickGRNs } from '../api/quickGRNServices';
 import { getPurchaseOrders } from '../api/purchaseOrderService';
 import axios from '../api/axiosInstance';
 import Swal from 'sweetalert2';
