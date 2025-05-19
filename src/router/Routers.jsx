@@ -12,6 +12,7 @@ import GRN from '../pages/GRN';
 import Invoice from '../pages/Invoice';
 import QuickGRN from '../pages/QuickGRN';
 import QuickInvoice from '../pages/QuickInvoice';
+import Stock from '../pages/stockStorage';
 import DistributionItem from '../pages/DistributionItem';
 import ReturnItem from '../pages/ReturnItem';
 import Report from '../pages/Report';
@@ -32,6 +33,7 @@ const Routers = () => {
         <Route path="/purchase/invoice" element={<Invoice />} />
         <Route path="/quick-purchase/quick-grn" element={<QuickGRN />} />
         <Route path="/quick-purchase/quick-invoice" element={<QuickInvoice />} />
+        <Route path="/stock/stock-storage" element={<Stock />} />
         <Route path="/distribution/distribution-item" element={<DistributionItem />} />
         <Route path="/distribution/return-item" element={<ReturnItem />} />
         <Route path="/reports" element={<Report />} />

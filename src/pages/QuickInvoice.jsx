@@ -39,20 +39,16 @@ function QuickInvoice() {
 
         // Set Quick Invoices
         setQuickInvoices(invoicesResponse.data || []);
-        console.log('Quick Invoices:', invoicesResponse.data || []);
 
         // Set Quick GRNs
         setQuickGRNs(grnsResponse.data || []);
-        console.log('Quick GRNs:', grnsResponse.data || []);
 
         // Set Quick GRN Items from grnsResponse.data.items
         const grnItems = grnsResponse.data.flatMap(grn => grn.items || []) || [];
         setQuickGRNItems(grnItems);
-        console.log('Quick GRN Items:', grnItems);
 
         // Set Items (inventory items)
         setItems(itemsResponse.data || []);
-        console.log('Items:', itemsResponse.data || []);
       } catch (error) {
         console.error('Error fetching data:', error);
         setErrors({ api: 'Failed to load data. Please try again.' });
