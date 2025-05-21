@@ -25,10 +25,7 @@ const GrnDetails = ({ grn, grnItems, purchaseOrders, onBack }) => {
       <div className="p-6 bg-gray-50 rounded-md shadow mb-6">
         <h3 className="text-sm sm:text-base font-medium text-brand-secondary mb-4">Details</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="flex flex-col">
-            <span className="text-xs sm:text-sm font-semibold text-gray-700">GRN ID</span>
-            <span className="text-xs sm:text-sm text-gray-900">{grn.id}</span>
-          </div>
+
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">GRN Number</span>
             <span className="text-xs sm:text-sm text-gray-900">{grn.grnNo}</span>
@@ -56,7 +53,7 @@ const GrnDetails = ({ grn, grnItems, purchaseOrders, onBack }) => {
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Document</span>
             <button
-              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-xs sm:text-sm w-50"
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-xs sm:text-sm w-48"
               onClick={() => {
                 const link = document.createElement('a');
                 link.href = grn.document;
@@ -83,7 +80,7 @@ const GrnDetails = ({ grn, grnItems, purchaseOrders, onBack }) => {
             <div key={item.id} className="p-4 border rounded-md bg-gray-50">
               <p className="text-xs">
                 <strong>Item Name:</strong>
-                { item.orderItemId}
+                {item.orderItemId}
               </p>
               <p className="text-xs">
                 <strong>Received Quantity:</strong> {item.receivedQuantity}

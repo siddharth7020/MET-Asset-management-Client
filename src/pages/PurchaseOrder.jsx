@@ -401,16 +401,6 @@ function PurchaseOrder() {
                     required
                     className="w-full text-xs sm:text-sm"
                   />
-                  <FormInput
-                    label="PO Number"
-                    type="text"
-                    name="poNo"
-                    value={formData.poNo}
-                    onChange={(e) => setFormData({ ...formData, poNo: e.target.value })}
-                    error={errors.poNo}
-                    required
-                    className="w-full text-xs sm:text-sm"
-                  />
                   <div>
                     <label className="block text-xs sm:text-sm font-medium text-gray-700">Institute</label>
                     <select

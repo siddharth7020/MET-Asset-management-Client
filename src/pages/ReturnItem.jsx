@@ -3,6 +3,10 @@ import Select from 'react-select';
 import Table from '../components/Table';
 import FormInput from '../components/FormInput';
 import ReturnDetails from './ReturnDetails';
+import { getAllReturns, createReturn } from '../api/returnService';
+import { getAllDistributions } from '../api/distributionService';
+import axios from '../api/axiosInstance';
+import Swal from 'sweetalert2';
 
 function Return() {
   const [returns, setReturns] = useState([]);
@@ -13,101 +17,91 @@ function Return() {
   const [financialYears, setFinancialYears] = useState([]);
   const [institutes, setInstitutes] = useState([]);
   const [isFormVisible, setIsFormVisible] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
   const [formData, setFormData] = useState({
     distributionId: '',
     financialYearId: '',
     instituteId: '',
     employeeName: '',
     location: '',
-    documents: null,
+    documents: '',
     remark: '',
     items: [{ itemId: '', returnQuantity: '' }],
   });
   const [errors, setErrors] = useState({});
-  const [editId, setEditId] = useState(null);
-  const [expandedReturnId, setExpandedReturnId] = useState(null);
   const [selectedReturnId, setSelectedReturnId] = useState(null);
+  const [expandedReturnId, setExpandedReturnId] = useState(null);
 
-  // Initialize dummy data
+  // Fetch all necessary data on component mount
   useEffect(() => {
-    const returnsData = [
-      {
-        id: 1,
-        distributionId: 1,
-        financialYearId: 1,
-        instituteId: 1,
-        employeeName: 'Shreya',
-        location: 'Building A',
-        documents: 'return_receipt.pdf',
-        remark: 'Returned due to excess',
-        createdAt: '2025-04-25T04:51:02.977Z',
-        updatedAt: '2025-04-25T04:51:02.977Z',
-      },
-    ];
-    const returnItemsData = [
-      {
-        id: 1,
-        returnId: 1,
-        itemId: 1,
-        returnQuantity: 15,
-        createdAt: '2025-04-25T04:51:02.990Z',
-        updatedAt: '2025-04-25T04:51:02.990Z',
-      },
-    ];
-    const distributionsData = [
-      {
-        id: 1,
-        financialYearId: 1,
-        instituteId: 1,
-        employeeName: 'Shreya',
-        location: 'Building A',
-        documents: 'receipt.pdf',
-        remark: 'Issued for project use',
-        createdAt: '2025-04-25T04:37:50.729Z',
-        updatedAt: '2025-04-25T04:37:50.729Z',
-      },
-    ];
-    const distributionItemsData = [
-      {
-        id: 1,
-        distributionId: 1,
-        itemId: 2,
-        issueQuantity: 10,
-        createdAt: '2025-04-25T04:37:50.749Z',
-        updatedAt: '2025-04-25T04:37:50.749Z',
-      },
-      {
-        id: 2,
-        distributionId: 1,
-        itemId: 1,
-        issueQuantity: 50,
-        createdAt: '2025-04-25T04:37:50.749Z',
-        updatedAt: '2025-04-25T04:37:50.749Z',
-      },
-    ];
-    const itemsData = [
-      { id: 1, itemName: 'Keyboard' },
-      { id: 2, itemName: 'Laptop' },
-    ];
-    const financialYearsData = [{ id: 1, name: '2024-2025' }];
-    const institutesData = [{ id: 1, name: 'Main Campus' }];
+    const fetchData = async () => {
+      try {
+        // Fetch returns
+        const returnsResponse = await getAllReturns();
+        const returnsData = returnsResponse.data;
+        const returnItemsData = returnsData.flatMap(ret => ret.items || []);
+        setReturns(returnsData);
+        setReturnItems(returnItemsData);
 
-    setReturns(returnsData);
-    setReturnItems(returnItemsData);
-    setDistributions(distributionsData);
-    setDistributionItems(distributionItemsData);
-    setItems(itemsData);
-    setFinancialYears(financialYearsData);
-    setInstitutes(institutesData);
+        // Fetch distributions
+        const distributionsResponse = await getAllDistributions();
+        const distributionsData = distributionsResponse.data;
+        const distributionItemsData = distributionsData.flatMap(dist => dist.items || []);
+        setDistributions(distributionsData);
+        setDistributionItems(distributionItemsData);
+
+        // Fetch items
+        const itemsResponse = await axios.get('/items');
+        if (Array.isArray(itemsResponse.data.items)) {
+          setItems(itemsResponse.data.items);
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'Data Error',
+            text: 'Failed to load items data.',
+          });
+        }
+
+        // Fetch financial years
+        const fyResponse = await axios.get('/financialYears');
+        if (Array.isArray(fyResponse.data.data)) {
+          setFinancialYears(fyResponse.data.data);
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'Data Error',
+            text: 'Failed to load financial years data.',
+          });
+        }
+
+        // Fetch institutes
+        const institutesResponse = await axios.get('/institutes');
+        if (Array.isArray(institutesResponse.data.data)) {
+          setInstitutes(institutesResponse.data.data);
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'Data Error',
+            text: 'Failed to load institutes data.',
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Fetch Error',
+          text: 'Failed to load data. Please try again.',
+        });
+      }
+    };
+    fetchData();
   }, []);
 
   // Form handling
   const handleChange = (e) => {
-    const { name, value, files } = e.target;
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: files ? files[0] : value,
+      [name]: value,
     }));
     setErrors((prev) => ({ ...prev, [name]: '' }));
     if (name === 'distributionId') {
@@ -144,7 +138,11 @@ function Return() {
 
   const handleRemoveItem = (index) => {
     if (formData.items.length === 1) {
-      alert('At least one item is required');
+      Swal.fire({
+        icon: 'warning',
+        title: 'Cannot Remove',
+        text: 'At least one item is required.',
+      });
       return;
     }
     setFormData((prev) => ({
@@ -165,8 +163,9 @@ function Return() {
     if (!formData.distributionId) newErrors.distributionId = 'Distribution is required';
     if (!formData.financialYearId) newErrors.financialYearId = 'Financial year is required';
     if (!formData.instituteId) newErrors.instituteId = 'Institute is required';
-    if (!formData.employeeName) newErrors.employeeName = 'Employee name is required';
-    if (!formData.location) newErrors.location = 'Location is required';
+    if (!formData.employeeName.trim()) newErrors.employeeName = 'Employee name is required';
+    if (!formData.location.trim()) newErrors.location = 'Location is required';
+    if (formData.items.length === 0) newErrors.items = 'At least one item is required';
     formData.items.forEach((item, index) => {
       if (!item.itemId) newErrors[`items[${index}].itemId`] = 'Item is required';
       if (!item.returnQuantity || Number(item.returnQuantity) <= 0)
@@ -175,82 +174,84 @@ function Return() {
         newErrors[`items[${index}].itemId`] = 'Duplicate item selected';
       if (formData.distributionId && item.itemId) {
         const distItems = distributionItems.filter((di) => di.distributionId === Number(formData.distributionId));
-        if (!distItems.some((di) => di.itemId === Number(item.itemId)))
+        const distItem = distItems.find((di) => di.itemId === Number(item.itemId));
+        if (!distItem) {
           newErrors[`items[${index}].itemId`] = 'Item not associated with selected distribution';
+        } else if (Number(item.returnQuantity) > distItem.issueQuantity) {
+          newErrors[`items[${index}].returnQuantity`] = `Return quantity exceeds issued quantity (${distItem.issueQuantity})`;
+        }
       }
     });
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = validateForm();
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      Swal.fire({
+        icon: 'error',
+        title: 'Validation Error',
+        html: Object.values(newErrors).map((err) => `<p>${err}</p>`).join(''),
+      });
       return;
     }
 
-    const documentPath = formData.documents ? formData.documents.name : formData.documents;
+    const payload = {
+      distributionId: Number(formData.distributionId),
+      financialYearId: Number(formData.financialYearId),
+      instituteId: Number(formData.instituteId),
+      employeeName: formData.employeeName.trim(),
+      location: formData.location.trim(),
+      documents: formData.documents.trim() || '',
+      remark: formData.remark.trim() || '',
+      items: formData.items.map((item) => ({
+        itemId: Number(item.itemId),
+        returnQuantity: Number(item.returnQuantity),
+      })),
+    };
 
-    if (isEditMode) {
-      setReturns((prev) =>
-        prev.map((ret) =>
-          ret.id === editId
-            ? {
-                ...formData,
-                id: editId,
-                distributionId: Number(formData.distributionId),
-                financialYearId: Number(formData.financialYearId),
-                instituteId: Number(formData.instituteId),
-                documents: documentPath,
-                createdAt: ret.createdAt,
-                updatedAt: new Date().toISOString(),
-              }
-            : ret
-        )
-      );
-      const updatedItems = formData.items.map((item, index) => ({
-        id:
-          returnItems.find((ri) => ri.returnId === editId && ri.itemId === Number(item.itemId))?.id ||
-          Math.max(...returnItems.map((i) => i.id), 0) + index + 1,
-        returnId: editId,
-        itemId: Number(item.itemId),
-        returnQuantity: Number(item.returnQuantity),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }));
-      setReturnItems((prev) => [
-        ...prev.filter((ri) => ri.returnId !== editId),
-        ...updatedItems,
-      ]);
-    } else {
-      const newId = Math.max(...returns.map((ret) => ret.id), 0) + 1;
-      setReturns((prev) => [
-        ...prev,
-        {
-          ...formData,
-          id: newId,
-          distributionId: Number(formData.distributionId),
-          financialYearId: Number(formData.financialYearId),
-          instituteId: Number(formData.instituteId),
-          documents: documentPath,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ]);
-      const newItems = formData.items.map((item, index) => ({
-        id: Math.max(...returnItems.map((i) => i.id), 0) + index + 1,
-        returnId: newId,
-        itemId: Number(item.itemId),
-        returnQuantity: Number(item.returnQuantity),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }));
-      setReturnItems((prev) => [...prev, ...newItems]);
+    try {
+      const response = await createReturn(payload);
+      const newReturn = response.data.data || response.data;
+      setReturns((prev) => [...prev, newReturn]);
+      setReturnItems((prev) => [...prev, ...(newReturn.items || [])]);
+      Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: 'Return created successfully.',
+        timer: 1500,
+        showConfirmButton: false,
+      });
+      resetForm();
+      setIsFormVisible(false);
+    } catch (error) {
+      console.error('Error creating return:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Submission Error',
+        text: error.response?.data?.message || 'Failed to create return.',
+      });
     }
+  };
 
-    resetForm();
-    setIsFormVisible(false);
+  const handleCancel = () => {
+    Swal.fire({
+      title: 'Cancel Form?',
+      text: 'Are you sure you want to cancel? All unsaved changes will be lost.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, cancel',
+      cancelButtonText: 'Stay',
+    }).then((result) => {
+      if (result.isConfirmed) {
+        resetForm();
+        setIsFormVisible(false);
+      }
+    });
   };
 
   const resetForm = () => {
@@ -260,13 +261,12 @@ function Return() {
       instituteId: '',
       employeeName: '',
       location: '',
-      documents: null,
+      documents: '',
       remark: '',
       items: [{ itemId: '', returnQuantity: '' }],
     });
     setErrors({});
-    setIsEditMode(false);
-    setEditId(null);
+    setIsFormVisible(false);
   };
 
   // Handle row click to show details
@@ -285,12 +285,12 @@ function Return() {
     {
       key: 'financialYearId',
       label: 'Financial Year',
-      format: (value) => financialYears.find((fy) => fy.id === value)?.name || value,
+      format: (value) => financialYears.find((fy) => fy.financialYearId === value)?.year || 'N/A',
     },
     {
       key: 'instituteId',
       label: 'Institute',
-      format: (value) => institutes.find((inst) => inst.id === value)?.name || value,
+      format: (value) => institutes.find((inst) => inst.instituteId === value)?.instituteName || 'N/A',
     },
     { key: 'employeeName', label: 'Employee Name' },
     { key: 'location', label: 'Location' },
@@ -306,77 +306,115 @@ function Return() {
     {
       key: 'itemId',
       label: 'Item',
-      format: (value) => items.find((i) => i.id === value)?.itemName || 'N/A',
+      format: (value) => items.find((i) => i.itemId === value)?.itemName || 'N/A',
     },
     { key: 'returnQuantity', label: 'Return Quantity' },
   ];
 
   // Table actions
   const actions = [
-    {
+    // Edit action disabled as no updateReturn API is provided
+    /* {
       label: 'Edit',
-      onClick: (row) => {
-        setIsEditMode(true);
-        setEditId(row.id);
-        const retItems = returnItems
-          .filter((ri) => ri.returnId === row.id)
-          .map((ri) => ({
-            itemId: ri.itemId.toString(),
-            returnQuantity: ri.returnQuantity.toString(),
-          }));
-        setFormData({
-          distributionId: row.distributionId.toString(),
-          financialYearId: row.financialYearId.toString(),
-          instituteId: row.instituteId.toString(),
-          employeeName: row.employeeName,
-          location: row.location,
-          documents: row.documents,
-          remark: row.remark,
-          items: retItems.length > 0 ? retItems : [{ itemId: '', returnQuantity: '' }],
-        });
-        setIsFormVisible(true);
+      onClick: async (row) => {
+        try {
+          const response = await getReturnById(row.id);
+          const returnData = response.data;
+          setIsEditMode(true);
+          setEditId(row.id);
+          setFormData({
+            distributionId: returnData.distributionId.toString(),
+            financialYearId: returnData.financialYearId.toString(),
+            instituteId: returnData.instituteId.toString(),
+            employeeName: returnData.employeeName,
+            location: returnData.location,
+            documents: returnData.documents || '',
+            remark: returnData.remark || '',
+            items: returnData.items.length > 0
+              ? returnData.items.map((item) => ({
+                  itemId: item.itemId.toString(),
+                  returnQuantity: item.returnQuantity.toString(),
+                }))
+              : [{ itemId: '', returnQuantity: '' }],
+          });
+          setIsFormVisible(true);
+        } catch (error) {
+          console.error('Error fetching return for edit:', error);
+          Swal.fire({
+            icon: 'error',
+            title: 'Edit Error',
+            text: 'Failed to load return data.',
+          });
+        }
       },
-      className: 'bg-blue-500 hover:bg-blue-600',
-    },
+      className: 'bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs sm:text-sm',
+    }, */
     {
       label: 'Delete',
       onClick: (row) => {
-        if (window.confirm(`Delete Return ${row.id}?`)) {
-          setReturns((prev) => prev.filter((ret) => ret.id !== row.id));
-          setReturnItems((prev) => prev.filter((ri) => ri.returnId !== row.id));
-          resetForm();
-        }
+        Swal.fire({
+          title: 'Are you sure?',
+          text: `Do you want to delete Return ${row.id}?`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6',
+          confirmButtonText: 'Yes, delete it!',
+          cancelButtonText: 'Cancel',
+        }).then(async (result) => {
+          if (result.isConfirmed) {
+            try {
+              // Note: No delete API provided, so simulating frontend deletion
+              setReturns((prev) => prev.filter((ret) => ret.id !== row.id));
+              setReturnItems((prev) => prev.filter((ri) => ri.returnId !== row.id));
+              Swal.fire({
+                icon: 'success',
+                title: 'Deleted!',
+                text: `Return ${row.id} has been deleted.`,
+                timer: 1500,
+                showConfirmButton: false,
+              });
+            } catch (error) {
+              console.error('Error deleting return:', error);
+              Swal.fire({
+                icon: 'error',
+                title: 'Delete Error',
+                text: 'Failed to delete return.',
+              });
+            }
+          }
+        });
       },
-      className: 'bg-red-500 hover:bg-red-600',
+      className: 'bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs sm:text-sm',
     },
     {
       label: 'View Items',
       onClick: (row) => {
         setExpandedReturnId(expandedReturnId === row.id ? null : row.id);
       },
-      className: 'bg-green-500 hover:bg-green-600',
+      className: 'bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs sm:text-sm',
     },
   ];
 
   // react-select options
   const distributionOptions = distributions.map((dist) => ({
     value: dist.id.toString(),
-    label: `Distribution ${dist.id}`,
+    label: `Distribution ${dist.id} - ${dist.employeeName} (${dist.location})`,
   }));
   const financialYearOptions = financialYears.map((fy) => ({
-    value: fy.id.toString(),
-    label: fy.name,
+    value: fy.financialYearId.toString(),
+    label: fy.year,
   }));
   const instituteOptions = institutes.map((inst) => ({
-    value: inst.id.toString(),
-    label: inst.name,
+    value: inst.instituteId.toString(),
+    label: inst.instituteName,
   }));
   const getItemOptions = (distributionId) => {
     if (!distributionId) return [];
     const distItems = distributionItems.filter((di) => di.distributionId === Number(distributionId));
     return distItems.map((di) => ({
       value: di.itemId.toString(),
-      label: items.find((i) => i.id === di.itemId)?.itemName || 'N/A',
+      label: `${items.find((i) => i.itemId === di.itemId)?.itemName || 'N/A'} (Issued: ${di.issueQuantity})`,
     }));
   };
 
@@ -403,7 +441,7 @@ function Return() {
             <div>
               <button
                 onClick={() => setIsFormVisible(!isFormVisible)}
-                className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600"
+                className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-sm"
               >
                 {isFormVisible ? 'Hide Form' : 'Manage Return'}
               </button>
@@ -412,53 +450,53 @@ function Return() {
           <div className="flex flex-col gap-6 mb-6">
             {isFormVisible && (
               <div>
-                <h3 className="text-base sm:text-lg font-medium text-brand-secondary mb-4">
-                  {isEditMode ? 'Edit Return' : 'Add Return'}
+                <h3 className="text-lg font-medium text-brand-secondary mb-4">
+                  Add Return
                 </h3>
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs sm:text-sm font-medium text-gray-700">Distribution</label>
+                    <label className="block text-sm font-medium text-gray-700">Distribution</label>
                     <Select
                       options={distributionOptions}
                       value={distributionOptions.find((option) => option.value === formData.distributionId)}
                       onChange={(option) => handleChange({ target: { name: 'distributionId', value: option ? option.value : '' } })}
-                      className="mt-1 text-xs sm:text-sm"
+                      className="mt-1 text-sm"
                       classNamePrefix="select"
                       placeholder="Select Distribution"
                       isClearable
                     />
                     {errors.distributionId && (
-                      <p className="mt-1 text-xs text-red-600">{errors.distributionId}</p>
+                      <p className="mt-1 text-sm text-red-600">{errors.distributionId}</p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-xs sm:text-sm font-medium text-gray-700">Financial Year</label>
+                    <label className="block text-sm font-medium text-gray-700">Financial Year</label>
                     <Select
                       options={financialYearOptions}
                       value={financialYearOptions.find((option) => option.value === formData.financialYearId)}
                       onChange={(option) => handleChange({ target: { name: 'financialYearId', value: option ? option.value : '' } })}
-                      className="mt-1 text-xs sm:text-sm"
+                      className="mt-1 text-sm"
                       classNamePrefix="select"
                       placeholder="Select Financial Year"
                       isClearable
                     />
                     {errors.financialYearId && (
-                      <p className="mt-1 text-xs text-red-600">{errors.financialYearId}</p>
+                      <p className="mt-1 text-sm text-red-600">{errors.financialYearId}</p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-xs sm:text-sm font-medium text-gray-700">Institute</label>
+                    <label className="block text-sm font-medium text-gray-700">Institute</label>
                     <Select
                       options={instituteOptions}
                       value={instituteOptions.find((option) => option.value === formData.instituteId)}
                       onChange={(option) => handleChange({ target: { name: 'instituteId', value: option ? option.value : '' } })}
-                      className="mt-1 text-xs sm:text-sm"
+                      className="mt-1 text-sm"
                       classNamePrefix="select"
                       placeholder="Select Institute"
                       isClearable
                     />
                     {errors.instituteId && (
-                      <p className="mt-1 text-xs text-red-600">{errors.instituteId}</p>
+                      <p className="mt-1 text-sm text-red-600">{errors.instituteId}</p>
                     )}
                   </div>
                   <FormInput
@@ -469,7 +507,7 @@ function Return() {
                     onChange={handleChange}
                     error={errors.employeeName}
                     required
-                    className="w-full text-xs sm:text-sm"
+                    className="w-full text-sm"
                   />
                   <FormInput
                     label="Location"
@@ -479,16 +517,17 @@ function Return() {
                     onChange={handleChange}
                     error={errors.location}
                     required
-                    className="w-full text-xs sm:text-sm"
+                    className="w-full text-sm"
                   />
                   <FormInput
                     label="Documents"
-                    type="file"
+                    type="text"
                     name="documents"
+                    value={formData.documents}
                     onChange={handleChange}
                     error={errors.documents}
                     required={false}
-                    className="w-full text-xs sm:text-sm"
+                    className="w-full text-sm"
                   />
                   <FormInput
                     label="Remark"
@@ -498,29 +537,29 @@ function Return() {
                     onChange={handleChange}
                     error={errors.remark}
                     required={false}
-                    className="w-full text-xs sm:text-sm"
+                    className="w-full text-sm"
                   />
-                  <div className="col-span-1 sm:col-span-2 lg:col-span-3">
-                    <h4 className="text-sm sm:text-md font-medium text-brand-secondary mb-2">Return Items</h4>
+                  <div className="col-span-3">
+                    <h4 className="text-md font-medium text-brand-secondary mb-2">Return Items</h4>
                     {formData.items.map((item, index) => (
                       <div key={index} className="flex flex-col gap-4 mb-4 p-4 border rounded-md">
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-3 gap-4">
                           <div>
-                            <label className="block text-xs sm:text-sm font-medium text-gray-700">Item</label>
+                            <label className="block text-sm font-medium text-gray-700">Item</label>
                             <Select
                               options={getItemOptions(formData.distributionId)}
                               value={getItemOptions(formData.distributionId).find((option) => option.value === item.itemId)}
                               onChange={(option) =>
                                 handleItemChange(index, { target: { name: 'itemId', value: option ? option.value : '' } })
                               }
-                              className="mt-1 text-xs sm:text-sm"
+                              className="mt-1 text-sm"
                               classNamePrefix="select"
                               placeholder="Select Item"
                               isClearable
                               isDisabled={!formData.distributionId}
                             />
                             {errors[`items[${index}].itemId`] && (
-                              <p className="mt-1 text-xs text-red-600">{errors[`items[${index}].itemId`]}</p>
+                              <p className="mt-1 text-sm text-red-600">{errors[`items[${index}].itemId`]}</p>
                             )}
                           </div>
                           <FormInput
@@ -531,14 +570,14 @@ function Return() {
                             onChange={(e) => handleItemChange(index, e)}
                             error={errors[`items[${index}].returnQuantity`]}
                             required
-                            className="w-full text-xs sm:text-sm"
+                            className="w-full text-sm"
                             min="1"
                           />
                           <div className="flex items-end">
                             <button
                               type="button"
                               onClick={() => handleRemoveItem(index)}
-                              className="w-full sm:w-auto text-red-600 hover:text-red-800 text-xs sm:text-sm mt-2"
+                              className="w-full bg-red-500 text-white px-2 py-1 rounded-md hover:bg-red-600 text-sm"
                               disabled={formData.items.length === 1}
                             >
                               Remove Item
@@ -547,28 +586,28 @@ function Return() {
                         </div>
                       </div>
                     ))}
+                    {errors.items && (
+                      <p className="mt-1 text-sm text-red-600">{errors.items}</p>
+                    )}
                     <button
                       type="button"
                       onClick={handleAddItem}
-                      className="w-full sm:w-auto bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 text-xs sm:text-sm"
+                      className="mt-2 w-full bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-sm"
                     >
                       Add Item
                     </button>
                   </div>
-                  <div className="col-span-1 sm:col-span-2 lg:col-span-3 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+                  <div className="col-span-3 flex space-x-4">
                     <button
                       type="submit"
-                      className="w-full sm:w-auto bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-xs sm:text-sm"
+                      className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-sm"
                     >
-                      {isEditMode ? 'Update' : 'Add'}
+                      Add
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        resetForm();
-                        setIsFormVisible(false);
-                      }}
-                      className="w-full sm:w-auto px-4 py-2 text-gray-600 rounded-md hover:bg-gray-100 text-xs sm:text-sm"
+                      onClick={handleCancel}
+                      className="px-4 py-2 text-gray-600 rounded-md hover:bg-gray-100 text-sm"
                     >
                       Cancel
                     </button>

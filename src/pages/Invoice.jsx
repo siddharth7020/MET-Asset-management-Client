@@ -243,10 +243,6 @@ function Invoice() {
   const validateForm = () => {
     const newErrors = {};
     if (!formData.poId) newErrors.poId = 'Purchase Order is required';
-    if (!formData.invoiceNo) newErrors.invoiceNo = 'Invoice number is required';
-    else if (invoices.some((inv) => inv.invoiceNo === formData.invoiceNo && inv.id !== editId)) {
-      newErrors.invoiceNo = 'Invoice number must be unique';
-    }
     if (!formData.invoiceDate) newErrors.invoiceDate = 'Invoice date is required';
 
     // Check if an invoice already exists for the selected PO (only for create mode)
@@ -483,16 +479,6 @@ function Invoice() {
                     </select>
                     {errors.poId && <p className="mt-1 text-xs text-red-600">{errors.poId}</p>}
                   </div>
-                  <FormInput
-                    label="Invoice Number"
-                    type="text"
-                    name="invoiceNo"
-                    value={formData.invoiceNo}
-                    onChange={handleChange}
-                    error={errors.invoiceNo}
-                    required
-                    className="w-full text-xs sm:text-sm"
-                  />
                   <FormInput
                     label="Invoice Date"
                     type="date"

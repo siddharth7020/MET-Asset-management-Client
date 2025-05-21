@@ -185,10 +185,6 @@ function GRN() {
   const validateForm = () => {
     const newErrors = {};
     if (!formData.poId) newErrors.poId = 'Purchase Order is required';
-    if (!formData.grnNo) newErrors.grnNo = 'GRN number is required';
-    else if (!isEditMode && grns.some((grn) => grn.grnNo === formData.grnNo)) {
-      newErrors.grnNo = 'GRN number must be unique';
-    }
     if (!formData.grnDate) newErrors.grnDate = 'GRN date is required';
     if (!formData.challanNo) newErrors.challanNo = 'Challan number is required';
     if (!formData.challanDate) newErrors.challanDate = 'Challan date is required';
@@ -349,16 +345,6 @@ function GRN() {
                     </select>
                     {errors.poId && <p className="mt-1 text-sm text-red-600">{errors.poId}</p>}
                   </div>
-                  <FormInput
-                    label="GRN Number"
-                    type="text"
-                    name="grnNo"
-                    value={formData.grnNo}
-                    onChange={handleChange}
-                    error={errors.grnNo}
-                    required
-                    className="w-full text-sm"
-                  />
                   <FormInput
                     label="GRN Date"
                     type="date"
