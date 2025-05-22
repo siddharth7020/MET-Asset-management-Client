@@ -24,8 +24,8 @@ const DistributionDetails = ({ distribution, distributionItems, items, financial
         <h3 className="text-sm sm:text-base font-medium text-brand-secondary mb-4">Details</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="flex flex-col">
-            <span className="text-xs sm:text-sm font-semibold text-gray-700">Distribution ID</span>
-            <span className="text-xs sm:text-sm text-gray-900">{distribution.id}</span>
+            <span className="text-xs sm:text-sm font-semibold text-gray-700">Distribution No</span>
+            <span className="text-xs sm:text-sm text-gray-900">{distribution.distributionNo}</span>
           </div>
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Financial Year</span>

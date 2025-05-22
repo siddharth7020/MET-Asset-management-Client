@@ -256,10 +256,6 @@ function PurchaseOrder() {
   const validateForm = () => {
     const newErrors = {};
     if (!formData.poDate) newErrors.poDate = 'PO date is required';
-    if (!formData.poNo) newErrors.poNo = 'PO number is required';
-    else if (purchaseOrders.some((po) => po.poNo === formData.poNo && po.poId !== editId)) {
-      newErrors.poNo = 'PO number must be unique';
-    }
     if (!formData.instituteId) newErrors.instituteId = 'Institute is required';
     if (!formData.financialYearId) newErrors.financialYearId = 'Financial year is required';
     if (!formData.vendorId) newErrors.vendorId = 'Vendor is required';

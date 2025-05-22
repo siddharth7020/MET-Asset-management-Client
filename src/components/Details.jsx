@@ -82,7 +82,7 @@ const Details = ({ purchaseOrder, orderItems, institutesData, financialYears, ve
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Document</span>
             {purchaseOrder.document ? (
               <button
-                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-xs sm:text-sm w-50"
+                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-xs sm:text-sm w-48"
                 onClick={handleDocumentDownload}
               >
                 Download Document

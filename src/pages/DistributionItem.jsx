@@ -20,6 +20,8 @@ function Distribution() {
     instituteId: '',
     employeeName: '',
     location: '',
+    distributionDate: '',
+    distributionNo: '',
     documents: '',
     remark: '',
     items: [{ itemId: '', issueQuantity: '' }],
@@ -141,6 +143,7 @@ function Distribution() {
     if (!formData.instituteId) newErrors.instituteId = 'Institute is required';
     if (!formData.employeeName.trim()) newErrors.employeeName = 'Employee name is required';
     if (!formData.location.trim()) newErrors.location = 'Location is required';
+    if (!formData.distributionDate) newErrors.distributionDate = 'Distribution date is required';
     if (formData.items.length === 0) newErrors.items = 'At least one item is required';
     formData.items.forEach((item, index) => {
       if (!item.itemId) newErrors[`items[${index}].itemId`] = 'Item is required';
@@ -170,6 +173,8 @@ function Distribution() {
       instituteId: Number(formData.instituteId),
       employeeName: formData.employeeName.trim(),
       location: formData.location.trim(),
+      distributionDate: formData.distributionDate,
+      distributionNo: formData.distributionNo.trim(),
       documents: formData.documents ? formData.documents.name : '',
       remark: formData.remark.trim() || '',
       items: formData.items.map((item) => ({
@@ -245,6 +250,8 @@ function Distribution() {
       instituteId: '',
       employeeName: '',
       location: '',
+      distributionDate: '',
+      distributionNo: '',
       documents: '',
       remark: '',
       items: [{ itemId: '', issueQuantity: '' }],
@@ -265,6 +272,12 @@ function Distribution() {
       key: 'instituteId',
       label: 'Institute',
       format: (value) => institutes.find((inst) => inst.instituteId === value)?.instituteName || 'N/A',
+    },
+    { key: 'distributionNo', label: 'Distribution No' },
+    {
+      key: 'distributionDate',
+      label: 'Distribution Date',
+      format: (value) => new Date(value).toLocaleDateString(),
     },
     { key: 'employeeName', label: 'Employee Name' },
     { key: 'location', label: 'Location' },
@@ -291,6 +304,8 @@ function Distribution() {
             instituteId: distribution.instituteId.toString(),
             employeeName: distribution.employeeName,
             location: distribution.location,
+            distributionDate: distribution.distributionDate ? distribution.distributionDate.split('T')[0] : '',
+            distributionNo: distribution.distributionNo || '',
             documents: distribution.documents || '',
             remark: distribution.remark || '',
             items: distribution.items.length > 0
@@ -317,7 +332,7 @@ function Distribution() {
       onClick: (row) => {
         Swal.fire({
           title: 'Are you sure?',
-          text: `Do you want to delete Distribution ${row.id}?`,
+          text: `Do you want to delete Distribution ${row.distributionNo || row.id}?`,
           icon: 'warning',
           showCancelButton: true,
           confirmButtonColor: '#d33',
@@ -333,7 +348,7 @@ function Distribution() {
               Swal.fire({
                 icon: 'success',
                 title: 'Deleted!',
-                text: `Distribution ${row.id} has been deleted.`,
+                text: `Distribution ${row.distributionNo || row.id} has been deleted.`,
                 timer: 1500,
                 showConfirmButton: false,
               });
@@ -442,6 +457,16 @@ function Distribution() {
                     )}
                   </div>
                   <FormInput
+                    label="Distribution Date"
+                    type="date"
+                    name="distributionDate"
+                    value={formData.distributionDate}
+                    onChange={handleChange}
+                    error={errors.distributionDate}
+                    required
+                    className="w-full text-sm"
+                  />
+                  <FormInput
                     label="Employee Name"
                     type="text"
                     name="employeeName"
@@ -462,14 +487,13 @@ function Distribution() {
                     className="w-full text-sm"
                   />
                   <FormInput
-                    label="Documents"
-                    type="text"
+                    label="Document"
+                    type="file"
                     name="documents"
-                    value={formData.documents}
-                    onChange={handleChange}
+                    accept=".pdf,.doc,.docx,.xls,.xlsx"
                     error={errors.documents}
                     required={false}
-                    className="w-full text-sm"
+                    className="w-full text-xs sm:text-sm"
                   />
                   <FormInput
                     label="Remark"

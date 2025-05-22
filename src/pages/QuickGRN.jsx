@@ -32,7 +32,7 @@ function QuickGRN() {
     challanDate: '',
     requestedBy: '',
     remark: '',
-    quickGRNItems: [{ itemId: '', quantity: '', rate: '', receivedQuantity: '', rejectedQuantity: '', discount: '', amount: '', totalAmount: '' }],
+    quickGRNItems: [{ itemId: '', quantity: '', rate: '', discount: '', amount: '', totalAmount: '' }],
   });
   const [errors, setErrors] = useState({});
   const [editId, setEditId] = useState(null);
@@ -165,17 +165,15 @@ function QuickGRN() {
             remark: qgrn.remark || '',
             quickGRNItems: items.length > 0
               ? items.map((qi) => ({
-                  qGRNItemid: qi.qGRNItemid,
-                  itemId: qi.itemId ? String(qi.itemId) : '',
-                  quantity: qi.quantity || '',
-                  rate: qi.rate || '',
-                  receivedQuantity: qi.receivedQuantity || '',
-                  rejectedQuantity: qi.rejectedQuantity || '',
-                  discount: qi.discount || '',
-                  amount: qi.amount || '',
-                  totalAmount: qi.totalAmount || '',
-                }))
-              : [{ itemId: '', quantity: '', rate: '', receivedQuantity: '', rejectedQuantity: '', discount: '', amount: '', totalAmount: '' }],
+                qGRNItemid: qi.qGRNItemid,
+                itemId: qi.itemId ? String(qi.itemId) : '',
+                quantity: qi.quantity || '',
+                rate: qi.rate || '',
+                discount: qi.discount || '',
+                amount: qi.amount || '',
+                totalAmount: qi.totalAmount || '',
+              }))
+              : [{ itemId: '', quantity: '', rate: '', discount: '', amount: '', totalAmount: '' }],
           });
           setIsFormVisible(true);
         } catch (error) {
@@ -269,7 +267,7 @@ function QuickGRN() {
   const addItem = () => {
     setFormData((prev) => ({
       ...prev,
-      quickGRNItems: [...prev.quickGRNItems, { itemId: '', quantity: '', rate: '', receivedQuantity: '', rejectedQuantity: '', discount: '', amount: '', totalAmount: '' }],
+      quickGRNItems: [...prev.quickGRNItems, { itemId: '', quantity: '', rate: '', discount: '', amount: '', totalAmount: '' }],
     }));
   };
 
@@ -290,10 +288,6 @@ function QuickGRN() {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.qGRNNo.trim()) newErrors.qGRNNo = 'Quick GRN number is required';
-    else if (!isEditMode && quickGRNs.some((qgrn) => qgrn.qGRNNo === formData.qGRNNo)) {
-      newErrors.qGRNNo = 'Quick GRN number must be unique';
-    }
     if (!formData.qGRNDate) newErrors.qGRNDate = 'Quick GRN date is required';
     if (!formData.instituteId || Number(formData.instituteId) <= 0 || !institutes.some((inst) => inst.instituteId === Number(formData.instituteId))) {
       newErrors.instituteId = 'A valid institute is required';
@@ -312,8 +306,6 @@ function QuickGRN() {
       }
       if (!item.quantity || Number(item.quantity) <= 0) newErrors[`quickGRNItems[${index}].quantity`] = 'Quantity must be positive';
       if (!item.rate || Number(item.rate) <= 0) newErrors[`quickGRNItems[${index}].rate`] = 'Rate must be positive';
-      if (!item.receivedQuantity || Number(item.receivedQuantity) < 0) newErrors[`quickGRNItems[${index}].receivedQuantity`] = 'Received quantity must be non-negative';
-      if (item.rejectedQuantity && Number(item.rejectedQuantity) < 0) newErrors[`quickGRNItems[${index}].rejectedQuantity`] = 'Rejected quantity must be non-negative';
       if (item.discount && Number(item.discount) < 0) newErrors[`quickGRNItems[${index}].discount`] = 'Discount cannot be negative';
     });
 
@@ -352,8 +344,6 @@ function QuickGRN() {
         quantity: Number(item.quantity),
         rate: Number(item.rate),
         discount: Number(item.discount) || 0,
-        receivedQuantity: Number(item.receivedQuantity),
-        rejectedQuantity: Number(item.rejectedQuantity) || 0,
       })),
     };
 
@@ -410,7 +400,7 @@ function QuickGRN() {
       challanDate: '',
       requestedBy: '',
       remark: '',
-      quickGRNItems: [{ itemId: '', quantity: '', rate: '', receivedQuantity: '', rejectedQuantity: '', discount: '', amount: '', totalAmount: '' }],
+      quickGRNItems: [{ itemId: '', quantity: '', rate: '', discount: '', amount: '', totalAmount: '' }],
     });
     setErrors({});
     setIsEditMode(false);
@@ -471,16 +461,6 @@ function QuickGRN() {
                   {isEditMode ? 'Edit Quick GRN' : 'Add Quick GRN'}
                 </h3>
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <FormInput
-                    label="Quick GRN Number"
-                    type="text"
-                    name="qGRNNo"
-                    value={formData.qGRNNo}
-                    onChange={handleChange}
-                    error={errors.qGRNNo}
-                    required
-                    className="w-full text-xs sm:text-sm"
-                  />
                   <FormInput
                     label="Quick GRN Date"
                     type="date"
@@ -553,10 +533,9 @@ function QuickGRN() {
                   </div>
                   <FormInput
                     label="Document"
-                    type="text"
+                    type="file"
                     name="document"
-                    value={formData.document}
-                    onChange={handleChange}
+                    accept=".pdf,.doc,.docx,.xls,.xlsx"
                     error={errors.document}
                     required={false}
                     className="w-full text-xs sm:text-sm"
@@ -671,26 +650,6 @@ function QuickGRN() {
                             name="totalAmount"
                             value={item.totalAmount}
                             disabled
-                            required={false}
-                            className="w-full text-xs sm:text-sm"
-                          />
-                          <FormInput
-                            label="Received Quantity"
-                            type="number"
-                            name="receivedQuantity"
-                            value={item.receivedQuantity}
-                            onChange={(e) => handleItemChange(index, e)}
-                            error={errors[`quickGRNItems[${index}].receivedQuantity`]}
-                            required
-                            className="w-full text-xs sm:text-sm"
-                          />
-                          <FormInput
-                            label="Rejected Quantity"
-                            type="number"
-                            name="rejectedQuantity"
-                            value={item.rejectedQuantity}
-                            onChange={(e) => handleItemChange(index, e)}
-                            error={errors[`quickGRNItems[${index}].rejectedQuantity`]}
                             required={false}
                             className="w-full text-xs sm:text-sm"
                           />
