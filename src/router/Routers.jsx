@@ -16,10 +16,12 @@ import Stock from '../pages/stockStorage';
 import DistributionItem from '../pages/DistributionItem';
 import ReturnItem from '../pages/ReturnItem';
 import Report from '../pages/Report';
+import Login from '../pages/Login';
 
 const Routers = () => {
   return (
     <Routes>
+      <Route path="/login" element={<Login />} />
       <Route element={<Layout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/masters/financial-year" element={<FinancialYear />} />

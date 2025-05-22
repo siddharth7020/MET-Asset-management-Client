@@ -1,5 +1,5 @@
 
-import MET_logo from '../../assets/images/MET-logo.png';
+
 
 function Navbar({ toggleSidebar }) {
 
@@ -21,7 +21,6 @@ function Navbar({ toggleSidebar }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <img src={MET_logo} alt="MET Logo" className="h-8 mr-3" />
           <h1 className="text-xl font-semibold">MET Asset Management</h1>
         </div>
         <div className="flex items-center space-x-4">

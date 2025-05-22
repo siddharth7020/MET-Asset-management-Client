@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
+import MET_logo from '../../assets/images/MET-logo.png';
 
 function Sidebar({ isOpen, toggleSidebar }) {
   const [openMenus, setOpenMenus] = useState({});
@@ -68,11 +69,9 @@ function Sidebar({ isOpen, toggleSidebar }) {
           lg:w-64 transition-all duration-300 
           ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
       >
-        <div className="p-6">
-          <h2 className={`text-lg font-semibold text-brand-secondary ${isOpen ? 'block' : 'hidden md:hidden lg:block'}`}>
-            Menu
-          </h2>
-          <nav className="mt-6">
+        <div className="p-4">
+          <img src={MET_logo} alt="MET Logo" className=" w-auto" />
+          <nav className="mt-6 overflow-y-auto">
             <ul className="space-y-2">
               {navItems.map((item) => (
                 <li key={item.name}>
