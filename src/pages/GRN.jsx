@@ -26,6 +26,7 @@ function GRN() {
   const [errors, setErrors] = useState({});
   const [editId, setEditId] = useState(null);
   const [selectedGrnId, setSelectedGrnId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const MySwal = withReactContent(Swal);
 
@@ -85,6 +86,18 @@ function GRN() {
       }
     }
   }, [formData.poId, isEditMode]);
+
+  const filteredGrns = grns.filter((grn) => {
+    const searchLower = searchQuery.toLowerCase();
+    const poNo = purchaseOrders.find((po) => po.poId === grn.poId)?.poNo?.toLowerCase() || '';
+    const grnNo = grn.grnNo ? grn.grnNo.toLowerCase() : '';
+    const challanNo = grn.challanNo ? grn.challanNo.toLowerCase() : '';
+    return (
+      poNo.includes(searchLower) ||
+      grnNo.includes(searchLower) ||
+      challanNo.includes(searchLower)
+    );
+  });
 
   const handleRowClick = (row) => {
     setSelectedGrnId(row.id);
@@ -270,11 +283,11 @@ function GRN() {
 
   const handleCancel = async () => {
     const hasChanges = Object.values(formData).some(
-      (value) => typeof value === 'string' && value !== '' || 
-      (Array.isArray(value) && value.some(item => 
-        Object.values(item).some(v => v !== '')))
+      (value) => typeof value === 'string' && value !== '' ||
+        (Array.isArray(value) && value.some(item =>
+          Object.values(item).some(v => v !== '')))
     );
-    
+
     if (hasChanges) {
       const result = await MySwal.fire({
         title: 'Are you sure?',
@@ -311,7 +324,14 @@ function GRN() {
         <>
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Goods Received Notes</h2>
-            <div>
+            <div className="flex items-center space-x-4">
+              <input
+                type="text"
+                placeholder="Search by PO Number, GRN Number, or Challan Number"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full sm:w-64 border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-sm"
+              />
               <button
                 onClick={() => setIsFormVisible(!isFormVisible)}
                 className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-sm"
@@ -458,7 +478,7 @@ function GRN() {
             <div>
               <Table
                 columns={grnColumns}
-                data={grns}
+                data={filteredGrns}
                 actions={actions}
                 onRowClick={handleRowClick}
               />

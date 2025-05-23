@@ -26,7 +26,7 @@ function Invoice() {
   const [editId, setEditId] = useState(null);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState(null);
   const [currentLayout, setCurrentLayout] = useState(null);
-
+  const [searchQuery, setSearchQuery] = useState('');
   const MySwal = withReactContent(Swal);
 
   // Fetch data from APIs
@@ -92,6 +92,19 @@ function Invoice() {
       setOrderItems([]);
     }
   }, [formData.poId, isEditMode]);
+
+  const filteredInvoices = invoices.filter((invoice) => {
+    if (!searchQuery) return true; // Return all invoices if search is empty
+    const searchLower = searchQuery.toLowerCase();
+    const poNo = purchaseOrders.find((po) => po.poId === invoice.poId)?.poNo?.toLowerCase() || '';
+    const invoiceNo = invoice.invoiceNo ? invoice.invoiceNo.toLowerCase() : '';
+    const paymentDetails = invoice.paymentDetails ? invoice.paymentDetails.toLowerCase() : '';
+    return (
+      poNo.includes(searchLower) ||
+      invoiceNo.includes(searchLower) ||
+      paymentDetails.includes(searchLower)
+    );
+  });
 
   // Table columns for Invoice
   const invoiceColumns = [
@@ -314,9 +327,9 @@ function Invoice() {
       }
       return;
     }
-  
+
     const { items, subtotal, totalTax, invoiceAmount } = calculateTotals(formData.items);
-  
+
     const payload = {
       poId: Number(formData.poId),
       invoiceNo: formData.invoiceNo,
@@ -336,9 +349,9 @@ function Invoice() {
         totalAmount: Number(item.totalAmount),
       })),
     };
-  
+
     console.log('Submitting Payload:', payload); // Log payload for debugging
-  
+
     try {
       if (isEditMode) {
         await updateInvoice(editId, payload);
@@ -444,13 +457,20 @@ function Invoice() {
       ) : (
         <>
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Invoices</h2>
-            <div>
+            <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Invoice</h2>
+            <div className="flex items-center space-x-4">
+              <input
+                type="text"
+                placeholder="Search by PO Number, GRN Number, or Challan Number"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full sm:w-64 border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-sm"
+              />
               <button
                 onClick={() => setIsFormVisible(!isFormVisible)}
-                className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600"
+                className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-sm"
               >
-                {isFormVisible ? 'Hide Form' : 'Add Invoice'}
+                {isFormVisible ? 'Hide Form' : 'Create Invoice'}
               </button>
             </div>
           </div>
@@ -624,7 +644,7 @@ function Invoice() {
               ) : (
                 <Table
                   columns={invoiceColumns}
-                  data={invoices}
+                  data={filteredInvoices}
                   actions={actions}
                   onRowClick={handleRowClick}
                 />

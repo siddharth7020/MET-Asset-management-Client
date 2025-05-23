@@ -32,6 +32,7 @@ function PurchaseOrder() {
   const [expandedPoId, setExpandedPoId] = useState(null);
   const [selectedPoId, setSelectedPoId] = useState(null);
   const [currentLayout, setCurrentLayout] = useState(null);
+  const [searchQuery, setSearchQuery] = useState(''); // New state for search query
 
   const MySwal = withReactContent(Swal);
 
@@ -42,6 +43,8 @@ function PurchaseOrder() {
         // Fetch purchase orders
         const poResponse = await getPurchaseOrders();
         setPurchaseOrders(poResponse.data);
+        console.log('Purchase Orders:', poResponse.data);
+        
 
         const institutesResponse = await axios.get('/institutes');
         if (Array.isArray(institutesResponse.data.data)) {
@@ -85,6 +88,21 @@ function PurchaseOrder() {
 
     fetchData();
   }, []);
+
+  // Filter purchase orders based on search query
+  const filteredPurchaseOrders = purchaseOrders.filter((po) => {
+    const searchLower = searchQuery.toLowerCase();
+    const poNo = po.poNo ? po.poNo.toLowerCase() : '';
+    const instituteName = institutes.find((inst) => inst.instituteId === po.instituteId)?.instituteName?.toLowerCase() || '';
+    const financialYear = financialYears.find((year) => year.financialYearId === po.financialYearId)?.year?.toLowerCase() || '';
+    const vendorName = vendors.find((vend) => vend.vendorId === po.vendorId)?.name?.toLowerCase() || '';
+    return (
+      poNo.includes(searchLower) ||
+      instituteName.includes(searchLower) ||
+      financialYear.includes(searchLower) ||
+      vendorName.includes(searchLower)
+    );
+  });
 
   // Table columns for PurchaseOrder
   const poColumns = [
@@ -371,7 +389,14 @@ function PurchaseOrder() {
         <>
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Purchase Orders</h2>
-            <div>
+            <div className="flex items-center space-x-4">
+              <input
+                type="text"
+                placeholder="Search by PO Number, Institute, Financial Year, or Vendor"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full sm:w-64 border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
+              />
               <button
                 onClick={() => setIsFormVisible(!isFormVisible)}
                 className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600"
@@ -599,7 +624,7 @@ function PurchaseOrder() {
               ) : (
                 <Table
                   columns={poColumns}
-                  data={purchaseOrders}
+                  data={filteredPurchaseOrders}
                   actions={actions}
                   onRowClick={handleRowClick}
                   expandable={{
