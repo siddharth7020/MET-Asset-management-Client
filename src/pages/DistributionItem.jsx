@@ -29,6 +29,7 @@ function Distribution() {
   const [errors, setErrors] = useState({});
   const [editId, setEditId] = useState(null);
   const [selectedDistributionId, setSelectedDistributionId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch all necessary data on component mount
   useEffect(() => {
@@ -261,6 +262,22 @@ function Distribution() {
     setEditId(null);
   };
 
+  // Filter distributions based on search query
+  const filteredDistributions = distributions.filter((dist) => {
+    const financialYear = financialYears.find((fy) => fy.financialYearId === dist.financialYearId);
+    const distributionNo = dist.distributionNo || dist.id;
+    const poNumber = dist.poNumber || '';
+    const grnNumber = dist.grnNumber || '';
+    const challanNumber = dist.challanNumber || '';
+    return (
+      financialYear?.year.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      distributionNo.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+      poNumber.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+      grnNumber.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+      challanNumber.toString().toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  });
+
   // Table columns for Distribution
   const distributionColumns = [
     {
@@ -310,9 +327,9 @@ function Distribution() {
             remark: distribution.remark || '',
             items: distribution.items.length > 0
               ? distribution.items.map((item) => ({
-                  itemId: item.itemId.toString(),
-                  issueQuantity: item.issueQuantity.toString(),
-                }))
+                itemId: item.itemId.toString(),
+                issueQuantity: item.issueQuantity.toString(),
+              }))
               : [{ itemId: '', issueQuantity: '' }],
           });
           setIsFormVisible(true);
@@ -409,13 +426,20 @@ function Distribution() {
       ) : (
         <>
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Distributions</h2>
-            <div>
+            <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Goods Received Notes</h2>
+            <div className="flex items-center space-x-4">
+              <input
+                type="text"
+                placeholder="Search by PO Number, GRN Number, or Challan Number"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full sm:w-64 border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-sm"
+              />
               <button
                 onClick={() => setIsFormVisible(!isFormVisible)}
                 className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-sm"
               >
-                {isFormVisible ? 'Hide Form' : 'Add Distribution'}
+                {isFormVisible ? 'Hide Form' : 'Create GRN'}
               </button>
             </div>
           </div>
@@ -583,7 +607,7 @@ function Distribution() {
             <div>
               <Table
                 columns={distributionColumns}
-                data={distributions}
+                data={filteredDistributions}
                 actions={actions}
                 onRowClick={handleRowClick}
               />
