@@ -25,6 +25,7 @@ function QuickInvoice() {
   const [editId, setEditId] = useState(null);
   const [selectedQInvoiceId, setSelectedQInvoiceId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch initial data
   useEffect(() => {
@@ -262,6 +263,22 @@ const handleSubmit = async (e) => {
     label: grn.qGRNNo,
   }));
 
+  // Filter quick invoices based on search query
+  const filteredQuickInvoices = quickInvoices.filter((invoice) => {
+    if (!searchQuery) return true; // Return all invoices if search is empty
+    const searchLower = searchQuery.toLowerCase();
+    const qInvoiceNo = invoice.qInvoiceNo ? invoice.qInvoiceNo.toLowerCase() : '';
+    const qGRNNos = invoice.qGRNIds
+      .map((id) => quickGRNs.find((g) => g.qGRNId === id)?.qGRNNo?.toLowerCase() || '')
+      .join(' ');
+    const remark = invoice.remark ? invoice.remark.toLowerCase() : '';
+    return (
+      qInvoiceNo.includes(searchLower) ||
+      qGRNNos.includes(searchLower) ||
+      remark.includes(searchLower)
+    );
+  });
+
   // Table columns
   const quickInvoiceColumns = [
     { key: 'qInvoiceNo', label: 'Invoice No' },
@@ -336,15 +353,23 @@ const handleSubmit = async (e) => {
         />
       ) : (
         <>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-semibold text-brand-secondary">Quick Invoices</h2>
-            <button
-              onClick={() => setIsFormVisible(!isFormVisible)}
-              className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-brand-primary-hover"
-              disabled={isLoading}
-            >
-              {isFormVisible ? 'Hide Form' : 'Add Quick Invoice'}
-            </button>
+           <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Quick Invoice</h2>
+            <div className="flex items-center space-x-4">
+              <input
+                type="text"
+                placeholder="Search by PO Number, GRN Number, or Challan Number"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full sm:w-64 border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-sm"
+              />
+              <button
+                onClick={() => setIsFormVisible(!isFormVisible)}
+                className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-sm"
+              >
+                {isFormVisible ? 'Hide Form' : 'Create Quick Invoice'}
+              </button>
+            </div>
           </div>
           {isFormVisible && (
             <div className="mb-6">
@@ -506,7 +531,7 @@ const handleSubmit = async (e) => {
           )}
           <Table
             columns={quickInvoiceColumns}
-            data={quickInvoices}
+            data={filteredQuickInvoices}
             actions={actions}
             onRowClick={handleRowClick}
           />

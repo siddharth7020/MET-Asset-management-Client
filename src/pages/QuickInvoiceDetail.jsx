@@ -29,10 +29,6 @@ const QuickInvoiceDetails = ({ quickInvoice, quickInvoiceItems, quickGRNs, items
         <h3 className="text-sm sm:text-base font-medium text-brand-secondary mb-4">Details</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="flex flex-col">
-            <span className="text-xs sm:text-sm font-semibold text-gray-700">Quick Invoice ID</span>
-            <span className="text-xs sm:text-sm text-gray-900">{quickInvoice.qInvoiceId}</span>
-          </div>
-          <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Quick Invoice Number</span>
             <span className="text-xs sm:text-sm text-gray-900">{quickInvoice.qInvoiceNo}</span>
           </div>

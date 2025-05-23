@@ -38,6 +38,7 @@ function QuickGRN() {
   const [editId, setEditId] = useState(null);
   const [selectedQGRNId, setSelectedQGRNId] = useState(null);
   const [currentLayout, setCurrentLayout] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch all necessary data on component mount
   useEffect(() => {
@@ -112,6 +113,28 @@ function QuickGRN() {
 
     fetchData();
   }, []);
+
+ // Filter Quick GRNs based on search query
+ const filteredQuickGRNs = quickGRNs.filter((qgrn) => {
+  if (!searchQuery) return true; // Return all Quick GRNs if search is empty
+  const searchLower = searchQuery.toLowerCase();
+  const qGRNNo = qgrn.qGRNNo ? qgrn.qGRNNo.toLowerCase() : '';
+  const challanNo = qgrn.challanNo ? qgrn.challanNo.toLowerCase() : '';
+  const poNumber = qgrn.poNumber ? qgrn.poNumber.toLowerCase() : '';
+  const instituteName = institutes.find((inst) => inst.instituteId === qgrn.instituteId)?.instituteName?.toLowerCase() || '';
+  const vendorName = vendors.find((v) => v.vendorId === qgrn.vendorId)?.name?.toLowerCase() || '';
+  const requestedBy = qgrn.requestedBy ? qgrn.requestedBy.toLowerCase() : '';
+  const remark = qgrn.remark ? qgrn.remark.toLowerCase() : '';
+  return (
+    qGRNNo.includes(searchLower) ||
+    challanNo.includes(searchLower) ||
+    poNumber.includes(searchLower) ||
+    instituteName.includes(searchLower) ||
+    vendorName.includes(searchLower) ||
+    requestedBy.includes(searchLower) ||
+    remark.includes(searchLower)
+  );
+});
 
   // Table columns for QuickGRN
   const quickGRNColumns = [
@@ -444,13 +467,20 @@ function QuickGRN() {
       ) : (
         <>
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Quick GRNs</h2>
-            <div>
+            <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Quick GRN</h2>
+            <div className="flex items-center space-x-4">
+              <input
+                type="text"
+                placeholder="Search by PO Number, GRN Number, or Challan Number"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full sm:w-64 border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-sm"
+              />
               <button
                 onClick={() => setIsFormVisible(!isFormVisible)}
-                className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600"
+                className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-sm"
               >
-                {isFormVisible ? 'Hide Form' : 'Add Quick GRN'}
+                {isFormVisible ? 'Hide Form' : 'Create Quick GRN'}
               </button>
             </div>
           </div>
@@ -703,7 +733,7 @@ function QuickGRN() {
               ) : (
                 <Table
                   columns={quickGRNColumns}
-                  data={quickGRNs}
+                  data={filteredQuickGRNs}
                   actions={actions}
                   onRowClick={handleRowClick}
                 />
