@@ -461,16 +461,6 @@ function GRN() {
                             required
                             className="w-full text-sm"
                           />
-                          <FormInput
-                            label="Rejected Quantity"
-                            type="number"
-                            name="rejectedQuantity"
-                            value={gi.rejectedQuantity}
-                            onChange={(e) => handleGrnItemChange(index, e)}
-                            error={errors[`grnItems[${index}].rejectedQuantity`]}
-                            required={false}
-                            className="w-full text-sm"
-                          />
                         </div>
                       </div>
                     ))}

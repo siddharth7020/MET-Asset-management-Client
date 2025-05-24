@@ -13,6 +13,7 @@ function Invoice() {
   const [invoiceItems, setInvoiceItems] = useState([]);
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [orderItems, setOrderItems] = useState([]);
+  const [items, setItems] = useState([]);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [formData, setFormData] = useState({
@@ -20,7 +21,16 @@ function Invoice() {
     invoiceNo: '',
     invoiceDate: '',
     paymentDetails: '',
-    items: [{ orderItemId: '', taxPercentage: '', quantity: '', rate: '', discount: '' }],
+    items: [{
+      orderItemId: '',
+      itemId: '',
+      taxPercentage: '',
+      quantity: '',
+      rate: '',
+      discount: '',
+      taxAmount: '',
+      totalAmount: ''
+    }],
   });
   const [errors, setErrors] = useState({});
   const [editId, setEditId] = useState(null);
@@ -47,6 +57,13 @@ function Invoice() {
         const poResponse = await getPurchaseOrders();
         const poData = Array.isArray(poResponse.data) ? poResponse.data : [];
         setPurchaseOrders(poData);
+
+        const itemsResponse = await axios.get('/items');
+        if (Array.isArray(itemsResponse.data.items)) {
+          setItems(itemsResponse.data.items);
+        } else {
+          console.error('Expected items data to be an array, but got:', itemsResponse.data.items);
+        }
       } catch (error) {
         console.error('Error fetching data:', error);
         MySwal.fire({
@@ -71,10 +88,13 @@ function Invoice() {
             ...prev,
             items: orderItemsData.map((item) => ({
               orderItemId: item.id,
+              itemId: item.itemId || '',
               quantity: item.quantity || '',
               rate: item.rate || '',
               discount: item.discount || '',
               taxPercentage: '',
+              taxAmount: '',
+              totalAmount: ''
             })),
           }));
         } catch (error) {
@@ -90,14 +110,23 @@ function Invoice() {
     } else if (!isEditMode) {
       setFormData((prev) => ({
         ...prev,
-        items: [{ orderItemId: '', taxPercentage: '', quantity: '', rate: '', discount: '' }],
+        items: [{
+          orderItemId: '',
+          itemId: '',
+          taxPercentage: '',
+          quantity: '',
+          rate: '',
+          discount: '',
+          taxAmount: '',
+          totalAmount: ''
+        }],
       }));
       setOrderItems([]);
     }
   }, [formData.poId, isEditMode]);
 
   const filteredInvoices = invoices.filter((invoice) => {
-    if (!searchQuery) return true; // Return all invoices if search is empty
+    if (!searchQuery) return true;
     const searchLower = searchQuery.toLowerCase();
     const poNo = purchaseOrders.find((po) => po.poId === invoice.poId)?.poNo?.toLowerCase() || '';
     const invoiceNo = invoice.invoiceNo ? invoice.invoiceNo.toLowerCase() : '';
@@ -157,14 +186,15 @@ function Invoice() {
             invoiceDate: invoice.invoiceDate.split('T')[0],
             paymentDetails: invoice.paymentDetails,
             items: invoice.items.map((item) => ({
-              id: item.id, // Include the item ID
+              id: item.id,
               orderItemId: item.orderItemId,
+              itemId: item.itemId || '',
               quantity: item.quantity,
               rate: item.rate,
               discount: item.discount,
               taxPercentage: item.taxPercentage,
               taxAmount: item.taxAmount,
-              totalAmount: item.totalAmount,
+              totalAmount: item.totalAmount
             })),
           };
           console.log('Form Data for Edit:', updatedFormData);
@@ -182,6 +212,7 @@ function Invoice() {
       className: 'bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs sm:text-sm',
     },
   ];
+
   // Handle row click to show details
   const handleRowClick = (row) => {
     setSelectedInvoiceId(row.id);
@@ -205,6 +236,12 @@ function Invoice() {
     const { name, value } = e.target;
     const updatedItems = [...formData.items];
     updatedItems[index] = { ...updatedItems[index], [name]: value };
+
+    // Update itemId when orderItemId changes
+    if (name === 'orderItemId') {
+      const selectedOrderItem = orderItems.find((oi) => oi.id === Number(value));
+      updatedItems[index].itemId = selectedOrderItem ? selectedOrderItem.itemId : '';
+    }
 
     // Calculate taxAmount and totalAmount
     const quantity = Number(updatedItems[index].quantity) || 0;
@@ -230,13 +267,14 @@ function Invoice() {
         ...prev.items,
         {
           orderItemId: '',
+          itemId: '',
           taxPercentage: '',
           quantity: '',
           rate: '',
           discount: '',
           taxAmount: '',
-          totalAmount: '',
-        }, // No id for new items
+          totalAmount: ''
+        },
       ],
     }));
   };
@@ -268,6 +306,7 @@ function Invoice() {
 
     formData.items.forEach((item, index) => {
       if (!item.orderItemId) newErrors[`items[${index}].orderItemId`] = 'Order item is required';
+      if (!item.itemId) newErrors[`items[${index}].itemId`] = 'Item ID is required';
       if (!item.quantity || item.quantity <= 0) newErrors[`items[${index}].quantity`] = 'Quantity must be positive';
       if (!item.rate || item.rate < 0) newErrors[`items[${index}].rate`] = 'Rate must be non-negative';
       if (item.discount < 0) newErrors[`items[${index}].discount`] = 'Discount cannot be negative';
@@ -292,15 +331,15 @@ function Invoice() {
       const taxAmount = baseAmount * (taxPercentage / 100);
       const totalAmount = baseAmount + taxAmount;
 
-      subtotal += baseAmount;
-      totalTax += taxAmount;
-
       return {
         ...item,
         taxAmount: taxAmount.toFixed(2),
         totalAmount: totalAmount.toFixed(2),
       };
     });
+
+    subtotal = updatedItems.reduce((sum, item) => sum + (Number(item.quantity) * Number(item.rate) - Number(item.discount || 0)), 0);
+    totalTax = updatedItems.reduce((sum, item) => sum + Number(item.taxAmount), 0);
 
     return {
       items: updatedItems,
@@ -342,8 +381,9 @@ function Invoice() {
       totalTax,
       invoiceAmount,
       items: items.map((item) => ({
-        id: item.id || undefined, // Include id if it exists, otherwise undefined
+        id: item.id || undefined,
         orderItemId: Number(item.orderItemId),
+        itemId: Number(item.itemId),
         quantity: Number(item.quantity),
         rate: Number(item.rate),
         discount: Number(item.discount || 0),
@@ -353,13 +393,13 @@ function Invoice() {
       })),
     };
 
-    console.log('Submitting Payload:', payload); // Log payload for debugging
+    console.log('Submitting Payload:', payload);
 
     try {
       if (isEditMode) {
         await updateInvoice(editId, payload);
         const invoiceResponse = await getInvoiceById(editId);
-        console.log('Updated Invoice Response:', invoiceResponse.data); // Log response
+        console.log('Updated Invoice Response:', invoiceResponse.data);
         if (!invoiceResponse.data) {
           MySwal.fire({
             icon: 'error',
@@ -435,7 +475,16 @@ function Invoice() {
       invoiceNo: '',
       invoiceDate: '',
       paymentDetails: '',
-      items: [{ orderItemId: '', taxPercentage: '', quantity: '', rate: '', discount: '', taxAmount: '', totalAmount: '' }],
+      items: [{
+        orderItemId: '',
+        itemId: '',
+        taxPercentage: '',
+        quantity: '',
+        rate: '',
+        discount: '',
+        taxAmount: '',
+        totalAmount: ''
+      }],
     });
     setErrors({});
     setIsEditMode(false);
@@ -453,8 +502,8 @@ function Invoice() {
         <InvoiceDetails
           invoice={selectedInvoice}
           invoiceItems={selectedInvoiceItems}
+          items={items}
           purchaseOrders={purchaseOrders}
-          orderItems={orderItems}
           onBack={handleBack}
         />
       ) : (
@@ -464,7 +513,7 @@ function Invoice() {
             <div className="flex items-center space-x-4">
               <input
                 type="text"
-                placeholder="Search by PO Number, GRN Number, or Challan Number"
+                placeholder="Search by PO Number, Invoice Number, or Payment Details"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full sm:w-64 border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-sm"
@@ -526,49 +575,53 @@ function Invoice() {
                     <h4 className="text-sm sm:text-md font-medium text-brand-secondary mb-2">Invoice Items</h4>
                     {formData.items.map((item, index) => (
                       <div key={index} className="flex flex-col gap-4 mb-4 p-4 border rounded-md">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Item Name</label>
+                            <input
+                              type="text"
+                              //i want item id name fetch to the items
+                              value={items.find((i) => i.itemId === item.itemId)?.itemName || 'N/A'}
+                              disabled
+                              className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                            />
+                            {errors[`grnItems[${index}].itemId`] && (
+                              <p className="mt-1 text-sm text-red-600">
+                                {errors[`grnItems[${index}].itemId`]}
+                              </p>
+                            )}
+                          </div>
                           <div>
-                            <label className="block text-xs sm:text-sm font-medium text-gray-700">Order Item</label>
-                            <select
-                              name="orderItemId"
-                              value={item.orderItemId}
-                              onChange={(e) => handleItemChange(index, e)}
-                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
-                              required
-                            >
-                              <option value="">Select Item</option>
-                              {orderItems.map((oi) => (
-                                <option key={oi.id} value={oi.id}>
-                                  {oi.itemName || 'N/A'}
-                                </option>
-                              ))}
-                            </select>
-                            {errors[`items[${index}].orderItemId`] && (
-                              <p className="mt-1 text-xs text-red-600">{errors[`items[${index}].orderItemId`]}</p>
+                            <label className="block text-sm font-medium text-gray-700">Quantity</label>
+                            <input
+                              type="text"
+                              //i want item id name fetch to the items
+                              value={item.quantity}
+                              disabled
+                              className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                            />
+                            {errors[`grnItems[${index}].itemId`] && (
+                              <p className="mt-1 text-sm text-red-600">
+                                {errors[`grnItems[${index}].itemId`]}
+                              </p>
+                            )}
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">Rate</label>
+                            <input
+                              type="text"
+                              value={item.rate}
+                              disabled
+                              className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                            />
+                            {errors[`grnItems[${index}].itemId`] && (
+                              <p className="mt-1 text-sm text-red-600">
+                                {errors[`grnItems[${index}].itemId`]}
+                              </p>
                             )}
                           </div>
                           <FormInput
-                            label="Quantity"
-                            type="number"
-                            name="quantity"
-                            value={item.quantity}
-                            onChange={(e) => handleItemChange(index, e)}
-                            error={errors[`items[${index}].quantity`]}
-                            required
-                            className="w-full text-xs sm:text-sm"
-                          />
-                          <FormInput
-                            label="Rate"
-                            type="number"
-                            name="rate"
-                            value={item.rate}
-                            onChange={(e) => handleItemChange(index, e)}
-                            error={errors[`items[${index}].rate`]}
-                            required
-                            className="w-full text-xs sm:text-sm"
-                          />
-                          <FormInput
-                            label="Discount"
+                            label="Discount Amount"
                             type="number"
                             name="discount"
                             value={item.discount}
@@ -587,24 +640,35 @@ function Invoice() {
                             required
                             className="w-full text-xs sm:text-sm"
                           />
-                          <FormInput
-                            label="Tax Amount"
-                            type="text"
-                            name="taxAmount"
-                            value={item.taxAmount}
-                            disabled
-                            required={false}
-                            className="w-full text-xs sm:text-sm"
-                          />
-                          <FormInput
-                            label="Total Amount"
-                            type="text"
-                            name="totalAmount"
-                            value={item.totalAmount}
-                            disabled
-                            required={false}
-                            className="w-full text-xs sm:text-sm"
-                          />
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700">tax Amount</label>
+                            <input
+                              type="text"
+                              //i want item id name fetch to the items
+                              value={item.taxAmount}
+                              disabled
+                              className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                            />
+                            {errors[`grnItems[${index}].itemId`] && (
+                              <p className="mt-1 text-sm text-red-600">
+                                {errors[`grnItems[${index}].itemId`]}
+                              </p>
+                            )}
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">Total Amount</label>
+                            <input
+                              type="text"
+                              value={item.totalAmount}
+                              disabled
+                              className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                            />
+                            {errors[`grnItems[${index}].itemId`] && (
+                              <p className="mt-1 text-sm text-red-600">
+                                {errors[`grnItems[${index}].itemId`]}
+                              </p>
+                            )}
+                          </div>
                         </div>
                         <button
                           type="button"
@@ -623,7 +687,7 @@ function Invoice() {
                       Add Invoice Item
                     </button>
                   </div>
-                  <div className="col-span-1 sm:col-span-2 lg:col-span-3 flex flex-col sm:flex-row пространство-y-2 sm:space-y-0 sm:space-x-4">
+                  <div className="col-span-1 sm:col-span-2 lg:col-span-3 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
                     <button
                       type="submit"
                       className="w-full sm:w-auto bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-xs sm:text-sm"

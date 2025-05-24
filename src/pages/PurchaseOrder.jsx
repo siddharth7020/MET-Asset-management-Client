@@ -43,7 +43,6 @@ function PurchaseOrder() {
         // Fetch purchase orders
         const poResponse = await getPurchaseOrders();
         setPurchaseOrders(poResponse.data);
-        console.log('Purchase Orders:', poResponse.data);
         
 
         const institutesResponse = await axios.get('/institutes');

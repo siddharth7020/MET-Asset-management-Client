@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-const InvoiceDetails = ({ invoice, invoiceItems, purchaseOrders, orderItems, onBack }) => {
+const InvoiceDetails = ({ invoice, invoiceItems, purchaseOrders, onBack, items }) => {
   if (!invoice) {
     return <div className="text-center p-6">No invoice selected</div>;
   }
@@ -97,6 +97,7 @@ const InvoiceDetails = ({ invoice, invoiceItems, purchaseOrders, orderItems, onB
           <table className="w-full text-sm text-left text-gray-900">
             <thead className="text-xs uppercase bg-gray-200">
               <tr>
+                <th scope="col" className="px-6 py-3">Order Item </th>
                 <th scope="col" className="px-6 py-3">Item Name</th>
                 <th scope="col" className="px-6 py-3">Quantity</th>
                 <th scope="col" className="px-6 py-3">Rate</th>
@@ -109,7 +110,8 @@ const InvoiceDetails = ({ invoice, invoiceItems, purchaseOrders, orderItems, onB
             <tbody>
               {invoiceItems.map((item) => (
                 <tr key={item.id} className="bg-white border-b">
-                  <td className="px-6 py-4">{orderItems.find((oi) => oi.id === item.orderItemId)?.itemName || 'N/A'}</td>
+                  <td className="px-6 py-4">{item.orderItemId}</td>
+                  <td className="px-6 py-4">{items.find((i) => i.itemId === item.itemId)?.itemName || 'N/A'}</td>
                   <td className="px-6 py-4">{item.quantity}</td>
                   <td className="px-6 py-4">₹{parseFloat(item.rate).toFixed(2)}</td>
                   <td className="px-6 py-4">₹{parseFloat(item.discount).toFixed(2)}</td>
