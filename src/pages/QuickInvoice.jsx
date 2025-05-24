@@ -6,7 +6,7 @@ import FormInput from '../components/FormInput';
 import QuickInvoiceDetails from './QuickInvoiceDetail';
 import { getQuickInvoices, createQuickInvoice, updateQuickInvoice } from '../api/quickInvoiceServices';
 import { getQuickGRNs } from '../api/quickGRNServices';
-import { getItems } from '../api/itemService';
+import axios from '../api/axiosInstance';
 
 function QuickInvoice() {
   const [quickInvoices, setQuickInvoices] = useState([]);
@@ -32,14 +32,16 @@ function QuickInvoice() {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [invoicesResponse, grnsResponse, itemsResponse] = await Promise.all([
+        const [invoicesResponse, grnsResponse] = await Promise.all([
           getQuickInvoices(),
           getQuickGRNs(),
-          getItems(),
+
         ]);
 
         // Set Quick Invoices
         setQuickInvoices(invoicesResponse.data || []);
+        console.log('Quick Invoices:', invoicesResponse.data);
+
 
         // Set Quick GRNs
         setQuickGRNs(grnsResponse.data || []);
@@ -48,13 +50,19 @@ function QuickInvoice() {
         const grnItems = grnsResponse.data.flatMap(grn => grn.items || []) || [];
         setQuickGRNItems(grnItems);
 
-        // Set Items (inventory items)
-        setItems(itemsResponse.data || []);
+
+        // Fetch items
+        const itemsResponse = await axios.get('/items');
+        if (Array.isArray(itemsResponse.data.items)) {
+          setItems(itemsResponse.data.items);
+        } else {
+          console.error('Expected items data to be an array, but got:', itemsResponse.data.items);
+        }
+
       } catch (error) {
         console.error('Error fetching data:', error);
         setErrors({ api: 'Failed to load data. Please try again.' });
         setQuickGRNItems([]);
-        setItems([]);
       } finally {
         setIsLoading(false);
       }
@@ -71,11 +79,11 @@ function QuickInvoice() {
     const taxAmount = baseAmount * (Number(taxPercentage || 0) / 100);
     const totalAmount = baseAmount + taxAmount;
     return {
-        baseAmount: baseAmount.toFixed(2),
-        taxAmount: taxAmount.toFixed(2),
-        totalAmount: totalAmount.toFixed(2),
+      baseAmount: baseAmount.toFixed(2),
+      taxAmount: taxAmount.toFixed(2),
+      totalAmount: totalAmount.toFixed(2),
     };
-};
+  };
 
   // Calculate final total amount
   const calculateFinalTotalAmount = (qGRNIds, taxDetails) => {
@@ -162,88 +170,88 @@ function QuickInvoice() {
   };
 
   // Handle form submission
-// Handle form submission
-const handleSubmit = async (e) => {
+  // Handle form submission
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = validateForm();
     if (Object.keys(newErrors).length > 0) {
-        setErrors(newErrors);
-        return;
+      setErrors(newErrors);
+      return;
     }
 
     setIsLoading(true);
     try {
-        // Prepare taxDetails and quickInvoiceItems
-        const simplifiedTaxDetails = {};
-        const quickInvoiceItems = [];
-        let totalInvoiceAmount = 0;
+      // Prepare taxDetails and quickInvoiceItems
+      const simplifiedTaxDetails = {};
+      const quickInvoiceItems = [];
+      let totalInvoiceAmount = 0;
 
-        formData.qGRNIds.forEach((qGRNId) => {
-            const grnItems = quickGRNItems.filter((gi) => gi.qGRNId === qGRNId);
-            grnItems.forEach((gi) => {
-                const taxPercentage = Number(formData.taxDetails[gi.qGRNItemid]?.taxPercentage) || 0;
-                const { taxAmount, totalAmount } = calculateItemAmounts(gi, taxPercentage);
+      formData.qGRNIds.forEach((qGRNId) => {
+        const grnItems = quickGRNItems.filter((gi) => gi.qGRNId === qGRNId);
+        grnItems.forEach((gi) => {
+          const taxPercentage = Number(formData.taxDetails[gi.qGRNItemid]?.taxPercentage) || 0;
+          const { taxAmount, totalAmount } = calculateItemAmounts(gi, taxPercentage);
 
-                // Add to taxDetails
-                simplifiedTaxDetails[gi.qGRNItemid] = { taxPercentage };
+          // Add to taxDetails
+          simplifiedTaxDetails[gi.qGRNItemid] = { taxPercentage };
 
-                // Add to quickInvoiceItems
-                const invoiceItem = {
-                    qGRNId,
-                    qGRNItemid: gi.qGRNItemid,
-                    itemId: gi.itemId,
-                    quantity: Number(gi.quantity),
-                    rate: Number(gi.rate),
-                    discount: Number(gi.discount || 0),
-                    taxPercentage,
-                    taxAmount: Number(taxAmount),
-                    totalAmount: Number(totalAmount),
-                };
+          // Add to quickInvoiceItems
+          const invoiceItem = {
+            qGRNId,
+            qGRNItemid: gi.qGRNItemid,
+            itemId: gi.itemId,
+            quantity: Number(gi.quantity),
+            rate: Number(gi.rate),
+            discount: Number(gi.discount || 0),
+            taxPercentage,
+            taxAmount: Number(taxAmount),
+            totalAmount: Number(totalAmount),
+          };
 
-                // Include qInvoiceItemId for existing items in edit mode
-                if (isEditMode) {
-                    const existingItem = quickInvoices
-                        .find((inv) => inv.qInvoiceId === editId)
-                        ?.quickInvoiceItems.find((qi) => qi.qGRNItemid === gi.qGRNItemid);
-                    if (existingItem) {
-                        invoiceItem.qInvoiceItemId = existingItem.qInvoiceItemId;
-                    }
-                }
+          // Include qInvoiceItemId for existing items in edit mode
+          if (isEditMode) {
+            const existingItem = quickInvoices
+              .find((inv) => inv.qInvoiceId === editId)
+              ?.quickInvoiceItems.find((qi) => qi.qGRNItemid === gi.qGRNItemid);
+            if (existingItem) {
+              invoiceItem.qInvoiceItemId = existingItem.qInvoiceItemId;
+            }
+          }
 
-                quickInvoiceItems.push(invoiceItem);
-                totalInvoiceAmount += Number(totalAmount);
-            });
+          quickInvoiceItems.push(invoiceItem);
+          totalInvoiceAmount += Number(totalAmount);
         });
+      });
 
-        // Prepare payload
-        const payload = {
-            qGRNIds: formData.qGRNIds,
-            qInvoiceDate: formData.qInvoiceDate,
-            remark: formData.remark,
-            taxDetails: simplifiedTaxDetails,
-            ...(isEditMode && { quickInvoiceItems }), // Include quickInvoiceItems only for edit mode
-        };
+      // Prepare payload
+      const payload = {
+        qGRNIds: formData.qGRNIds,
+        qInvoiceDate: formData.qInvoiceDate,
+        remark: formData.remark,
+        taxDetails: simplifiedTaxDetails,
+        ...(isEditMode && { quickInvoiceItems }), // Include quickInvoiceItems only for edit mode
+      };
 
-        let response;
-        if (isEditMode) {
-            response = await updateQuickInvoice(editId, payload);
-            setQuickInvoices((prev) =>
-                prev.map((inv) => (inv.qInvoiceId === editId ? response.data.invoice : inv))
-            );
-        } else {
-            response = await createQuickInvoice(payload);
-            setQuickInvoices((prev) => [...prev, response.data.invoice]);
-        }
+      let response;
+      if (isEditMode) {
+        response = await updateQuickInvoice(editId, payload);
+        setQuickInvoices((prev) =>
+          prev.map((inv) => (inv.qInvoiceId === editId ? response.data.invoice : inv))
+        );
+      } else {
+        response = await createQuickInvoice(payload);
+        setQuickInvoices((prev) => [...prev, response.data.invoice]);
+      }
 
-        resetForm();
-        setIsFormVisible(false);
+      resetForm();
+      setIsFormVisible(false);
     } catch (error) {
-        console.error('Error submitting form:', error);
-        setErrors({ api: error.response?.data?.message || 'Failed to save invoice.' });
+      console.error('Error submitting form:', error);
+      setErrors({ api: error.response?.data?.message || 'Failed to save invoice.' });
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
-};
+  };
 
   const resetForm = () => {
     setFormData({
@@ -283,9 +291,7 @@ const handleSubmit = async (e) => {
   const quickInvoiceColumns = [
     { key: 'qInvoiceNo', label: 'Invoice No' },
     { key: 'qInvoiceDate', label: 'Invoice Date', format: (value) => new Date(value).toLocaleDateString() },
-    { key: 'qGRNIds', label: 'Quick GRNs', format: (value) => value.map((id) => quickGRNs.find((g) => g.qGRNId === id)?.qGRNNo || id).join(', ') },
-    { key: 'totalAmount', label: 'Total Amount', format: (value) => `₹${parseFloat(value).toFixed(2)}` },
-    { key: 'remark', label: 'Remark' },
+    { key: 'totalAmount', label: 'Total Amount', format: (value) => `₹${parseFloat(value).toFixed(2)}` }
   ];
 
   // Table actions
@@ -353,7 +359,7 @@ const handleSubmit = async (e) => {
         />
       ) : (
         <>
-           <div className="flex justify-between items-center mb-4">
+          <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Quick Invoice</h2>
             <div className="flex items-center space-x-4">
               <input
@@ -423,43 +429,78 @@ const handleSubmit = async (e) => {
                           <p className="text-sm text-gray-500">No items found.</p>
                         ) : (
                           <div className="space-y-4">
-                            {grnItems.map((gi) => (
+                            {grnItems.map((gi, index) => (
                               <div key={gi.qGRNItemid} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 p-2 border rounded-md">
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700">Item Name</label>
+                                  <input
+                                    type="text"
+                                    value={items.find((item) => item.itemId === gi.itemId)?.itemName || ''}
+                                    disabled
+                                    className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                                  />
+                                  {errors[`grnItems[${index}].itemId`] && (
+                                    <p className="mt-1 text-sm text-red-600">
+                                      {errors[`grnItems[${index}].itemId`]}
+                                    </p>
+                                  )}
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700">Quantity</label>
+                                  <input
+                                    type="text"
+                                    value={gi.quantity}
+                                    disabled
+                                    className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                                  />
+                                  {errors[`grnItems[${index}].itemId`] && (
+                                    <p className="mt-1 text-sm text-red-600">
+                                      {errors[`grnItems[${index}].itemId`]}
+                                    </p>
+                                  )}
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700">Rate</label>
+                                  <input
+                                    type="text"
+                                    value={gi.rate}
+                                    disabled
+                                    className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                                  />
+                                  {errors[`grnItems[${index}].itemId`] && (
+                                    <p className="mt-1 text-sm text-red-600">
+                                      {errors[`grnItems[${index}].itemId`]}
+                                    </p>
+                                  )}
+                                </div>
                                 <FormInput
-                                  label="Item"
-                                  type="text"
-                                  value={gi.itemId}
-                                  disabled
-                                  className="text-sm"
-                                />
-                                <FormInput
-                                  label="Quantity"
+                                  label="Discount Amount"
                                   type="number"
-                                  value={gi.quantity}
-                                  disabled
-                                  className="text-sm"
+                                  name="discount"
+                                  value={gi.discount}
+                                  onChange={(e) => {
+                                    const updatedGrnItems = [...grnItems];
+                                    updatedGrnItems[index] = { ...updatedGrnItems[index], discount: e.target.value };
+                                    setQuickGRNItems(updatedGrnItems);
+                                  }}
+                                  error={errors[`items[${index}].discount`]}
+                                  required={false}
+                                  className="w-full text-xs sm:text-sm"
                                 />
-                                <FormInput
-                                  label="Rate"
-                                  type="number"
-                                  value={gi.rate}
-                                  disabled
-                                  className="text-sm"
-                                />
-                                <FormInput
-                                  label="Discount"
-                                  type="number"
-                                  value={gi.discount || 0}
-                                  disabled
-                                  className="text-sm"
-                                />
-                                <FormInput
-                                  label="Base Amount"
-                                  type="text"
-                                  value={formData.taxDetails[gi.qGRNItemid]?.baseAmount || '0.00'}
-                                  disabled
-                                  className="text-sm"
-                                />
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700">Base Amount</label>
+                                  <input
+                                    type="text"
+                                    value={formData.taxDetails[gi.qGRNItemid]?.baseAmount || '0.00'}
+                                    disabled
+                                    className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                                  />
+                                  {errors[`grnItems[${index}].itemId`] && (
+                                    <p className="mt-1 text-sm text-red-600">
+                                      {errors[`grnItems[${index}].itemId`]}
+                                    </p>
+                                  )}
+                                </div>
                                 <div>
                                   <label className="block text-sm font-medium text-gray-700">Tax Percentage</label>
                                   <input
@@ -478,20 +519,34 @@ const handleSubmit = async (e) => {
                                     </p>
                                   )}
                                 </div>
-                                <FormInput
-                                  label="Tax Amount"
-                                  type="text"
-                                  value={formData.taxDetails[gi.qGRNItemid]?.taxAmount || '0.00'}
-                                  disabled
-                                  className="text-sm"
-                                />
-                                <FormInput
-                                  label="Total Amount"
-                                  type="text"
-                                  value={formData.taxDetails[gi.qGRNItemid]?.totalAmount || '0.00'}
-                                  disabled
-                                  className="text-sm"
-                                />
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700">Tax Amount</label>
+                                  <input
+                                    type="text"
+                                    value={formData.taxDetails[gi.qGRNItemid]?.taxAmount || '0.00'}
+                                    disabled
+                                    className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                                  />
+                                  {errors[`grnItems[${index}].itemId`] && (
+                                    <p className="mt-1 text-sm text-red-600">
+                                      {errors[`grnItems[${index}].itemId`]}
+                                    </p>
+                                  )}
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700">Total Amount</label>
+                                  <input
+                                    type="text"
+                                    value={formData.taxDetails[gi.qGRNItemid]?.totalAmount || '0.00'}
+                                    disabled
+                                    className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                                  />
+                                  {errors[`grnItems[${index}].itemId`] && (
+                                    <p className="mt-1 text-sm text-red-600">
+                                      {errors[`grnItems[${index}].itemId`]}
+                                    </p>
+                                  )}
+                                </div>
                               </div>
                             ))}
                           </div>

@@ -1,11 +1,9 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import PropTypes from 'prop-types';
 
 const QuickInvoiceDetails = ({ quickInvoice, quickInvoiceItems, quickGRNs, items, onBack }) => {
   // Debug log for items prop
-  useEffect(() => {
-    console.log('Items prop:', items);
-  }, [items]);
+
 
   if (!quickInvoice) {
     return <div className="text-center p-6">No Quick Invoice selected</div>;
@@ -118,7 +116,7 @@ const QuickInvoiceDetails = ({ quickInvoice, quickInvoiceItems, quickGRNs, items
               {quickInvoiceItems.map((item) => (
                 <tr key={item.qInvoiceItemId} className="bg-white border-b">
                   <td className="px-6 py-4">{item.qGRNItemid}</td>
-                  <td className="px-6 py-4">{items.itemId}</td>
+                  <td className="px-6 py-4">{items.find((i) => i.itemId === item.itemId)?.itemName}</td>
                   <td className="px-6 py-4">{item.quantity}</td>
                   <td className="px-6 py-4">₹{parseFloat(item.rate).toFixed(2)}</td>
                   <td className="px-6 py-4">₹{parseFloat(item.discount).toFixed(2)}</td>
