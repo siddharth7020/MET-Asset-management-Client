@@ -4,6 +4,7 @@ import FormInput from '../components/FormInput';
 import GrnDetails from './GRNDetail';
 import { getPurchaseOrders, getPurchaseOrder } from '../api/purchaseOrderService';
 import { getGrns, getGrnById, createGrn, updateGrn } from '../api/grnService';
+import axios from '../api/axiosInstance';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 
@@ -21,13 +22,13 @@ function GRN() {
     challanDate: '',
     document: '',
     remark: '',
-    grnItems: [{ orderItemId: '', receivedQuantity: '', rejectedQuantity: '' }],
+    grnItems: [{ orderItemId: '', itemId: '', receivedQuantity: '', rejectedQuantity: '' }],
   });
   const [errors, setErrors] = useState({});
   const [editId, setEditId] = useState(null);
   const [selectedGrnId, setSelectedGrnId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-
+  const [items, setItems] = useState([]);
   const MySwal = withReactContent(Swal);
 
   useEffect(() => {
@@ -38,9 +39,18 @@ function GRN() {
 
         const grnResponse = await getGrns();
         const grnsData = grnResponse.data;
+
         const grnItemsData = grnsData.flatMap(grn => grn.grnItems || []);
         setGrns(grnsData);
         setGrnItems(grnItemsData);
+
+        const itemsResponse = await axios.get('/items');
+        if (Array.isArray(itemsResponse.data.items)) {
+          setItems(itemsResponse.data.items);
+        } else {
+          console.error('Expected items data to be an array, but got:', itemsResponse.data.items);
+        }
+
       } catch (error) {
         console.error('Error fetching data:', error);
         MySwal.fire({
@@ -63,6 +73,8 @@ function GRN() {
             ...prev,
             grnItems: orderItems.map(item => ({
               orderItemId: item.id,
+              itemId: item.itemId, // Include itemId from OrderItem
+              itemName: item.item?.name || 'N/A', // Assuming Item model has a 'name' field
               receivedQuantity: item.quantity || '',
               rejectedQuantity: '',
             })),
@@ -81,7 +93,7 @@ function GRN() {
       if (!isEditMode) {
         setFormData(prev => ({
           ...prev,
-          grnItems: [{ orderItemId: '', receivedQuantity: '', rejectedQuantity: '' }],
+          grnItems: [{ orderItemId: '', itemId: '', receivedQuantity: '', rejectedQuantity: '' }],
         }));
       }
     }
@@ -147,9 +159,11 @@ function GRN() {
             grnItems: grn.grnItems.map(gi => ({
               id: gi.id,
               orderItemId: gi.orderItemId,
+              itemId: gi.itemId, // Include itemId
+              itemName: gi.orderItem?.item?.name || 'N/A', // Get item name from OrderItem
               receivedQuantity: gi.receivedQuantity,
               rejectedQuantity: gi.rejectedQuantity || '',
-            })) || [{ orderItemId: '', receivedQuantity: '', rejectedQuantity: '' }],
+            })) || [{ orderItemId: '', itemId: '', receivedQuantity: '', rejectedQuantity: '' }],
           });
           setIsFormVisible(true);
         } catch (error) {
@@ -188,7 +202,7 @@ function GRN() {
       challanDate: '',
       document: '',
       remark: '',
-      grnItems: [{ orderItemId: '', receivedQuantity: '', rejectedQuantity: '' }],
+      grnItems: [{ orderItemId: '', itemId: '', receivedQuantity: '', rejectedQuantity: '' }],
     });
     setErrors({});
     setIsEditMode(false);
@@ -204,6 +218,7 @@ function GRN() {
 
     formData.grnItems.forEach((gi, index) => {
       if (!gi.orderItemId) newErrors[`grnItems[${index}].orderItemId`] = 'Order item is required';
+      if (!gi.itemId) newErrors[`grnItems[${index}].itemId`] = 'Item is required';
       if (!gi.receivedQuantity || gi.receivedQuantity < 0) {
         newErrors[`grnItems[${index}].receivedQuantity`] = 'Received quantity must be non-negative';
       }
@@ -238,6 +253,7 @@ function GRN() {
       grnItems: formData.grnItems.map(gi => ({
         ...(isEditMode && gi.id ? { id: gi.id } : {}),
         orderItemId: Number(gi.orderItemId),
+        itemId: Number(gi.itemId), // Include itemId
         receivedQuantity: Number(gi.receivedQuantity),
         rejectedQuantity: gi.rejectedQuantity ? Number(gi.rejectedQuantity) : 0,
       })),
@@ -276,7 +292,7 @@ function GRN() {
       MySwal.fire({
         icon: 'error',
         title: 'Error',
-        text: 'Items quantity must be less than order quantity .',
+        text: 'Items quantity must be less than order quantity.',
       });
     }
   };
@@ -319,6 +335,7 @@ function GRN() {
           grnItems={selectedGrnItems}
           purchaseOrders={purchaseOrders}
           onBack={handleBack}
+          items={items}
         />
       ) : (
         <>
@@ -423,13 +440,14 @@ function GRN() {
                             <label className="block text-sm font-medium text-gray-700">Item Name</label>
                             <input
                               type="text"
-                              value={gi.orderItemId}
+                              //i wantbto fetch the item name from the items array
+                              value={items.find((item) => item.itemId === gi.itemId)?.itemName || ''}
                               disabled
                               className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
                             />
-                            {errors[`grnItems[${index}].orderItemId`] && (
+                            {errors[`grnItems[${index}].itemId`] && (
                               <p className="mt-1 text-sm text-red-600">
-                                {errors[`grnItems[${index}].orderItemId`]}
+                                {errors[`grnItems[${index}].itemId`]}
                               </p>
                             )}
                           </div>

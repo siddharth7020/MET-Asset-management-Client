@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-const GrnDetails = ({ grn, grnItems, purchaseOrders, onBack }) => {
+const GrnDetails = ({ grn, grnItems, purchaseOrders, onBack, items }) => {
   if (!grn) {
     return <div className="text-center p-6">No GRN selected</div>;
   }
@@ -96,6 +96,7 @@ const GrnDetails = ({ grn, grnItems, purchaseOrders, onBack }) => {
           <table className="w-full text-sm text-left text-gray-900">
             <thead className="text-xs uppercase bg-gray-200">
               <tr>
+                <th scope="col" className="px-6 py-3">Order Item ID</th>
                 <th scope="col" className="px-6 py-3">Item Name</th>
                 <th scope="col" className="px-6 py-3">Received Quantity</th>
                 <th scope="col" className="px-6 py-3">Rejected Quantity</th>
@@ -104,8 +105,11 @@ const GrnDetails = ({ grn, grnItems, purchaseOrders, onBack }) => {
             <tbody>
               {grnItems.map((item) => (
                 <tr key={item.id} className="bg-white border-b">
-                  <td className="px-6 py-4">
+                   <td className="px-6 py-4">
                     {item.orderItemId}
+                  </td>
+                  <td className="px-6 py-4">
+                  {items.find((i) => i.itemId === item.itemId)?.itemName || 'N/A'}
                   </td>
                   <td className="px-6 py-4">{item.receivedQuantity}</td>
                   <td className="px-6 py-4">{item.rejectedQuantity}</td>

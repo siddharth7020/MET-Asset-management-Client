@@ -7,6 +7,8 @@ const InvoiceDetails = ({ invoice, invoiceItems, purchaseOrders, orderItems, onB
   }
 
   const purchaseOrder = purchaseOrders.find((po) => po.poId === invoice.poId);
+  console.log(invoiceItems);
+  
 
   return (
     <div className="">

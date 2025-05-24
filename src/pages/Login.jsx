@@ -41,7 +41,7 @@ const Login = () => {
         <div className="w-full md:w-1/2 p-8 flex flex-col items-center justify-center">
           {/* Logo */}
           <div className="mb-6">
-            <img src={logo} alt="MET Logo" className="w-40 mx-auto" />
+            <img src={logo} alt="MET Logo" className="h-12 mx-auto" />
           </div>
 
           {/* Form */}

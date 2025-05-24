@@ -36,7 +36,10 @@ function Invoice() {
         // Fetch invoices
         const invoiceResponse = await getAllInvoices();
         const invoicesData = Array.isArray(invoiceResponse.data.invoices) ? invoiceResponse.data.invoices : [];
+        console.log('Invoices:', invoicesData);
+        
         const invoiceItemsData = invoicesData.flatMap((inv) => inv.items || []);
+        console.log('Invoice Items:', invoiceItemsData);
         setInvoices(invoicesData);
         setInvoiceItems(invoiceItemsData);
 
