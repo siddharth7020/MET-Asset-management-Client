@@ -95,7 +95,7 @@ const DistributionDetails = ({ distribution, distributionItems, items, financial
               {distributionItems.map((item) => (
                 <tr key={item.id} className="bg-white border-b">
                   <td className="px-6 py-4">{item.id}</td>
-                  <td className="px-6 py-4">{items.find((i) => i.id === item.itemId)?.itemName || 'N/A'}</td>
+                  <td className="px-6 py-4">{items.find((i) => i.itemId === item.itemId)?.itemName || 'N/A'}</td>
                   <td className="px-6 py-4">{item.issueQuantity}</td>
                 </tr>
               ))}

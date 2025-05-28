@@ -37,22 +37,27 @@ function Distribution() {
       try {
         // Fetch distributions
         const distributionsResponse = await getAllDistributions();
+        console.log('Distributions Response:', distributionsResponse);
+        
         const distributionsData = distributionsResponse.data;
         const distributionItemsData = distributionsData.flatMap(dist => dist.items || []);
         setDistributions(distributionsData);
         setDistributionItems(distributionItemsData);
 
-        // Fetch items
-        const itemsResponse = await axios.get('/items');
-        if (Array.isArray(itemsResponse.data.items)) {
-          setItems(itemsResponse.data.items);
-        } else {
-          Swal.fire({
-            icon: 'error',
-            title: 'Data Error',
-            text: 'Failed to load items data.',
-          });
-        }
+         // Fetch items
+         const itemsResponse = await axios.get('/items');
+         if (Array.isArray(itemsResponse.data.items)) {
+           setItems(itemsResponse.data.items);
+           console.log('Items Response:', itemsResponse.data.items);
+           
+         } else {
+           console.error('Expected items data to be an array, but got:', itemsResponse.data.items);
+           Swal.fire({
+             icon: 'error',
+             title: 'Data Error',
+             text: 'Failed to load items data.',
+           });
+         }
 
         // Fetch financial years
         const fyResponse = await axios.get('/financialYears');
