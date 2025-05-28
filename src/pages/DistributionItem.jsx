@@ -456,7 +456,7 @@ function Distribution() {
                       options={financialYearOptions}
                       value={financialYearOptions.find((option) => option.value === formData.financialYearId)}
                       onChange={(option) => handleChange({ target: { name: 'financialYearId', value: option ? option.value : '' } })}
-                      className="mt-1 text-sm"
+                      className="text-sm"
                       classNamePrefix="select"
                       placeholder="Select Financial Year"
                       isClearable
@@ -471,7 +471,7 @@ function Distribution() {
                       options={instituteOptions}
                       value={instituteOptions.find((option) => option.value === formData.instituteId)}
                       onChange={(option) => handleChange({ target: { name: 'instituteId', value: option ? option.value : '' } })}
-                      className="mt-1 text-sm"
+                      className="text-sm"
                       classNamePrefix="select"
                       placeholder="Select Institute"
                       isClearable
@@ -532,17 +532,17 @@ function Distribution() {
                   <div className="col-span-3">
                     <h4 className="text-md font-medium text-brand-secondary mb-2">Items</h4>
                     {formData.items.map((item, index) => (
-                      <div key={index} className="flex flex-col gap-2 mb-4 p-4 border rounded-md">
-                        <div className="grid grid-cols-3 gap-4">
+                      <div key={index} className="flex flex-col gap-4 mb-4 p-4 border rounded-md">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700">Item</label>
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700">Item</label>
                             <Select
                               options={itemOptions}
                               value={itemOptions.find((option) => option.value === item.itemId)}
                               onChange={(option) =>
                                 handleItemChange(index, { target: { name: 'itemId', value: option ? option.value : '' } })
                               }
-                              className="mt-1 text-sm"
+                              className="text-sm"
                               classNamePrefix="select"
                               placeholder="Select Item"
                               isClearable
@@ -562,29 +562,25 @@ function Distribution() {
                             min="1"
                             className="w-full text-sm"
                           />
-                          <div className="flex items-end">
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveItem(index)}
-                              className="w-full bg-red-500 text-white px-2 py-1 rounded-md hover:bg-red-600 text-sm"
-                              disabled={formData.items.length === 1}
-                            >
-                              Remove
-                            </button>
-                          </div>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(index)}
+                          className="text-red-600 hover:text-red-800 text-xs sm:text-sm mt-2"
+                        >
+                          Remove Item
+                        </button>
                       </div>
                     ))}
                     {errors.items && (
                       <p className="mt-1 text-sm text-red-600">{errors.items}</p>
-                    )}
-                    <button
-                      type="button"
-                      onClick={handleAddItem}
-                      className="mt-2 w-full bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-sm"
-                    >
-                      Add Item
-                    </button>
+                    )}  <button
+                    type="button"
+                    onClick={handleAddItem}
+                    className="w-full sm:w-auto bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 text-xs sm:text-sm"
+                  >
+                    Add Quick GRN Item
+                  </button>
                   </div>
                   <div className="col-span-3 flex space-x-4">
                     <button
