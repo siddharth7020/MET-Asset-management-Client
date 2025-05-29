@@ -372,7 +372,6 @@ function Reports() {
             <Table
               columns={columns}
               data={filteredData}
-              actions={[]}
               expandable={{
                 expandedRowRender: (row) => {
                   const itemsData = row.type === 'Distribution'
@@ -381,7 +380,7 @@ function Reports() {
                   return (
                     <div className="p-4 bg-gray-50">
                       <h4 className="text-sm font-medium text-brand-secondary mb-2">Items</h4>
-                      <Table columns={itemColumns} data={itemsData} actions={[]} className="text-sm" />
+                      <Table columns={itemColumns} data={itemsData}  className="text-sm" />
                     </div>
                   );
                 },

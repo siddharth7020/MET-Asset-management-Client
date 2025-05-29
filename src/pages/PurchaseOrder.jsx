@@ -22,7 +22,7 @@ function PurchaseOrder() {
     instituteId: '',
     financialYearId: '',
     vendorId: '',
-    document: '',
+    document: null,
     requestedBy: '',
     remark: '',
     orderItems: [{ itemId: '', quantity: '', rate: '', amount: '', discount: '', totalAmount: '' }],
@@ -32,43 +32,33 @@ function PurchaseOrder() {
   const [expandedPoId, setExpandedPoId] = useState(null);
   const [selectedPoId, setSelectedPoId] = useState(null);
   const [currentLayout, setCurrentLayout] = useState(null);
-  const [searchQuery, setSearchQuery] = useState(''); // New state for search query
+  const [searchQuery, setSearchQuery] = useState('');
 
   const MySwal = withReactContent(Swal);
 
-  // Fetch data from APIs
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch purchase orders
         const poResponse = await getPurchaseOrders();
         setPurchaseOrders(poResponse.data);
-        
-
         const institutesResponse = await axios.get('/institutes');
         if (Array.isArray(institutesResponse.data.data)) {
           setInstitutes(institutesResponse.data.data);
         } else {
           console.error('Expected institutes data to be an array, but got:', institutesResponse.data.data);
         }
-
-        // Fetch financial years
         const fyResponse = await axios.get('/financialYears');
         if (Array.isArray(fyResponse.data.data)) {
           setFinancialYears(fyResponse.data.data);
         } else {
           console.error('Expected financial years data to be an array, but got:', fyResponse.data.data);
         }
-
-        // Fetch vendors
         const vendorsResponse = await axios.get('/vendors');
         if (Array.isArray(vendorsResponse.data.data)) {
           setVendors(vendorsResponse.data.data);
         } else {
           console.error('Expected vendors data to be an array, but got:', vendorsResponse.data.data);
         }
-
-        // Fetch items
         const itemsResponse = await axios.get('/items');
         if (Array.isArray(itemsResponse.data.items)) {
           setItems(itemsResponse.data.items);
@@ -84,11 +74,9 @@ function PurchaseOrder() {
         });
       }
     };
-
     fetchData();
   }, []);
 
-  // Filter purchase orders based on search query
   const filteredPurchaseOrders = purchaseOrders.filter((po) => {
     const searchLower = searchQuery.toLowerCase();
     const poNo = po.poNo ? po.poNo.toLowerCase() : '';
@@ -103,7 +91,6 @@ function PurchaseOrder() {
     );
   });
 
-  // Table columns for PurchaseOrder
   const poColumns = [
     {
       key: 'poDate',
@@ -126,9 +113,13 @@ function PurchaseOrder() {
       label: 'Vendor',
       format: (value) => vendors?.find((vend) => vend.vendorId === value)?.name || 'N/A',
     },
+    {
+      key: 'document',
+      label: 'Document',
+      format: (value) => (value ? <a href={`http://localhost:5000/${value}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">View</a> : 'N/A'),
+    },
   ];
 
-  // Table columns for OrderItem (in collapsible section)
   const orderItemColumns = [
     {
       key: 'itemId',
@@ -141,19 +132,16 @@ function PurchaseOrder() {
     { key: 'totalAmount', label: 'Total Amount' },
   ];
 
-  // Handle row click to show details
   const handleRowClick = (row) => {
     setSelectedPoId(row.poId);
     setCurrentLayout('details');
   };
 
-  // Handle back to table view
   const handleBack = () => {
     setSelectedPoId(null);
     setCurrentLayout(null);
   };
 
-  // Table actions
   const actions = [
     {
       label: 'Edit',
@@ -176,7 +164,7 @@ function PurchaseOrder() {
           instituteId: row.instituteId,
           financialYearId: row.financialYearId,
           vendorId: row.vendorId,
-          document: row.document,
+          document: null,
           requestedBy: row.requestedBy,
           remark: row.remark,
           orderItems: poItems.length > 0 ? poItems : [{ itemId: '', quantity: '', rate: '', amount: '', discount: '', totalAmount: '' }],
@@ -197,7 +185,6 @@ function PurchaseOrder() {
           cancelButtonText: 'No, cancel!',
           reverseButtons: true,
         });
-
         if (result.isConfirmed) {
           try {
             await deletePurchaseOrder(row.poId);
@@ -233,17 +220,13 @@ function PurchaseOrder() {
     const { name, value } = e.target;
     const updatedOrderItems = [...formData.orderItems];
     updatedOrderItems[index] = { ...updatedOrderItems[index], [name]: value };
-
-    // Calculate amount and totalAmount
     const quantity = parseFloat(updatedOrderItems[index].quantity) || 0;
     const rate = parseFloat(updatedOrderItems[index].rate) || 0;
     const discount = parseFloat(updatedOrderItems[index].discount) || 0;
     const amount = quantity * rate;
     const totalAmount = amount - discount;
-
     updatedOrderItems[index].amount = amount.toFixed(2);
     updatedOrderItems[index].totalAmount = totalAmount.toFixed(2);
-
     setFormData((prev) => ({ ...prev, orderItems: updatedOrderItems }));
     setErrors((prev) => ({ ...prev, [`orderItems[${index}].${name}`]: '' }));
   };
@@ -277,14 +260,18 @@ function PurchaseOrder() {
     if (!formData.financialYearId) newErrors.financialYearId = 'Financial year is required';
     if (!formData.vendorId) newErrors.vendorId = 'Vendor is required';
     if (!formData.requestedBy) newErrors.requestedBy = 'Requested by is required';
-
+    if (formData.document && !['application/pdf', 'image/jpeg', 'image/png'].includes(formData.document.type)) {
+      newErrors.document = 'Only PDF, JPEG, or PNG files are allowed';
+    }
+    if (formData.document && formData.document.size > 10 * 1024 * 1024) {
+      newErrors.document = 'File size must not exceed 10MB';
+    }
     formData.orderItems.forEach((oi, index) => {
       if (!oi.itemId) newErrors[`orderItems[${index}].itemId`] = 'Item is required';
-      if (!oi.quantity || oi.quantity < 0) newErrors[`orderItems[${index}].quantity`] = 'Quantity must be non-negative';
-      if (!oi.rate || oi.rate < 0) newErrors[`orderItems[${index}].rate`] = 'Rate must be non-negative';
+      if (!oi.quantity || oi.quantity <= 0) newErrors[`orderItems[${index}].quantity`] = 'Quantity must be positive';
+      if (!oi.rate || oi.rate <= 0) newErrors[`orderItems[${index}].rate`] = 'Rate must be positive';
       if (oi.discount < 0) newErrors[`orderItems[${index}].discount`] = 'Discount must be non-negative';
     });
-
     return newErrors;
   };
 
@@ -300,13 +287,21 @@ function PurchaseOrder() {
       });
       return;
     }
-
+    if (!Array.isArray(formData.orderItems) || formData.orderItems.length === 0) {
+      MySwal.fire({
+        icon: 'error',
+        title: 'Validation Error',
+        text: 'At least one valid order item is required.',
+      });
+      return;
+    }
     const payload = {
       ...formData,
       instituteId: Number(formData.instituteId),
       financialYearId: Number(formData.financialYearId),
       vendorId: Number(formData.vendorId),
       orderItems: formData.orderItems.map((oi) => ({
+        id: oi.id || undefined,
         itemId: Number(oi.itemId),
         quantity: Number(oi.quantity),
         rate: Number(oi.rate),
@@ -315,13 +310,16 @@ function PurchaseOrder() {
         totalAmount: Number(oi.totalAmount),
       })),
     };
-
+    // Create a new formData object to send to the API
+    const apiFormData = {
+      ...payload,
+      document: formData.document, // Include the File object
+    };
     try {
       if (isEditMode) {
-        // Update PurchaseOrder
-        await updatePurchaseOrder(editId, payload);
+        const response = await updatePurchaseOrder(editId, apiFormData);
         setPurchaseOrders((prev) =>
-          prev.map((po) => (po.poId === editId ? { ...payload, poId: editId } : po))
+          prev.map((po) => (po.poId === editId ? response.data : po))
         );
         MySwal.fire({
           icon: 'success',
@@ -329,8 +327,7 @@ function PurchaseOrder() {
           text: 'Purchase order updated successfully!',
         });
       } else {
-        // Add new PurchaseOrder
-        const response = await createPurchaseOrder(payload);
+        const response = await createPurchaseOrder(apiFormData);
         setPurchaseOrders((prev) => [...prev, response.data]);
         MySwal.fire({
           icon: 'success',
@@ -345,7 +342,7 @@ function PurchaseOrder() {
       MySwal.fire({
         icon: 'error',
         title: 'Error',
-        text: 'Failed to save purchase order. Please try again.',
+        text: error.response?.data?.message || 'Failed to save purchase order. Please try again.',
       });
     }
   };
@@ -358,7 +355,7 @@ function PurchaseOrder() {
       instituteId: '',
       financialYearId: '',
       vendorId: '',
-      document: '',
+      document: null,
       requestedBy: '',
       remark: '',
       orderItems: [{ itemId: '', quantity: '', rate: '', amount: '', discount: '', totalAmount: '' }],
@@ -368,7 +365,6 @@ function PurchaseOrder() {
     setEditId(null);
   };
 
-  // Get selected purchase order data
   const selectedPo = purchaseOrders.find((po) => po.poId === selectedPoId);
   const selectedOrderItems = selectedPo?.orderItems || [];
 
@@ -475,16 +471,20 @@ function PurchaseOrder() {
                     </select>
                     {errors.vendorId && <p className="mt-1 text-xs text-red-600">{errors.vendorId}</p>}
                   </div>
-                  <FormInput
-                    label="Document"
-                    type="file"
-                    name="document"
-                    onChange={(e) => setFormData({ ...formData, document: e.target.files[0] })}
-                    accept=".pdf,.doc,.docx,.xls,.xlsx"
-                    error={errors.document}
-                    required={false}
-                    className="w-full text-xs sm:text-sm"
-                  />
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700">Document</label>
+                    <input
+                      type="file"
+                      name="document"
+                      onChange={(e) => setFormData({ ...formData, document: e.target.files[0] })}
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      className="block w-full border border-gray-300 rounded-md shadow-sm p-2 text-xs sm:text-sm"
+                    />
+                    {errors.document && <p className="mt-1 text-xs text-red-600">{errors.document}</p>}
+                    {isEditMode && formData.document === null && (
+                      <p className="mt-1 text-xs text-gray-600">Existing document will be retained unless a new file is uploaded.</p>
+                    )}
+                  </div>
                   <FormInput
                     label="Requested By"
                     type="text"

@@ -1,9 +1,14 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import Table from './Table';
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
+
+const MySwal = withReactContent(Swal);
 
 const Details = ({ purchaseOrder, orderItems, institutesData, financialYears, vendors, items, onBack }) => {
   if (!purchaseOrder) {
-    return <div className="text-center p-6">No purchase order selected</div>;
+    return <div className="text-center p-6 text-gray-700">No purchase order selected</div>;
   }
 
   const institute = institutesData.find((inst) => inst.instituteId === purchaseOrder.instituteId);
@@ -12,31 +17,43 @@ const Details = ({ purchaseOrder, orderItems, institutesData, financialYears, ve
 
   const handleDocumentDownload = () => {
     try {
-      // Check if document is a valid URL
-      if (purchaseOrder.document && purchaseOrder.document.startsWith('http')) {
-        const link = document.createElement('a');
-        link.href = purchaseOrder.document;
-        link.target = '_blank';
-        link.download = purchaseOrder.poNo ? `PO_${purchaseOrder.poNo}.pdf` : 'document.pdf';
-        link.click();
-      } else if (purchaseOrder.document && purchaseOrder.document.startsWith('data:')) {
-        // Handle base64 or data URL
-        const link = document.createElement('a');
-        link.href = purchaseOrder.document;
-        link.download = purchaseOrder.poNo ? `PO_${purchaseOrder.poNo}.pdf` : 'document.pdf';
-        link.click();
+      if (purchaseOrder.document) {
+        // Construct full URL using the backend base URL
+        const documentUrl = `http://localhost:5000/${purchaseOrder.document}`;
+        window.open(documentUrl, '_blank');
       } else {
-        console.error('Invalid document URL or data:', purchaseOrder.document);
-        alert('Unable to download document. Invalid document source.');
+        MySwal.fire({
+          icon: 'warning',
+          title: 'No Document',
+          text: 'No document is available for this purchase order.',
+        });
       }
     } catch (error) {
-      console.error('Error downloading document:', error);
-      alert('Error downloading document. Please try again later.');
+      console.error('Error accessing document:', error);
+      MySwal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to access document. Please try again later.',
+      });
     }
   };
 
+  // Table columns for Order Items (consistent with PurchaseOrder.js)
+  const orderItemColumns = [
+    {
+      key: 'itemId',
+      label: 'Item',
+      format: (value) => items?.find((item) => item.itemId === value)?.itemName || 'N/A',
+    },
+    { key: 'quantity', label: 'Quantity' },
+    { key: 'rate', label: 'Rate' },
+    { key: 'amount', label: 'Amount' },
+    { key: 'discount', label: 'Discount Amount' },
+    { key: 'totalAmount', label: 'Total Amount' },
+  ];
+
   return (
-    <div className="">
+    <div className="p-6">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-lg sm:text-xl font-semibold text-brand-secondary">Purchase Order Details</h2>
@@ -54,7 +71,7 @@ const Details = ({ purchaseOrder, orderItems, institutesData, financialYears, ve
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">PO Number</span>
-            <span className="text-xs sm:text-sm text-gray-900">{purchaseOrder.poNo}</span>
+            <span className="text-xs sm:text-sm text-gray-900">{purchaseOrder.poNo || 'N/A'}</span>
           </div>
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Vendor</span>
@@ -70,22 +87,22 @@ const Details = ({ purchaseOrder, orderItems, institutesData, financialYears, ve
           </div>
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Requested By</span>
-            <span className="text-xs sm:text-sm text-gray-900">{purchaseOrder.requestedBy}</span>
+            <span className="text-xs sm:text-sm text-gray-900">{purchaseOrder.requestedBy || 'N/A'}</span>
           </div>
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">PO Date</span>
             <span className="text-xs sm:text-sm text-gray-900">
-              {new Date(purchaseOrder.poDate).toLocaleDateString()}
+              {purchaseOrder.poDate ? new Date(purchaseOrder.poDate).toLocaleDateString() : 'N/A'}
             </span>
           </div>
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Document</span>
             {purchaseOrder.document ? (
               <button
-                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-xs sm:text-sm w-48"
                 onClick={handleDocumentDownload}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-xs sm:text-sm w-48"
               >
-                Download Document
+                View Document
               </button>
             ) : (
               <span className="text-xs sm:text-sm text-gray-900">No document available</span>
@@ -101,61 +118,12 @@ const Details = ({ purchaseOrder, orderItems, institutesData, financialYears, ve
       {/* Items Section */}
       <div>
         <h3 className="text-sm sm:text-base font-medium text-brand-secondary mb-4">Items</h3>
-        {/* Mobile View */}
-        <div className="sm:hidden space-y-4">
-          {orderItems.map((item) => (
-            <div key={item.id} className="p-4 border rounded-md bg-gray-50">
-              <p className="text-xs">
-                <strong>Item ID:</strong> {item.id}
-              </p>
-              <p className="text-xs">
-                <strong>Item Name:</strong> {items.find((i) => i.itemId === item.itemId)?.itemName || 'N/A'}
-              </p>
-              <p className="text-xs">
-                <strong>Quantity:</strong> {item.quantity}
-              </p>
-              <p className="text-xs">
-                <strong>Rate:</strong> {item.rate}
-              </p>
-              <p className="text-xs">
-                <strong>Amount:</strong> {item.amount}
-              </p>
-              <p className="text-xs">
-                <strong>Discount Amount:</strong> {item.discount}
-              </p>
-              <p className="text-xs">
-                <strong>Total Amount:</strong> {item.totalAmount}
-              </p>
-            </div>
-          ))}
-        </div>
-        {/* Desktop View */}
-        <div className="hidden sm:block overflow-x-auto">
-          <table className="w-full text-sm text-left text-gray-900">
-            <thead className="text-xs uppercase bg-gray-200">
-              <tr>
-                <th scope="col" className="px-6 py-3">Item Name</th>
-                <th scope="col" className="px-6 py-3">Quantity</th>
-                <th scope="col" className="px-6 py-3">Rate</th>
-                <th scope="col" className="px-6 py-3">Amount</th>
-                <th scope="col" className="px-6 py-3">Discount Amount</th>
-                <th scope="col" className="px-6 py-3">Total Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orderItems.map((item) => (
-                <tr key={item.id} className="bg-white border-b">
-                  <td className="px-6 py-4">{items.find((i) => i.itemId === item.itemId)?.itemName || 'N/A'}</td>
-                  <td className="px-6 py-4">{item.quantity}</td>
-                  <td className="px-6 py-4">{item.rate}</td>
-                  <td className="px-6 py-4">{item.amount}</td>
-                  <td className="px-6 py-4">{item.discount}</td>
-                  <td className="px-6 py-4">{item.totalAmount}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table
+          columns={orderItemColumns}
+          data={orderItems}
+          actions={[]}
+          expandable={null}
+        />
       </div>
     </div>
   );
