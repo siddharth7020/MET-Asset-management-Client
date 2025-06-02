@@ -20,7 +20,7 @@ function GRN() {
     grnDate: '',
     challanNo: '',
     challanDate: '',
-    document: '',
+    document: null,
     remark: '',
     grnItems: [{ orderItemId: '', itemId: '', receivedQuantity: '', rejectedQuantity: '' }],
   });
@@ -73,8 +73,8 @@ function GRN() {
             ...prev,
             grnItems: orderItems.map(item => ({
               orderItemId: item.id,
-              itemId: item.itemId, // Include itemId from OrderItem
-              itemName: item.item?.name || 'N/A', // Assuming Item model has a 'name' field
+              itemId: item.itemId,
+              itemName: item.item?.name || 'N/A',
               receivedQuantity: item.quantity || '',
               rejectedQuantity: '',
             })),
@@ -154,13 +154,13 @@ function GRN() {
             grnDate: grn.grnDate.split('T')[0],
             challanNo: grn.challanNo,
             challanDate: grn.challanDate.split('T')[0],
-            document: grn.document || '',
+            document: null,
             remark: grn.remark || '',
             grnItems: grn.grnItems.map(gi => ({
               id: gi.id,
               orderItemId: gi.orderItemId,
-              itemId: gi.itemId, // Include itemId
-              itemName: gi.orderItem?.item?.name || 'N/A', // Get item name from OrderItem
+              itemId: gi.itemId,
+              itemName: gi.orderItem?.item?.name || 'N/A',
               receivedQuantity: gi.receivedQuantity,
               rejectedQuantity: gi.rejectedQuantity || '',
             })) || [{ orderItemId: '', itemId: '', receivedQuantity: '', rejectedQuantity: '' }],
@@ -180,8 +180,11 @@ function GRN() {
   ];
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const { name, value, files } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === 'document' ? files[0] : value,
+    }));
     setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
@@ -200,7 +203,7 @@ function GRN() {
       grnDate: '',
       challanNo: '',
       challanDate: '',
-      document: '',
+      document: null,
       remark: '',
       grnItems: [{ orderItemId: '', itemId: '', receivedQuantity: '', rejectedQuantity: '' }],
     });
@@ -215,6 +218,12 @@ function GRN() {
     if (!formData.grnDate) newErrors.grnDate = 'GRN date is required';
     if (!formData.challanNo) newErrors.challanNo = 'Challan number is required';
     if (!formData.challanDate) newErrors.challanDate = 'Challan date is required';
+    if (formData.document && !['application/pdf', 'image/jpeg', 'image/png'].includes(formData.document.type)) {
+      newErrors.document = 'Only PDF, JPEG, or PNG files are allowed';
+    }
+    if (formData.document && formData.document.size > 10 * 1024 * 1024) {
+      newErrors.document = 'File size must not exceed 10MB';
+    }
 
     formData.grnItems.forEach((gi, index) => {
       if (!gi.orderItemId) newErrors[`grnItems[${index}].orderItemId`] = 'Order item is required';
@@ -243,25 +252,28 @@ function GRN() {
       return;
     }
 
-    const grnData = {
-      grnNo: formData.grnNo,
-      grnDate: formData.grnDate,
-      challanNo: formData.challanNo,
-      challanDate: formData.challanDate,
-      document: formData.document || undefined,
-      remark: formData.remark || undefined,
-      grnItems: formData.grnItems.map(gi => ({
-        ...(isEditMode && gi.id ? { id: gi.id } : {}),
-        orderItemId: Number(gi.orderItemId),
-        itemId: Number(gi.itemId), // Include itemId
-        receivedQuantity: Number(gi.receivedQuantity),
-        rejectedQuantity: gi.rejectedQuantity ? Number(gi.rejectedQuantity) : 0,
-      })),
-    };
+    const apiFormData = new FormData();
+    apiFormData.append('grnNo', formData.grnNo);
+    apiFormData.append('grnDate', formData.grnDate);
+    apiFormData.append('challanNo', formData.challanNo);
+    apiFormData.append('challanDate', formData.challanDate);
+    if (formData.document) {
+      apiFormData.append('document', formData.document);
+    }
+    if (formData.remark) {
+      apiFormData.append('remark', formData.remark);
+    }
+    apiFormData.append('grnItems', JSON.stringify(formData.grnItems.map(gi => ({
+      ...(isEditMode && gi.id ? { id: gi.id } : {}),
+      orderItemId: Number(gi.orderItemId),
+      itemId: Number(gi.itemId),
+      receivedQuantity: Number(gi.receivedQuantity),
+      rejectedQuantity: gi.rejectedQuantity ? Number(gi.rejectedQuantity) : 0,
+    }))));
 
     try {
       if (isEditMode) {
-        await updateGrn(formData.poId, editId, grnData);
+        await updateGrn(formData.poId, editId, apiFormData);
         const grnResponse = await getGrnById(editId);
         setGrns((prev) =>
           prev.map((grn) => (grn.id === editId ? grnResponse.data : grn))
@@ -276,7 +288,7 @@ function GRN() {
           text: 'GRN updated successfully!',
         });
       } else {
-        const response = await createGrn(formData.poId, grnData);
+        const response = await createGrn(formData.poId, apiFormData);
         setGrns((prev) => [...prev, response.data]);
         setGrnItems((prev) => [...prev, ...response.data.grnItems]);
         MySwal.fire({
@@ -300,6 +312,7 @@ function GRN() {
   const handleCancel = async () => {
     const hasChanges = Object.values(formData).some(
       (value) => typeof value === 'string' && value !== '' ||
+        (value instanceof File) ||
         (Array.isArray(value) && value.some(item =>
           Object.values(item).some(v => v !== '')))
     );
@@ -412,15 +425,20 @@ function GRN() {
                     required
                     className="w-full text-sm"
                   />
-                  <FormInput
-                    label="Document"
-                    type="file"
-                    name="document"
-                    onChange={(e) => setFormData({ ...formData, document: e.target.files[0] })}
-                    error={errors.document}
-                    required={false}
-                    className="w-full text-sm"
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Document</label>
+                    <input
+                      type="file"
+                      name="document"
+                      onChange={handleChange}
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      className="block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"
+                    />
+                    {errors.document && <p className="mt-1 text-sm text-red-600">{errors.document}</p>}
+                    {isEditMode && formData.document === null && (
+                      <p className="mt-1 text-xs text-gray-600">Existing document will be retained unless a new file is uploaded.</p>
+                    )}
+                  </div>
                   <FormInput
                     label="Remark"
                     type="text"
@@ -440,7 +458,6 @@ function GRN() {
                             <label className="block text-sm font-medium text-gray-700">Item Name</label>
                             <input
                               type="text"
-                              //i wantbto fetch the item name from the items array
                               value={items.find((item) => item.itemId === gi.itemId)?.itemName || ''}
                               disabled
                               className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"

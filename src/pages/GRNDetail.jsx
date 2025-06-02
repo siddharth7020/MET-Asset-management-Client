@@ -25,7 +25,6 @@ const GrnDetails = ({ grn, grnItems, purchaseOrders, onBack, items }) => {
       <div className="p-6 bg-gray-50 rounded-md shadow mb-6">
         <h3 className="text-sm sm:text-base font-medium text-brand-secondary mb-4">Details</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">GRN Number</span>
             <span className="text-xs sm:text-sm text-gray-900">{grn.grnNo}</span>
@@ -52,17 +51,18 @@ const GrnDetails = ({ grn, grnItems, purchaseOrders, onBack, items }) => {
           </div>
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Document</span>
-            <button
-              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-xs sm:text-sm w-48"
-              onClick={() => {
-                const link = document.createElement('a');
-                link.href = grn.document;
-                link.download = 'document.pdf'; // or any other filename
-                link.click();
-              }}
-            >
-              Download Document
-            </button>
+            {grn.document ? (
+              <a
+                href={`http://localhost:5000/${grn.document}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline text-xs sm:text-sm"
+              >
+                View Document
+              </a>
+            ) : (
+              <span className="text-xs sm:text-sm text-gray-900">N/A</span>
+            )}
           </div>
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Remark</span>
@@ -79,14 +79,13 @@ const GrnDetails = ({ grn, grnItems, purchaseOrders, onBack, items }) => {
           {grnItems.map((item) => (
             <div key={item.id} className="p-4 border rounded-md bg-gray-50">
               <p className="text-xs">
-                <strong>Item Name:</strong>
-                {item.orderItemId}
+                <strong>Item Name:</strong> {items.find((i) => i.itemId === item.itemId)?.itemName || 'N/A'}
               </p>
               <p className="text-xs">
                 <strong>Received Quantity:</strong> {item.receivedQuantity}
               </p>
               <p className="text-xs">
-                <strong>Rejected Quantity:</strong> {item.rejectedQuantity}
+                <strong>Rejected Quantity:</strong> {item.rejectedQuantity || 'N/A'}
               </p>
             </div>
           ))}
@@ -96,7 +95,6 @@ const GrnDetails = ({ grn, grnItems, purchaseOrders, onBack, items }) => {
           <table className="w-full text-sm text-left text-gray-900">
             <thead className="text-xs uppercase bg-gray-200">
               <tr>
-                <th scope="col" className="px-6 py-3">Order Item ID</th>
                 <th scope="col" className="px-6 py-3">Item Name</th>
                 <th scope="col" className="px-6 py-3">Received Quantity</th>
                 <th scope="col" className="px-6 py-3">Rejected Quantity</th>
@@ -105,14 +103,11 @@ const GrnDetails = ({ grn, grnItems, purchaseOrders, onBack, items }) => {
             <tbody>
               {grnItems.map((item) => (
                 <tr key={item.id} className="bg-white border-b">
-                   <td className="px-6 py-4">
-                    {item.orderItemId}
-                  </td>
                   <td className="px-6 py-4">
-                  {items.find((i) => i.itemId === item.itemId)?.itemName || 'N/A'}
+                    {items.find((i) => i.itemId === item.itemId)?.itemName || 'N/A'}
                   </td>
                   <td className="px-6 py-4">{item.receivedQuantity}</td>
-                  <td className="px-6 py-4">{item.rejectedQuantity}</td>
+                  <td className="px-6 py-4">{item.rejectedQuantity || '0'}</td>
                 </tr>
               ))}
             </tbody>
@@ -138,6 +133,7 @@ GrnDetails.propTypes = {
     PropTypes.shape({
       id: PropTypes.number,
       orderItemId: PropTypes.number,
+      itemId: PropTypes.number,
       receivedQuantity: PropTypes.number,
       rejectedQuantity: PropTypes.number,
     })
@@ -148,9 +144,9 @@ GrnDetails.propTypes = {
       poNo: PropTypes.string,
     })
   ).isRequired,
-  orderItems: PropTypes.arrayOf(
+  items: PropTypes.arrayOf(
     PropTypes.shape({
-      id: PropTypes.number,
+      itemId: PropTypes.number,
       itemName: PropTypes.string,
     })
   ).isRequired,
