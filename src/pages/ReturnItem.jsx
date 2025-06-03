@@ -294,11 +294,7 @@ function Return() {
     },
     { key: 'employeeName', label: 'Employee Name' },
     { key: 'location', label: 'Location' },
-    {
-      key: 'createdAt',
-      label: 'Created At',
-      format: (value) => new Date(value).toLocaleDateString(),
-    },
+
   ];
 
   // Table columns for ReturnItem

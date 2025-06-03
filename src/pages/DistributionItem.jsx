@@ -300,15 +300,7 @@ function Distribution() {
       key: 'distributionDate',
       label: 'Distribution Date',
       format: (value) => new Date(value).toLocaleDateString(),
-    },
-    { key: 'employeeName', label: 'Employee Name' },
-    { key: 'location', label: 'Location' },
-    { key: 'remark', label: 'Remark' },
-    {
-      key: 'createdAt',
-      label: 'Created At',
-      format: (value) => new Date(value).toLocaleDateString(),
-    },
+    }
   ];
 
   // Table actions
@@ -431,7 +423,7 @@ function Distribution() {
       ) : (
         <>
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Goods Received Notes</h2>
+            <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Distribution Item</h2>
             <div className="flex items-center space-x-4">
               <input
                 type="text"
