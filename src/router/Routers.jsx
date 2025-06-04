@@ -3,6 +3,7 @@ import Layout from '../layout/Layout';
 import Dashboard from '../pages/Dashboard';
 import FinancialYear from '../pages/FinancialYear';
 import Institute from '../pages/Institute';
+import Location from '../pages/location';
 import Vendor from '../pages/Vendor';
 import Unit from '../pages/Unit';
 import Category from '../pages/Category';
@@ -26,6 +27,7 @@ const Routers = () => {
         <Route path="/" element={<Dashboard />} />
         <Route path="/masters/financial-year" element={<FinancialYear />} />
         <Route path="/masters/institute" element={<Institute />} />
+        <Route path="/masters/location" element={<Location />} />
         <Route path="/masters/vendor" element={<Vendor />} />
         <Route path="/masters/unit" element={<Unit />} />
         <Route path="/masters/category" element={<Category />} />

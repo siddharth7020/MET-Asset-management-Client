@@ -21,7 +21,8 @@ function Sidebar({ isOpen, toggleSidebar }) {
       subItems: [
         { name: 'Financial Year', path: '/masters/financial-year', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
         { name: 'Institute', path: '/masters/institute', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
-        { name: 'Vendor', path: '/masters/vendor', icon: 'M16 7a4 4 0 11-8 0 4investigate4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
+        { name: 'Location', path: '/masters/location', icon: 'M12 2C8.134 2 5 5.134 5 9c0 3.866 7 13 7 13s7-9.134 7-13c0-3.866-3.134-7-7-7zm0 9a2.5 2.5 0 110-5 2.5 2.5 0 010 5z' },
+        { name: 'Vendor', path: '/masters/vendor', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
         { name: 'Unit', path: '/masters/unit', icon: 'M20 7l-10-4-10 4v10l10 4 10-4V7z' },
         { name: 'Category', path: '/masters/category', icon: 'M4 6h16M4 10h16M4 14h16M4 18h16' },
         { name: 'Item', path: '/masters/item', icon: 'M16 4v12l-4-2-4 2V4h8z' },
@@ -48,7 +49,7 @@ function Sidebar({ isOpen, toggleSidebar }) {
       name: 'Distribution',
       icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
       subItems: [
-        {name: 'Stock Storage', path: '/stock/stock-storage', icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2z' },
+        { name: 'Stock Storage', path: '/stock/stock-storage', icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2z' },
         { name: 'Distribution Item', path: '/distribution/distribution-item', icon: 'M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4' },
         { name: 'Return Item', path: '/distribution/return-item', icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' },
       ],
@@ -79,8 +80,7 @@ function Sidebar({ isOpen, toggleSidebar }) {
                     <NavLink
                       to={item.path}
                       className={({ isActive }) =>
-                        `flex items-center px-4 py-2 rounded-md text-sm font-medium ${
-                          isActive ? 'bg-brand-primary text-white' : 'text-gray-600 hover:bg-gray-100'
+                        `flex items-center px-4 py-2 rounded-md text-sm font-medium ${isActive ? 'bg-brand-primary text-white' : 'text-gray-600 hover:bg-gray-100'
                         }`
                       }
                       onClick={() => isOpen && toggleSidebar()} // Close sidebar on mobile after click
@@ -112,9 +112,8 @@ function Sidebar({ isOpen, toggleSidebar }) {
                       </svg>
                       <span className={`${isOpen ? 'block' : 'hidden md:hidden lg:block'} flex-1 text-left`}>{item.name}</span>
                       <svg
-                        className={`w-4 h-4 ml-auto nav-icon transform ${openMenus[item.name] ? 'rotate-180' : ''} ${
-                          isOpen ? 'block' : 'hidden md:hidden lg:block'
-                        }`}
+                        className={`w-4 h-4 ml-auto nav-icon transform ${openMenus[item.name] ? 'rotate-180' : ''} ${isOpen ? 'block' : 'hidden md:hidden lg:block'
+                          }`}
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -131,8 +130,7 @@ function Sidebar({ isOpen, toggleSidebar }) {
                           <NavLink
                             to={subItem.path}
                             className={({ isActive }) =>
-                              `flex items-center px-4 py-2 rounded-md text-sm font-medium ${
-                                isActive ? 'bg-brand-primary text-white' : 'text-gray-600 hover:bg-gray-100'
+                              `flex items-center px-4 py-2 rounded-md text-sm font-medium ${isActive ? 'bg-brand-primary text-white' : 'text-gray-600 hover:bg-gray-100'
                               }`
                             }
                             onClick={() => isOpen && toggleSidebar()} // Close sidebar on mobile after click

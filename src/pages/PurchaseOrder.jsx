@@ -62,6 +62,8 @@ function PurchaseOrder() {
         const itemsResponse = await axios.get('/items');
         if (Array.isArray(itemsResponse.data.items)) {
           setItems(itemsResponse.data.items);
+          console.log('Items Response:', itemsResponse.data.items);
+          
         } else {
           console.error('Expected items data to be an array, but got:', itemsResponse.data.items);
         }
