@@ -5,6 +5,10 @@ const DistributionDetails = ({ distribution, distributionItems, items, financial
   if (!distribution) {
     return <div className="text-center p-6">No Distribution selected</div>;
   }
+  const financialYear = financialYears.find((year) => year.financialYearId === distribution.financialYearId);
+  const institute = institutes.find((inst) => inst.instituteId === distribution.instituteId);
+  console.log(location);
+  
 
   return (
     <div className="">
@@ -30,13 +34,13 @@ const DistributionDetails = ({ distribution, distributionItems, items, financial
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Financial Year</span>
             <span className="text-xs sm:text-sm text-gray-900">
-              {financialYears.find((fy) => fy.id === distribution.financialYearId)?.name || distribution.financialYearId}
+              {financialYear?.year || 'N/A'}
             </span>
           </div>
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Institute</span>
             <span className="text-xs sm:text-sm text-gray-900">
-              {institutes.find((inst) => inst.id === distribution.instituteId)?.name || distribution.instituteId}
+              {institute?.instituteName || 'N/A'}
             </span>
           </div>
           <div className="flex flex-col">
@@ -44,8 +48,12 @@ const DistributionDetails = ({ distribution, distributionItems, items, financial
             <span className="text-xs sm:text-sm text-gray-900">{distribution.employeeName}</span>
           </div>
           <div className="flex flex-col">
-            <span className="text-xs sm:text-sm font-semibold text-gray-700">Location</span>
-            <span className="text-xs sm:text-sm text-gray-900">{distribution.location}</span>
+            <span className="text-xs sm:text-sm font-semibold text-gray-700">Floor</span>
+            <span className="text-xs sm:text-sm text-gray-900">{distribution.floor || 'N/A'}</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xs sm:text-sm font-semibold text-gray-700">Classroom</span>
+            <span className="text-xs sm:text-sm text-gray-900">{distribution.rooms || 'N/A'}</span>
           </div>
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Documents</span>

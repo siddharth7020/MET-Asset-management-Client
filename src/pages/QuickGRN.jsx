@@ -149,18 +149,7 @@ function QuickGRN() {
       label: 'Institute',
       format: (value) => institutes.find((inst) => inst.instituteId === value)?.instituteName || 'N/A',
     },
-    {
-      key: 'financialYearId',
-      label: 'Financial Year',
-      format: (value) => financialYears.find((year) => year.financialYearId === value)?.year || 'N/A',
-    },
-    {
-      key: 'vendorId',
-      label: 'Vendor',
-      format: (value) => vendors.find((v) => v.vendorId === value)?.name || 'N/A',
-    },
     { key: 'challanNo', label: 'Challan No' },
-    { key: 'requestedBy', label: 'Requested By' },
   ];
 
   // Table actions

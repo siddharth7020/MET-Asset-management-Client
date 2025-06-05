@@ -13,6 +13,8 @@ function Distribution() {
   const [items, setItems] = useState([]);
   const [financialYears, setFinancialYears] = useState([]);
   const [institutes, setInstitutes] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [roomOptions, setRoomOptions] = useState([]);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [formData, setFormData] = useState({
@@ -20,6 +22,8 @@ function Distribution() {
     instituteId: '',
     employeeName: '',
     location: '',
+    floor: '',
+    rooms: '',
     distributionDate: '',
     distributionNo: '',
     documents: '',
@@ -37,27 +41,36 @@ function Distribution() {
       try {
         // Fetch distributions
         const distributionsResponse = await getAllDistributions();
-        console.log('Distributions Response:', distributionsResponse);
-        
         const distributionsData = distributionsResponse.data;
         const distributionItemsData = distributionsData.flatMap(dist => dist.items || []);
         setDistributions(distributionsData);
         setDistributionItems(distributionItemsData);
 
-         // Fetch items
-         const itemsResponse = await axios.get('/items');
-         if (Array.isArray(itemsResponse.data.items)) {
-           setItems(itemsResponse.data.items);
-           console.log('Items Response:', itemsResponse.data.items);
-           
-         } else {
-           console.error('Expected items data to be an array, but got:', itemsResponse.data.items);
-           Swal.fire({
-             icon: 'error',
-             title: 'Data Error',
-             text: 'Failed to load items data.',
-           });
-         }
+        // Fetch items
+        const itemsResponse = await axios.get('/items');
+        if (Array.isArray(itemsResponse.data.items)) {
+          setItems(itemsResponse.data.items);
+        } else {
+          console.error('Expected items data to be an array, but got:', itemsResponse.data.items);
+          Swal.fire({
+            icon: 'error',
+            title: 'Data Error',
+            text: 'Failed to load items data.',
+          });
+        }
+
+        // Fetch locations
+        const locationResponse = await axios.get('/locations');
+        if (Array.isArray(locationResponse.data)) {
+          setLocations(locationResponse.data);
+        } else {
+          console.error('Expected location data to be an array, but got:', locationResponse.data);
+          Swal.fire({
+            icon: 'error',
+            title: 'Data Error',
+            text: 'Failed to load location data.',
+          });
+        }
 
         // Fetch financial years
         const fyResponse = await axios.get('/financialYears');
@@ -94,6 +107,30 @@ function Distribution() {
     fetchData();
   }, []);
 
+  // Update room options when floor changes
+  useEffect(() => {
+    if (formData.floor) {
+      const selectedLocation = locations.find(loc => loc.floor === formData.floor);
+      if (selectedLocation) {
+        setFormData(prev => ({
+          ...prev,
+          location: selectedLocation.locationID.toString(),
+          rooms: selectedLocation.room.includes(prev.rooms) ? prev.rooms : '',
+        }));
+        setRoomOptions(selectedLocation.room.map(room => ({
+          value: room,
+          label: room,
+        })));
+      } else {
+        setFormData(prev => ({ ...prev, location: '', rooms: '' }));
+        setRoomOptions([]);
+      }
+    } else {
+      setFormData(prev => ({ ...prev, location: '', rooms: '' }));
+      setRoomOptions([]);
+    }
+  }, [formData.floor, locations]);
+
   // Form handling
   const handleChange = (e) => {
     const { name, value, files } = e.target;
@@ -101,6 +138,27 @@ function Distribution() {
       ...prev,
       [name]: files ? files[0] : value,
     }));
+    setErrors((prev) => ({ ...prev, [name]: '' }));
+  };
+
+  const handleSelectChange = (name, option) => {
+    if (name === 'floor') {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: option ? option.value : '',
+        rooms: '', // Reset rooms when floor changes
+      }));
+    } else if (name === 'rooms') {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: option ? option.value : '',
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: option ? option.value : '',
+      }));
+    }
     setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
@@ -148,7 +206,8 @@ function Distribution() {
     if (!formData.financialYearId) newErrors.financialYearId = 'Financial year is required';
     if (!formData.instituteId) newErrors.instituteId = 'Institute is required';
     if (!formData.employeeName.trim()) newErrors.employeeName = 'Employee name is required';
-    if (!formData.location.trim()) newErrors.location = 'Location is required';
+    if (!formData.location) newErrors.location = 'Location (floor) is required';
+    if (!formData.rooms) newErrors.rooms = 'Room is required';
     if (!formData.distributionDate) newErrors.distributionDate = 'Distribution date is required';
     if (formData.items.length === 0) newErrors.items = 'At least one item is required';
     formData.items.forEach((item, index) => {
@@ -178,7 +237,9 @@ function Distribution() {
       financialYearId: Number(formData.financialYearId),
       instituteId: Number(formData.instituteId),
       employeeName: formData.employeeName.trim(),
-      location: formData.location.trim(),
+      location: Number(formData.location),
+      floor: formData.floor,
+      rooms: formData.rooms,
       distributionDate: formData.distributionDate,
       distributionNo: formData.distributionNo.trim(),
       documents: formData.documents ? formData.documents.name : '',
@@ -256,6 +317,8 @@ function Distribution() {
       instituteId: '',
       employeeName: '',
       location: '',
+      floor: '',
+      rooms: '',
       distributionDate: '',
       distributionNo: '',
       documents: '',
@@ -263,6 +326,7 @@ function Distribution() {
       items: [{ itemId: '', issueQuantity: '' }],
     });
     setErrors({});
+    setRoomOptions([]);
     setIsEditMode(false);
     setEditId(null);
   };
@@ -270,16 +334,13 @@ function Distribution() {
   // Filter distributions based on search query
   const filteredDistributions = distributions.filter((dist) => {
     const financialYear = financialYears.find((fy) => fy.financialYearId === dist.financialYearId);
+    const location = locations.find((loc) => loc.locationID === dist.location);
     const distributionNo = dist.distributionNo || dist.id;
-    const poNumber = dist.poNumber || '';
-    const grnNumber = dist.grnNumber || '';
-    const challanNumber = dist.challanNumber || '';
     return (
       financialYear?.year.toLowerCase().includes(searchQuery.toLowerCase()) ||
       distributionNo.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
-      poNumber.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
-      grnNumber.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
-      challanNumber.toString().toLowerCase().includes(searchQuery.toLowerCase())
+      location?.floor.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      dist.rooms.toLowerCase().includes(searchQuery.toLowerCase())
     );
   });
 
@@ -300,7 +361,7 @@ function Distribution() {
       key: 'distributionDate',
       label: 'Distribution Date',
       format: (value) => new Date(value).toLocaleDateString(),
-    }
+    },
   ];
 
   // Table actions
@@ -311,24 +372,34 @@ function Distribution() {
         try {
           const response = await getDistributionById(row.id);
           const distribution = response.data;
+          const selectedLocation = locations.find(loc => loc.locationID === distribution.location);
           setIsEditMode(true);
           setEditId(row.id);
           setFormData({
             financialYearId: distribution.financialYearId.toString(),
             instituteId: distribution.instituteId.toString(),
             employeeName: distribution.employeeName,
-            location: distribution.location,
+            location: distribution.location.toString(),
+            floor: selectedLocation ? selectedLocation.floor : '',
+            rooms: distribution.rooms || '',
             distributionDate: distribution.distributionDate ? distribution.distributionDate.split('T')[0] : '',
             distributionNo: distribution.distributionNo || '',
             documents: distribution.documents || '',
             remark: distribution.remark || '',
             items: distribution.items.length > 0
               ? distribution.items.map((item) => ({
-                itemId: item.itemId.toString(),
-                issueQuantity: item.issueQuantity.toString(),
-              }))
+                  itemId: item.itemId.toString(),
+                  issueQuantity: item.issueQuantity.toString(),
+                }))
               : [{ itemId: '', issueQuantity: '' }],
           });
+          // Set room options for the selected floor
+          if (selectedLocation) {
+            setRoomOptions(selectedLocation.room.map(room => ({
+              value: room,
+              label: room,
+            })));
+          }
           setIsFormVisible(true);
         } catch (error) {
           console.error('Error fetching distribution for edit:', error);
@@ -404,6 +475,10 @@ function Distribution() {
     value: item.itemId.toString(),
     label: item.itemName,
   }));
+  const floorOptions = locations.map((loc) => ({
+    value: loc.floor,
+    label: loc.floor,
+  }));
 
   // Get selected Distribution data
   const selectedDistribution = distributions.find((dist) => dist.id === selectedDistributionId);
@@ -418,6 +493,7 @@ function Distribution() {
           items={items}
           financialYears={financialYears}
           institutes={institutes}
+          locations={locations}
           onBack={handleBack}
         />
       ) : (
@@ -427,7 +503,7 @@ function Distribution() {
             <div className="flex items-center space-x-4">
               <input
                 type="text"
-                placeholder="Search by PO Number, GRN Number, or Challan Number"
+                placeholder="Search by Financial Year, Distribution No, or Location"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full sm:w-64 border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-sm"
@@ -436,7 +512,7 @@ function Distribution() {
                 onClick={() => setIsFormVisible(!isFormVisible)}
                 className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-sm"
               >
-                {isFormVisible ? 'Hide Form' : 'Create GRN'}
+                {isFormVisible ? 'Hide Form' : 'Create Distribution'}
               </button>
             </div>
           </div>
@@ -452,7 +528,7 @@ function Distribution() {
                     <Select
                       options={financialYearOptions}
                       value={financialYearOptions.find((option) => option.value === formData.financialYearId)}
-                      onChange={(option) => handleChange({ target: { name: 'financialYearId', value: option ? option.value : '' } })}
+                      onChange={(option) => handleSelectChange('financialYearId', option)}
                       className="text-sm"
                       classNamePrefix="select"
                       placeholder="Select Financial Year"
@@ -467,7 +543,7 @@ function Distribution() {
                     <Select
                       options={instituteOptions}
                       value={instituteOptions.find((option) => option.value === formData.instituteId)}
-                      onChange={(option) => handleChange({ target: { name: 'instituteId', value: option ? option.value : '' } })}
+                      onChange={(option) => handleSelectChange('instituteId', option)}
                       className="text-sm"
                       classNamePrefix="select"
                       placeholder="Select Institute"
@@ -475,6 +551,37 @@ function Distribution() {
                     />
                     {errors.instituteId && (
                       <p className="mt-1 text-sm text-red-600">{errors.instituteId}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Floor</label>
+                    <Select
+                      options={floorOptions}
+                      value={floorOptions.find((option) => option.value === formData.floor)}
+                      onChange={(option) => handleSelectChange('floor', option)}
+                      className="text-sm"
+                      classNamePrefix="select"
+                      placeholder="Select Floor"
+                      isClearable
+                    />
+                    {errors.location && (
+                      <p className="mt-1 text-sm text-red-600">{errors.location}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Room</label>
+                    <Select
+                      options={roomOptions}
+                      value={roomOptions.find((option) => option.value === formData.rooms)}
+                      onChange={(option) => handleSelectChange('rooms', option)}
+                      className="text-sm"
+                      classNamePrefix="select"
+                      placeholder="Select Room"
+                      isClearable
+                      isDisabled={!formData.floor}
+                    />
+                    {errors.rooms && (
+                      <p className="mt-1 text-sm text-red-600">{errors.rooms}</p>
                     )}
                   </div>
                   <FormInput
@@ -494,16 +601,6 @@ function Distribution() {
                     value={formData.employeeName}
                     onChange={handleChange}
                     error={errors.employeeName}
-                    required
-                    className="w-full text-sm"
-                  />
-                  <FormInput
-                    label="Location"
-                    type="text"
-                    name="location"
-                    value={formData.location}
-                    onChange={handleChange}
-                    error={errors.location}
                     required
                     className="w-full text-sm"
                   />
@@ -571,13 +668,14 @@ function Distribution() {
                     ))}
                     {errors.items && (
                       <p className="mt-1 text-sm text-red-600">{errors.items}</p>
-                    )}  <button
-                    type="button"
-                    onClick={handleAddItem}
-                    className="w-full sm:w-auto bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 text-xs sm:text-sm"
-                  >
-                    Add Quick GRN Item
-                  </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleAddItem}
+                      className="w-full sm:w-auto bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 text-xs sm:text-sm"
+                    >
+                      Add Item
+                    </button>
                   </div>
                   <div className="col-span-3 flex space-x-4">
                     <button
