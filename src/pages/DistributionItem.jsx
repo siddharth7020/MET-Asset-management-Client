@@ -232,7 +232,7 @@ function Distribution() {
       });
       return;
     }
-
+  
     const payload = {
       financialYearId: Number(formData.financialYearId),
       instituteId: Number(formData.instituteId),
@@ -249,7 +249,7 @@ function Distribution() {
         issueQuantity: Number(item.issueQuantity),
       })),
     };
-
+  
     try {
       if (isEditMode) {
         const response = await updateDistribution(editId, payload);
@@ -281,6 +281,15 @@ function Distribution() {
           showConfirmButton: false,
         });
       }
+      // Add Swal alert to display available quantity and requested quantity
+      Swal.fire({
+        icon: 'info',
+        title: 'Quantity Details',
+        html: `
+          <p>Available Quantity: ${formData.items.reduce((acc, item) => acc + Number(item.availableQuantity), 0)}</p>
+          <p>Requested Quantity: ${formData.items.reduce((acc, item) => acc + Number(item.issueQuantity), 0)}</p>
+        `,
+      });
       resetForm();
       setIsFormVisible(false);
     } catch (error) {
