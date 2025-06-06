@@ -94,12 +94,12 @@ function PurchaseOrder() {
   });
 
   const poColumns = [
+    { key: 'poNo', label: 'PO Number' },
     {
       key: 'poDate',
       label: 'Date',
       format: (value) => new Date(value).toLocaleDateString(),
     },
-    { key: 'poNo', label: 'PO Number' },
     {
       key: 'instituteId',
       label: 'Institute',
@@ -114,12 +114,7 @@ function PurchaseOrder() {
       key: 'vendorId',
       label: 'Vendor',
       format: (value) => vendors?.find((vend) => vend.vendorId === value)?.name || 'N/A',
-    },
-    {
-      key: 'document',
-      label: 'Document',
-      format: (value) => (value ? <a href={`http://localhost:5000/${value}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">View</a> : 'N/A'),
-    },
+    }
   ];
 
   const orderItemColumns = [
