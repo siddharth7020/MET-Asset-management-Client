@@ -571,13 +571,6 @@ function Invoice() {
                     required={false}
                     className="w-full text-xs sm:text-sm"
                   />
-                     <FormInput
-                    label="Document Upload"
-                    type="file"
-                    name="paymentDetails"
-                    className="w-full text-xs sm:text-sm"
-                  />
-
                   <div className="col-span-1 sm:col-span-2 lg:col-span-3">
                     <h4 className="text-sm sm:text-md font-medium text-brand-secondary mb-2">Invoice Items</h4>
                     {formData.items.map((item, index) => (

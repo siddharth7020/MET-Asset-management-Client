@@ -13,7 +13,6 @@ function PurchaseOrder() {
   const [financialYears, setFinancialYears] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [items, setItems] = useState([]);
-  const [units, setUnits] = useState([]);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [formData, setFormData] = useState({
@@ -26,7 +25,7 @@ function PurchaseOrder() {
     document: null,
     requestedBy: '',
     remark: '',
-    orderItems: [{ itemId: '', unitId: '', quantity: '', rate: '', amount: '', discount: '', totalAmount: '' }],
+    orderItems: [{ itemId: '', quantity: '', rate: '', amount: '', discount: '', totalAmount: '' }],
   });
   const [errors, setErrors] = useState({});
   const [editId, setEditId] = useState(null);
@@ -63,14 +62,10 @@ function PurchaseOrder() {
         const itemsResponse = await axios.get('/items');
         if (Array.isArray(itemsResponse.data.items)) {
           setItems(itemsResponse.data.items);
+          console.log('Items Response:', itemsResponse.data.items);
+          
         } else {
           console.error('Expected items data to be an array, but got:', itemsResponse.data.items);
-        }
-        const unitsResponse = await axios.get('/units');
-        if (Array.isArray(unitsResponse.data.data)) {
-          setUnits(unitsResponse.data.data);
-        } else {
-          console.error('Expected units data to be an array, but got:', unitsResponse.data.data);
         }
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -119,7 +114,7 @@ function PurchaseOrder() {
       key: 'vendorId',
       label: 'Vendor',
       format: (value) => vendors?.find((vend) => vend.vendorId === value)?.name || 'N/A',
-    },
+    }
   ];
 
   const orderItemColumns = [
@@ -127,11 +122,6 @@ function PurchaseOrder() {
       key: 'itemId',
       label: 'Item',
       format: (value) => items?.find((item) => item.itemId === value)?.itemName || 'N/A',
-    },
-    {
-      key: 'unitId',
-      label: 'Unit',
-      format: (value) => units?.find((unit) => unit.unitId === value)?.uniteName || 'N/A',
     },
     { key: 'quantity', label: 'Quantity' },
     { key: 'rate', label: 'Rate' },
@@ -158,7 +148,6 @@ function PurchaseOrder() {
         const poItems = row.orderItems.map((oi) => ({
           id: oi.id,
           itemId: oi.itemId,
-          unitId: oi.unitId,
           quantity: oi.quantity,
           rate: oi.rate,
           amount: oi.amount,
@@ -175,7 +164,7 @@ function PurchaseOrder() {
           document: null,
           requestedBy: row.requestedBy,
           remark: row.remark,
-          orderItems: poItems.length > 0 ? poItems : [{ itemId: '', unitId: '', quantity: '', rate: '', amount: '', discount: '', totalAmount: '' }],
+          orderItems: poItems.length > 0 ? poItems : [{ itemId: '', quantity: '', rate: '', amount: '', discount: '', totalAmount: '' }],
         });
         setIsFormVisible(true);
       },
@@ -242,7 +231,7 @@ function PurchaseOrder() {
   const addOrderItem = () => {
     setFormData((prev) => ({
       ...prev,
-      orderItems: [...prev.orderItems, { itemId: '', unitId: '', quantity: '', rate: '', amount: '', discount: '', totalAmount: '' }],
+      orderItems: [...prev.orderItems, { itemId: '', quantity: '', rate: '', amount: '', discount: '', totalAmount: '' }],
     }));
   };
 
@@ -276,7 +265,6 @@ function PurchaseOrder() {
     }
     formData.orderItems.forEach((oi, index) => {
       if (!oi.itemId) newErrors[`orderItems[${index}].itemId`] = 'Item is required';
-      if (!oi.unitId) newErrors[`orderItems[${index}].unitId`] = 'Unit is required';
       if (!oi.quantity || oi.quantity <= 0) newErrors[`orderItems[${index}].quantity`] = 'Quantity must be positive';
       if (!oi.rate || oi.rate <= 0) newErrors[`orderItems[${index}].rate`] = 'Rate must be positive';
       if (oi.discount < 0) newErrors[`orderItems[${index}].discount`] = 'Discount must be non-negative';
@@ -312,7 +300,6 @@ function PurchaseOrder() {
       orderItems: formData.orderItems.map((oi) => ({
         id: oi.id || undefined,
         itemId: Number(oi.itemId),
-        unitId: Number(oi.unitId),
         quantity: Number(oi.quantity),
         rate: Number(oi.rate),
         amount: Number(oi.amount),
@@ -368,7 +355,7 @@ function PurchaseOrder() {
       document: null,
       requestedBy: '',
       remark: '',
-      orderItems: [{ itemId: '', unitId: '', quantity: '', rate: '', amount: '', discount: '', totalAmount: '' }],
+      orderItems: [{ itemId: '', quantity: '', rate: '', amount: '', discount: '', totalAmount: '' }],
     });
     setErrors({});
     setIsEditMode(false);
@@ -388,7 +375,6 @@ function PurchaseOrder() {
           financialYears={financialYears}
           vendors={vendors}
           items={items}
-          units={units}
           onBack={handleBack}
         />
       ) : (
@@ -520,7 +506,7 @@ function PurchaseOrder() {
                     <h4 className="text-sm sm:text-md font-medium text-brand-secondary mb-2">Order Items</h4>
                     {formData.orderItems.map((oi, index) => (
                       <div key={index} className="flex flex-col gap-4 mb-4 p-4 border rounded-md">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                           <div>
                             <label className="block text-xs sm:text-sm font-medium text-gray-700">Item</label>
                             <select
@@ -539,26 +525,6 @@ function PurchaseOrder() {
                             </select>
                             {errors[`orderItems[${index}].itemId`] && (
                               <p className="mt-1 text-xs text-red-600">{errors[`orderItems[${index}].itemId`]}</p>
-                            )}
-                          </div>
-                          <div>
-                            <label className="block text-xs sm:text-sm font-medium text-gray-700">Unit</label>
-                            <select
-                              name="unitId"
-                              value={oi.unitId}
-                              onChange={(e) => handleOrderItemChange(index, e)}
-                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
-                              required
-                            >
-                              <option value="">Select Unit</option>
-                              {units.map((unit) => (
-                                <option key={unit.unitId} value={unit.unitId}>
-                                  {unit.uniteName}
-                                </option>
-                              ))}
-                            </select>
-                            {errors[`orderItems[${index}].unitId`] && (
-                              <p className="mt-1 text-xs text-red-600">{errors[`orderItems[${index}].unitId`]}</p>
                             )}
                           </div>
                           <FormInput

@@ -6,7 +6,7 @@ import withReactContent from 'sweetalert2-react-content';
 
 const MySwal = withReactContent(Swal);
 
-const Details = ({ purchaseOrder, orderItems, institutesData, financialYears, vendors, items, units, onBack }) => {
+const Details = ({ purchaseOrder, orderItems, institutesData, financialYears, vendors, items, onBack }) => {
   if (!purchaseOrder) {
     return <div className="text-center p-6 text-gray-700">No purchase order selected</div>;
   }
@@ -14,8 +14,6 @@ const Details = ({ purchaseOrder, orderItems, institutesData, financialYears, ve
   const institute = institutesData.find((inst) => inst.instituteId === purchaseOrder.instituteId);
   const financialYear = financialYears.find((year) => year.financialYearId === purchaseOrder.financialYearId);
   const vendor = vendors.find((vend) => vend.vendorId === purchaseOrder.vendorId);
-
-  console.log(units);
 
   const handleDocumentDownload = () => {
     try {
@@ -46,11 +44,6 @@ const Details = ({ purchaseOrder, orderItems, institutesData, financialYears, ve
       key: 'itemId',
       label: 'Item',
       format: (value) => items?.find((item) => item.itemId === value)?.itemName || 'N/A',
-    },
-    {
-      key: 'unitId',
-      label: 'Unit',
-      format: (value) => units?.find((unit) => unit.unitId === value)?.uniteName || 'N/A',
     },
     { key: 'quantity', label: 'Quantity' },
     { key: 'rate', label: 'Rate' },
@@ -128,6 +121,7 @@ const Details = ({ purchaseOrder, orderItems, institutesData, financialYears, ve
         <Table
           columns={orderItemColumns}
           data={orderItems}
+          actions={[]}
           expandable={null}
         />
       </div>
@@ -151,7 +145,6 @@ Details.propTypes = {
     PropTypes.shape({
       id: PropTypes.number,
       itemId: PropTypes.number,
-      unitId: PropTypes.number,
       quantity: PropTypes.number,
       rate: PropTypes.number,
       amount: PropTypes.number,
@@ -181,12 +174,6 @@ Details.propTypes = {
     PropTypes.shape({
       itemId: PropTypes.number,
       itemName: PropTypes.string,
-    })
-  ).isRequired,
-  units: PropTypes.arrayOf(
-    PropTypes.shape({
-      unitId: PropTypes.number,
-      uniteName: PropTypes.string,
     })
   ).isRequired,
   onBack: PropTypes.func.isRequired,
