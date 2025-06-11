@@ -1,5 +1,9 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
+
+const MySwal = withReactContent(Swal);
 
 const GrnDetails = ({ grn, grnItems, purchaseOrders, onBack, items }) => {
   if (!grn) {
@@ -7,6 +11,29 @@ const GrnDetails = ({ grn, grnItems, purchaseOrders, onBack, items }) => {
   }
 
   const purchaseOrder = purchaseOrders.find((po) => po.poId === grn.poId);
+
+  const handleDocumentDownload = (documentPath) => {
+    try {
+      if (documentPath) {
+        // Construct full URL using the backend base URL
+        const documentUrl = `http://localhost:5000/${documentPath}`;
+        window.open(documentUrl, '_blank');
+      } else {
+        MySwal.fire({
+          icon: 'warning',
+          title: 'No Document',
+          text: 'This document is not available.',
+        });
+      }
+    } catch (error) {
+      console.error('Error accessing document:', error);
+      MySwal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to access document. Please try again later.',
+      });
+    }
+  };
 
   return (
     <div className="">
@@ -50,18 +77,21 @@ const GrnDetails = ({ grn, grnItems, purchaseOrders, onBack, items }) => {
             </span>
           </div>
           <div className="flex flex-col">
-            <span className="text-xs sm:text-sm font-semibold text-gray-700">Document</span>
-            {grn.document ? (
-              <a
-                href={`http://localhost:5000/${grn.document}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline text-xs sm:text-sm"
-              >
-                View Document
-              </a>
+            <span className="text-xs sm:text-sm font-semibold text-gray-700">Documents</span>
+            {grn.document && grn.document.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                {grn.document.map((doc, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleDocumentDownload(doc)}
+                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-xs sm:text-sm w-48"
+                  >
+                    View Document {index + 1}
+                  </button>
+                ))}
+              </div>
             ) : (
-              <span className="text-xs sm:text-sm text-gray-900">N/A</span>
+              <span className="text-xs sm:text-sm text-gray-900">No documents available</span>
             )}
           </div>
           <div className="flex flex-col">
@@ -126,7 +156,7 @@ GrnDetails.propTypes = {
     grnDate: PropTypes.string,
     challanNo: PropTypes.string,
     challanDate: PropTypes.string,
-    document: PropTypes.string,
+    document: PropTypes.arrayOf(PropTypes.string), // Updated to array of strings
     remark: PropTypes.string,
   }),
   grnItems: PropTypes.arrayOf(

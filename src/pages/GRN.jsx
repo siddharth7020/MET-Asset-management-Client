@@ -20,7 +20,8 @@ function GRN() {
     grnDate: '',
     challanNo: '',
     challanDate: '',
-    document: null,
+    documents: [], // Changed to array for multiple files
+    existingDocuments: [], // To track existing documents during edit
     remark: '',
     grnItems: [{ orderItemId: '', itemId: '', receivedQuantity: '', rejectedQuantity: '' }],
   });
@@ -154,7 +155,8 @@ function GRN() {
             grnDate: grn.grnDate.split('T')[0],
             challanNo: grn.challanNo,
             challanDate: grn.challanDate.split('T')[0],
-            document: null,
+            documents: [],
+            existingDocuments: grn.document || [],
             remark: grn.remark || '',
             grnItems: grn.grnItems.map(gi => ({
               id: gi.id,
@@ -181,11 +183,19 @@ function GRN() {
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: name === 'document' ? files[0] : value,
-    }));
-    setErrors((prev) => ({ ...prev, [name]: '' }));
+    if (name === 'documents') {
+      setFormData((prev) => ({
+        ...prev,
+        documents: Array.from(files),
+      }));
+      setErrors((prev) => ({ ...prev, documents: '' }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+      setErrors((prev) => ({ ...prev, [name]: '' }));
+    }
   };
 
   const handleGrnItemChange = (index, e) => {
@@ -196,6 +206,13 @@ function GRN() {
     setErrors((prev) => ({ ...prev, [`grnItems[${index}].${name}`]: '' }));
   };
 
+  const removeExistingDocument = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      existingDocuments: prev.existingDocuments.filter((_, i) => i !== index),
+    }));
+  };
+
   const resetForm = () => {
     setFormData({
       poId: '',
@@ -203,7 +220,8 @@ function GRN() {
       grnDate: '',
       challanNo: '',
       challanDate: '',
-      document: null,
+      documents: [],
+      existingDocuments: [],
       remark: '',
       grnItems: [{ orderItemId: '', itemId: '', receivedQuantity: '', rejectedQuantity: '' }],
     });
@@ -218,12 +236,14 @@ function GRN() {
     if (!formData.grnDate) newErrors.grnDate = 'GRN date is required';
     if (!formData.challanNo) newErrors.challanNo = 'Challan number is required';
     if (!formData.challanDate) newErrors.challanDate = 'Challan date is required';
-    if (formData.document && !['application/pdf', 'image/jpeg', 'image/png'].includes(formData.document.type)) {
-      newErrors.document = 'Only PDF, JPEG, or PNG files are allowed';
-    }
-    if (formData.document && formData.document.size > 10 * 1024 * 1024) {
-      newErrors.document = 'File size must not exceed 10MB';
-    }
+    formData.documents.forEach((file, index) => {
+      if (!['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) {
+        newErrors[`documents[${index}]`] = `File ${file.name}: Only PDF, JPEG, or PNG files are allowed`;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        newErrors[`documents[${index}]`] = `File ${file.name}: Size must not exceed 10MB`;
+      }
+    });
 
     formData.grnItems.forEach((gi, index) => {
       if (!gi.orderItemId) newErrors[`grnItems[${index}].orderItemId`] = 'Order item is required';
@@ -257,12 +277,7 @@ function GRN() {
     apiFormData.append('grnDate', formData.grnDate);
     apiFormData.append('challanNo', formData.challanNo);
     apiFormData.append('challanDate', formData.challanDate);
-    if (formData.document) {
-      apiFormData.append('document', formData.document);
-    }
-    if (formData.remark) {
-      apiFormData.append('remark', formData.remark);
-    }
+    apiFormData.append('remark', formData.remark);
     apiFormData.append('grnItems', JSON.stringify(formData.grnItems.map(gi => ({
       ...(isEditMode && gi.id ? { id: gi.id } : {}),
       orderItemId: Number(gi.orderItemId),
@@ -270,6 +285,10 @@ function GRN() {
       receivedQuantity: Number(gi.receivedQuantity),
       rejectedQuantity: gi.rejectedQuantity ? Number(gi.rejectedQuantity) : 0,
     }))));
+    apiFormData.append('existingDocuments', JSON.stringify(formData.existingDocuments));
+    formData.documents.forEach((file) => {
+      apiFormData.append('documents', file);
+    });
 
     try {
       if (isEditMode) {
@@ -304,17 +323,18 @@ function GRN() {
       MySwal.fire({
         icon: 'error',
         title: 'Error',
-        text: 'Items quantity must be less than order quantity.',
+        text: error.response?.data?.message || 'Items quantity must be less than order quantity.',
       });
     }
   };
 
   const handleCancel = async () => {
     const hasChanges = Object.values(formData).some(
-      (value) => typeof value === 'string' && value !== '' ||
-        (value instanceof File) ||
-        (Array.isArray(value) && value.some(item =>
-          Object.values(item).some(v => v !== '')))
+      (value) => 
+        (typeof value === 'string' && value !== '') ||
+        (Array.isArray(value) && value.length > 0 && value.some(v => 
+          typeof v === 'string' ? v !== '' : v instanceof File || 
+          (typeof v === 'object' && Object.values(v).some(v2 => v2 !== ''))))
     );
 
     if (hasChanges) {
@@ -426,17 +446,44 @@ function GRN() {
                     className="w-full text-sm"
                   />
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Document</label>
+                    <label className="block text-sm font-medium text-gray-700">Documents</label>
                     <input
                       type="file"
-                      name="document"
+                      name="documents"
+                      multiple
                       onChange={handleChange}
                       accept=".pdf,.jpg,.jpeg,.png"
                       className="block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"
                     />
-                    {errors.document && <p className="mt-1 text-sm text-red-600">{errors.document}</p>}
-                    {isEditMode && formData.document === null && (
-                      <p className="mt-1 text-xs text-gray-600">Existing document will be retained unless a new file is uploaded.</p>
+                    {errors.documents && <p className="mt-1 text-sm text-red-600">{errors.documents}</p>}
+                    {formData.documents.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-xs text-gray-600">Selected files:</p>
+                        <ul className="list-disc pl-5 text-xs text-gray-600">
+                          {formData.documents.map((file, index) => (
+                            <li key={index}>{file.name}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {isEditMode && formData.existingDocuments.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-xs text-gray-600">Existing documents:</p>
+                        <ul className="list-disc pl-5 text-xs text-gray-600">
+                          {formData.existingDocuments.map((doc, index) => (
+                            <li key={index} className="flex items-center">
+                              <span>{doc.split('/').pop()}</span>
+                              <button
+                                type="button"
+                                onClick={() => removeExistingDocument(index)}
+                                className="ml-2 text-red-600 hover:text-red-800 text-xs"
+                              >
+                                Remove
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     )}
                   </div>
                   <FormInput

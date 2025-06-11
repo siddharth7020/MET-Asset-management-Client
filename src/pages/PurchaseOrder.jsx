@@ -23,7 +23,8 @@ function PurchaseOrder() {
     instituteId: '',
     financialYearId: '',
     vendorId: '',
-    document: null,
+    documents: [], // Changed to array for multiple files
+    existingDocuments: [], // To track existing documents during edit
     requestedBy: '',
     remark: '',
     orderItems: [{ itemId: '', unitId: '', quantity: '', rate: '', amount: '', discount: '', totalAmount: '' }],
@@ -42,6 +43,8 @@ function PurchaseOrder() {
       try {
         const poResponse = await getPurchaseOrders();
         setPurchaseOrders(poResponse.data);
+        console.log('Purchase Orders:', poResponse.data);
+        
         const institutesResponse = await axios.get('/institutes');
         if (Array.isArray(institutesResponse.data.data)) {
           setInstitutes(institutesResponse.data.data);
@@ -172,7 +175,8 @@ function PurchaseOrder() {
           instituteId: row.instituteId,
           financialYearId: row.financialYearId,
           vendorId: row.vendorId,
-          document: null,
+          documents: [],
+          existingDocuments: row.document || [],
           requestedBy: row.requestedBy,
           remark: row.remark,
           orderItems: poItems.length > 0 ? poItems : [{ itemId: '', unitId: '', quantity: '', rate: '', amount: '', discount: '', totalAmount: '' }],
@@ -261,6 +265,22 @@ function PurchaseOrder() {
     }));
   };
 
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    setFormData((prev) => ({
+      ...prev,
+      documents: files,
+    }));
+    setErrors((prev) => ({ ...prev, documents: '' }));
+  };
+
+  const removeExistingDocument = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      existingDocuments: prev.existingDocuments.filter((_, i) => i !== index),
+    }));
+  };
+
   const validateForm = () => {
     const newErrors = {};
     if (!formData.poDate) newErrors.poDate = 'PO date is required';
@@ -268,12 +288,14 @@ function PurchaseOrder() {
     if (!formData.financialYearId) newErrors.financialYearId = 'Financial year is required';
     if (!formData.vendorId) newErrors.vendorId = 'Vendor is required';
     if (!formData.requestedBy) newErrors.requestedBy = 'Requested by is required';
-    if (formData.document && !['application/pdf', 'image/jpeg', 'image/png'].includes(formData.document.type)) {
-      newErrors.document = 'Only PDF, JPEG, or PNG files are allowed';
-    }
-    if (formData.document && formData.document.size > 10 * 1024 * 1024) {
-      newErrors.document = 'File size must not exceed 10MB';
-    }
+    formData.documents.forEach((file, index) => {
+      if (!['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) {
+        newErrors[`documents[${index}]`] = `File ${file.name}: Only PDF, JPEG, or PNG files are allowed`;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        newErrors[`documents[${index}]`] = `File ${file.name}: Size must not exceed 10MB`;
+      }
+    });
     formData.orderItems.forEach((oi, index) => {
       if (!oi.itemId) newErrors[`orderItems[${index}].itemId`] = 'Item is required';
       if (!oi.unitId) newErrors[`orderItems[${index}].unitId`] = 'Unit is required';
@@ -304,30 +326,31 @@ function PurchaseOrder() {
       });
       return;
     }
-    const payload = {
-      ...formData,
-      instituteId: Number(formData.instituteId),
-      financialYearId: Number(formData.financialYearId),
-      vendorId: Number(formData.vendorId),
-      orderItems: formData.orderItems.map((oi) => ({
-        id: oi.id || undefined,
-        itemId: Number(oi.itemId),
-        unitId: Number(oi.unitId),
-        quantity: Number(oi.quantity),
-        rate: Number(oi.rate),
-        amount: Number(oi.amount),
-        discount: Number(oi.discount),
-        totalAmount: Number(oi.totalAmount),
-      })),
-    };
-    // Create a new formData object to send to the API
-    const apiFormData = {
-      ...payload,
-      document: formData.document, // Include the File object
-    };
+    const formDataToSend = new FormData();
+    formDataToSend.append('poDate', formData.poDate);
+    formDataToSend.append('instituteId', Number(formData.instituteId));
+    formDataToSend.append('financialYearId', Number(formData.financialYearId));
+    formDataToSend.append('vendorId', Number(formData.vendorId));
+    formDataToSend.append('requestedBy', formData.requestedBy);
+    formDataToSend.append('remark', formData.remark);
+    formDataToSend.append('orderItems', JSON.stringify(formData.orderItems.map((oi) => ({
+      id: oi.id || undefined,
+      itemId: Number(oi.itemId),
+      unitId: Number(oi.unitId),
+      quantity: Number(oi.quantity),
+      rate: Number(oi.rate),
+      amount: Number(oi.amount),
+      discount: Number(oi.discount),
+      totalAmount: Number(oi.totalAmount),
+    }))));
+    formDataToSend.append('existingDocuments', JSON.stringify(formData.existingDocuments));
+    formData.documents.forEach((file) => {
+      formDataToSend.append('documents', file);
+    });
+
     try {
       if (isEditMode) {
-        const response = await updatePurchaseOrder(editId, apiFormData);
+        const response = await updatePurchaseOrder(editId, formDataToSend);
         setPurchaseOrders((prev) =>
           prev.map((po) => (po.poId === editId ? response.data : po))
         );
@@ -337,7 +360,7 @@ function PurchaseOrder() {
           text: 'Purchase order updated successfully!',
         });
       } else {
-        const response = await createPurchaseOrder(apiFormData);
+        const response = await createPurchaseOrder(formDataToSend);
         setPurchaseOrders((prev) => [...prev, response.data]);
         MySwal.fire({
           icon: 'success',
@@ -365,7 +388,8 @@ function PurchaseOrder() {
       instituteId: '',
       financialYearId: '',
       vendorId: '',
-      document: null,
+      documents: [],
+      existingDocuments: [],
       requestedBy: '',
       remark: '',
       orderItems: [{ itemId: '', unitId: '', quantity: '', rate: '', amount: '', discount: '', totalAmount: '' }],
@@ -483,17 +507,44 @@ function PurchaseOrder() {
                     {errors.vendorId && <p className="mt-1 text-xs text-red-600">{errors.vendorId}</p>}
                   </div>
                   <div>
-                    <label className="block text-xs sm:text-sm font-medium text-gray-700">Document</label>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700">Documents</label>
                     <input
                       type="file"
-                      name="document"
-                      onChange={(e) => setFormData({ ...formData, document: e.target.files[0] })}
+                      name="documents"
+                      multiple
+                      onChange={handleFileChange}
                       accept=".pdf,.jpg,.jpeg,.png"
                       className="block w-full border border-gray-300 rounded-md shadow-sm p-2 text-xs sm:text-sm"
                     />
-                    {errors.document && <p className="mt-1 text-xs text-red-600">{errors.document}</p>}
-                    {isEditMode && formData.document === null && (
-                      <p className="mt-1 text-xs text-gray-600">Existing document will be retained unless a new file is uploaded.</p>
+                    {errors.documents && <p className="mt-1 text-xs text-red-600">{errors.documents}</p>}
+                    {formData.documents.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-xs text-gray-600">Selected files:</p>
+                        <ul className="list-disc pl-5 text-xs text-gray-600">
+                          {formData.documents.map((file, index) => (
+                            <li key={index}>{file.name}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {isEditMode && formData.existingDocuments.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-xs text-gray-600">Existing documents:</p>
+                        <ul className="list-disc pl-5 text-xs text-gray-600">
+                          {formData.existingDocuments.map((doc, index) => (
+                            <li key={index} className="flex items-center">
+                              <span>{doc.split('/').pop()}</span>
+                              <button
+                                type="button"
+                                onClick={() => removeExistingDocument(index)}
+                                className="ml-2 text-red-600 hover:text-red-800 text-xs"
+                              >
+                                Remove
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     )}
                   </div>
                   <FormInput

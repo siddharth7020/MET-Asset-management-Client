@@ -15,19 +15,17 @@ const Details = ({ purchaseOrder, orderItems, institutesData, financialYears, ve
   const financialYear = financialYears.find((year) => year.financialYearId === purchaseOrder.financialYearId);
   const vendor = vendors.find((vend) => vend.vendorId === purchaseOrder.vendorId);
 
-  console.log(units);
-
-  const handleDocumentDownload = () => {
+  const handleDocumentDownload = (documentPath) => {
     try {
-      if (purchaseOrder.document) {
+      if (documentPath) {
         // Construct full URL using the backend base URL
-        const documentUrl = `http://localhost:5000/${purchaseOrder.document}`;
+        const documentUrl = `http://localhost:5000/${documentPath}`;
         window.open(documentUrl, '_blank');
       } else {
         MySwal.fire({
           icon: 'warning',
           title: 'No Document',
-          text: 'No document is available for this purchase order.',
+          text: 'This document is not available.',
         });
       }
     } catch (error) {
@@ -103,16 +101,21 @@ const Details = ({ purchaseOrder, orderItems, institutesData, financialYears, ve
             </span>
           </div>
           <div className="flex flex-col">
-            <span className="text-xs sm:text-sm font-semibold text-gray-700">Document</span>
-            {purchaseOrder.document ? (
-              <button
-                onClick={handleDocumentDownload}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-xs sm:text-sm w-48"
-              >
-                View Document
-              </button>
+            <span className="text-xs sm:text-sm font-semibold text-gray-700">Documents</span>
+            {purchaseOrder.document && purchaseOrder.document.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                {purchaseOrder.document.map((doc, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleDocumentDownload(doc)}
+                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-xs sm:text-sm w-48"
+                  >
+                    View Document {index + 1}
+                  </button>
+                ))}
+              </div>
             ) : (
-              <span className="text-xs sm:text-sm text-gray-900">No document available</span>
+              <span className="text-xs sm:text-sm text-gray-900">No documents available</span>
             )}
           </div>
           <div className="flex flex-col">
@@ -143,7 +146,7 @@ Details.propTypes = {
     instituteId: PropTypes.number,
     financialYearId: PropTypes.number,
     vendorId: PropTypes.number,
-    document: PropTypes.string,
+    document: PropTypes.arrayOf(PropTypes.string), // Updated to array of strings
     requestedBy: PropTypes.string,
     remark: PropTypes.string,
   }),
