@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Select from 'react-select';
 import Table from '../components/Table';
 import FormInput from '../components/FormInput';
 import Details from '../components/Details';
@@ -44,7 +45,7 @@ function PurchaseOrder() {
         const poResponse = await getPurchaseOrders();
         setPurchaseOrders(poResponse.data);
         console.log('Purchase Orders:', poResponse.data);
-        
+
         const institutesResponse = await axios.get('/institutes');
         if (Array.isArray(institutesResponse.data.data)) {
           setInstitutes(institutesResponse.data.data);
@@ -454,56 +455,62 @@ function PurchaseOrder() {
                   />
                   <div>
                     <label className="block text-xs sm:text-sm font-medium text-gray-700">Institute</label>
-                    <select
+                    <Select
                       name="instituteId"
-                      value={formData.instituteId}
-                      onChange={(e) => setFormData({ ...formData, instituteId: e.target.value })}
-                      className="block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
+                      value={institutes.find((inst) => inst.instituteId === formData.instituteId) || null}
+                      onChange={(selectedOption) =>
+                        setFormData({ ...formData, instituteId: selectedOption ? selectedOption.value : '' })
+                      }
+                      options={institutes.map((inst) => ({
+                        value: inst.instituteId,
+                        label: inst.instituteName,
+                      }))}
+                      placeholder="Select Institute"
+                      className="mt-1 text-xs sm:text-sm"
+                      classNamePrefix="react-select"
+                      isClearable
                       required
-                    >
-                      <option value="">Select Institute</option>
-                      {institutes.map((inst) => (
-                        <option key={inst.instituteId} value={inst.instituteId}>
-                          {inst.instituteName}
-                        </option>
-                      ))}
-                    </select>
+                    />
                     {errors.instituteId && <p className="mt-1 text-xs text-red-600">{errors.instituteId}</p>}
                   </div>
                   <div>
                     <label className="block text-xs sm:text-sm font-medium text-gray-700">Financial Year</label>
-                    <select
+                    <Select
                       name="financialYearId"
-                      value={formData.financialYearId}
-                      onChange={(e) => setFormData({ ...formData, financialYearId: e.target.value })}
-                      className="block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
+                      value={financialYears.find((fy) => fy.financialYearId === formData.financialYearId) || null}
+                      onChange={(selectedOption) =>
+                        setFormData({ ...formData, financialYearId: selectedOption ? selectedOption.value : '' })
+                      }
+                      options={financialYears.map((fy) => ({
+                        value: fy.financialYearId,
+                        label: fy.year,
+                      }))}
+                      placeholder="Select Financial Year"
+                      className="mt-1 text-xs sm:text-sm"
+                      classNamePrefix="react-select"
+                      isClearable
                       required
-                    >
-                      <option value="">Select Financial Year</option>
-                      {financialYears.map((fy) => (
-                        <option key={fy.financialYearId} value={fy.financialYearId}>
-                          {fy.year}
-                        </option>
-                      ))}
-                    </select>
+                    />
                     {errors.financialYearId && <p className="mt-1 text-xs text-red-600">{errors.financialYearId}</p>}
                   </div>
                   <div>
                     <label className="block text-xs sm:text-sm font-medium text-gray-700">Vendor</label>
-                    <select
+                    <Select
                       name="vendorId"
-                      value={formData.vendorId}
-                      onChange={(e) => setFormData({ ...formData, vendorId: e.target.value })}
-                      className="block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
+                      value={vendors.find((v) => v.vendorId === formData.vendorId) || null}
+                      onChange={(selectedOption) =>
+                        setFormData({ ...formData, vendorId: selectedOption ? selectedOption.value : '' })
+                      }
+                      options={vendors.map((v) => ({
+                        value: v.vendorId,
+                        label: v.name,
+                      }))}
+                      placeholder="Select Vendor"
+                      className="mt-1 text-xs sm:text-sm"
+                      classNamePrefix="react-select"
+                      isClearable
                       required
-                    >
-                      <option value="">Select Vendor</option>
-                      {vendors.map((v) => (
-                        <option key={v.vendorId} value={v.vendorId}>
-                          {v.name}
-                        </option>
-                      ))}
-                    </select>
+                    />
                     {errors.vendorId && <p className="mt-1 text-xs text-red-600">{errors.vendorId}</p>}
                   </div>
                   <div>
@@ -574,40 +581,48 @@ function PurchaseOrder() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                           <div>
                             <label className="block text-xs sm:text-sm font-medium text-gray-700">Item</label>
-                            <select
+                            <Select
                               name="itemId"
-                              value={oi.itemId}
-                              onChange={(e) => handleOrderItemChange(index, e)}
-                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
+                              value={items.find((item) => item.itemId === oi.itemId) || null}
+                              onChange={(selectedOption) =>
+                                handleOrderItemChange(index, {
+                                  target: { name: 'itemId', value: selectedOption ? selectedOption.value : '' },
+                                })
+                              }
+                              options={items.map((item) => ({
+                                value: item.itemId,
+                                label: item.itemName,
+                              }))}
+                              placeholder="Select Item"
+                              className="mt-1 text-xs sm:text-sm"
+                              classNamePrefix="react-select"
+                              isClearable
                               required
-                            >
-                              <option value="">Select Item</option>
-                              {items.map((item) => (
-                                <option key={item.itemId} value={item.itemId}>
-                                  {item.itemName}
-                                </option>
-                              ))}
-                            </select>
+                            />
                             {errors[`orderItems[${index}].itemId`] && (
                               <p className="mt-1 text-xs text-red-600">{errors[`orderItems[${index}].itemId`]}</p>
                             )}
                           </div>
                           <div>
                             <label className="block text-xs sm:text-sm font-medium text-gray-700">Unit</label>
-                            <select
+                            <Select
                               name="unitId"
-                              value={oi.unitId}
-                              onChange={(e) => handleOrderItemChange(index, e)}
-                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
+                              value={units.find((unit) => unit.unitId === oi.unitId) || null}
+                              onChange={(selectedOption) =>
+                                handleOrderItemChange(index, {
+                                  target: { name: 'unitId', value: selectedOption ? selectedOption.value : '' },
+                                })
+                              }
+                              options={units.map((unit) => ({
+                                value: unit.unitId,
+                                label: unit.uniteName, // Note: 'uniteName' seems to be a typo; should be 'unitName'?
+                              }))}
+                              placeholder="Select Unit"
+                              className="mt-1 text-xs sm:text-sm"
+                              classNamePrefix="react-select"
+                              isClearable
                               required
-                            >
-                              <option value="">Select Unit</option>
-                              {units.map((unit) => (
-                                <option key={unit.unitId} value={unit.unitId}>
-                                  {unit.uniteName}
-                                </option>
-                              ))}
-                            </select>
+                            />
                             {errors[`orderItems[${index}].unitId`] && (
                               <p className="mt-1 text-xs text-red-600">{errors[`orderItems[${index}].unitId`]}</p>
                             )}
