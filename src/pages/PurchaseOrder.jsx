@@ -44,8 +44,6 @@ function PurchaseOrder() {
       try {
         const poResponse = await getPurchaseOrders();
         setPurchaseOrders(poResponse.data);
-        console.log('Purchase Orders:', poResponse.data);
-
         const institutesResponse = await axios.get('/institutes');
         if (Array.isArray(institutesResponse.data.data)) {
           setInstitutes(institutesResponse.data.data);
@@ -62,7 +60,7 @@ function PurchaseOrder() {
         if (Array.isArray(vendorsResponse.data.data)) {
           setVendors(vendorsResponse.data.data);
         } else {
-          console.error('Expected vendors data to be an array, but got:', vendorsResponse.data.data);
+          console.error(errors);
         }
         const itemsResponse = await axios.get('/items');
         if (Array.isArray(itemsResponse.data.items)) {
@@ -457,16 +455,16 @@ function PurchaseOrder() {
                     <label className="block text-xs sm:text-sm font-medium text-gray-700">Institute</label>
                     <Select
                       name="instituteId"
-                      value={institutes.find((inst) => inst.instituteId === formData.instituteId) || null}
+                      value={institutes.find((inst) => inst.instituteId === formData.instituteId) ? { value: formData.instituteId, label: institutes.find((inst) => inst.instituteId === formData.instituteId)?.intituteCode } : null}
                       onChange={(selectedOption) =>
                         setFormData({ ...formData, instituteId: selectedOption ? selectedOption.value : '' })
                       }
                       options={institutes.map((inst) => ({
                         value: inst.instituteId,
-                        label: inst.instituteName,
+                        label: inst.intituteCode,
                       }))}
                       placeholder="Select Institute"
-                      className="mt-1 text-xs sm:text-sm"
+                      className="text-xs sm:text-sm"
                       classNamePrefix="react-select"
                       isClearable
                       required
@@ -477,7 +475,7 @@ function PurchaseOrder() {
                     <label className="block text-xs sm:text-sm font-medium text-gray-700">Financial Year</label>
                     <Select
                       name="financialYearId"
-                      value={financialYears.find((fy) => fy.financialYearId === formData.financialYearId) || null}
+                      value={financialYears.find((fy) => fy.financialYearId === formData.financialYearId) ? { value: formData.financialYearId, label: financialYears.find((fy) => fy.financialYearId === formData.financialYearId)?.year } : null}
                       onChange={(selectedOption) =>
                         setFormData({ ...formData, financialYearId: selectedOption ? selectedOption.value : '' })
                       }
@@ -486,7 +484,7 @@ function PurchaseOrder() {
                         label: fy.year,
                       }))}
                       placeholder="Select Financial Year"
-                      className="mt-1 text-xs sm:text-sm"
+                      className="text-xs sm:text-sm"
                       classNamePrefix="react-select"
                       isClearable
                       required
@@ -497,7 +495,7 @@ function PurchaseOrder() {
                     <label className="block text-xs sm:text-sm font-medium text-gray-700">Vendor</label>
                     <Select
                       name="vendorId"
-                      value={vendors.find((v) => v.vendorId === formData.vendorId) || null}
+                      value={vendors.find((v) => v.vendorId === formData.vendorId) ? { value: formData.vendorId, label: vendors.find((v) => v.vendorId === formData.vendorId)?.name } : null}
                       onChange={(selectedOption) =>
                         setFormData({ ...formData, vendorId: selectedOption ? selectedOption.value : '' })
                       }
@@ -506,7 +504,7 @@ function PurchaseOrder() {
                         label: v.name,
                       }))}
                       placeholder="Select Vendor"
-                      className="mt-1 text-xs sm:text-sm"
+                      className="text-xs sm:text-sm"
                       classNamePrefix="react-select"
                       isClearable
                       required
@@ -578,12 +576,16 @@ function PurchaseOrder() {
                     <h4 className="text-sm sm:text-md font-medium text-brand-secondary mb-2">Order Items</h4>
                     {formData.orderItems.map((oi, index) => (
                       <div key={index} className="flex flex-col gap-4 mb-4 p-4 border rounded-md">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                           <div>
                             <label className="block text-xs sm:text-sm font-medium text-gray-700">Item</label>
                             <Select
                               name="itemId"
-                              value={items.find((item) => item.itemId === oi.itemId) || null}
+                              value={
+                                oi.itemId && items.find((item) => item.itemId === oi.itemId)
+                                  ? { value: oi.itemId, label: items.find((item) => item.itemId === oi.itemId).itemName }
+                                  : null
+                              }
                               onChange={(selectedOption) =>
                                 handleOrderItemChange(index, {
                                   target: { name: 'itemId', value: selectedOption ? selectedOption.value : '' },
@@ -594,7 +596,7 @@ function PurchaseOrder() {
                                 label: item.itemName,
                               }))}
                               placeholder="Select Item"
-                              className="mt-1 text-xs sm:text-sm"
+                              className="text-xs sm:text-sm"
                               classNamePrefix="react-select"
                               isClearable
                               required
@@ -607,7 +609,11 @@ function PurchaseOrder() {
                             <label className="block text-xs sm:text-sm font-medium text-gray-700">Unit</label>
                             <Select
                               name="unitId"
-                              value={units.find((unit) => unit.unitId === oi.unitId) || null}
+                              value={
+                                oi.unitId && units.find((unit) => unit.unitId === oi.unitId)
+                                  ? { value: oi.unitId, label: units.find((unit) => unit.unitId === oi.unitId).uniteCode }
+                                  : null
+                              }
                               onChange={(selectedOption) =>
                                 handleOrderItemChange(index, {
                                   target: { name: 'unitId', value: selectedOption ? selectedOption.value : '' },
@@ -615,10 +621,10 @@ function PurchaseOrder() {
                               }
                               options={units.map((unit) => ({
                                 value: unit.unitId,
-                                label: unit.uniteName, // Note: 'uniteName' seems to be a typo; should be 'unitName'?
+                                label: unit.uniteCode, // Corrected from 'uniteName' to 'unitName'
                               }))}
                               placeholder="Select Unit"
-                              className="mt-1 text-xs sm:text-sm"
+                              className="text-xs sm:text-sm"
                               classNamePrefix="react-select"
                               isClearable
                               required

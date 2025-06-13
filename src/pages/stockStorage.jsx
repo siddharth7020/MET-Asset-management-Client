@@ -10,6 +10,7 @@ import Swal from 'sweetalert2';
 function Stock() {
   const [stockEntries, setStockEntries] = useState([]);
   const [items, setItems] = useState([]);
+  const [units, setUnits] = useState([]);
   const [grns, setGrns] = useState([]);
   const [quickGRNs, setQuickGRNs] = useState([]);
   const [purchaseOrders, setPurchaseOrders] = useState([]);
@@ -25,6 +26,8 @@ function Stock() {
         // Fetch stock entries
         const stockResponse = await getAllStockStorage();
         setStockEntries(stockResponse.data);
+        console.log('Stock entries fetched successfully:', stockResponse.data);
+        
 
         // Fetch items
         const itemsResponse = await axios.get('/items');
@@ -36,6 +39,16 @@ function Stock() {
             title: 'Data Error',
             text: 'Failed to load items data.',
           });
+        }
+
+        // Fetch units
+        const unitsResponse = await axios.get('/units');
+        if (Array.isArray(unitsResponse.data.data)) {
+          setUnits(unitsResponse.data.data);
+          console.log('Units fetched successfully:', unitsResponse.data.data);
+          
+        } else {
+          console.error('Expected units data to be an array, but got:', unitsResponse.data.data);
         }
 
         // Fetch GRNs
@@ -83,13 +96,34 @@ function Stock() {
       label: 'Quick GRN',
       format: (value) => quickGRNs.find((qgrn) => qgrn.qGRNId === value)?.qGRNNo || 'N/A',
     },
-    { key: 'quantity', label: 'Quantity' },
-    { key: 'remark', label: 'Remark' },
+    { key: 'storeCode', label: 'Store Code' },
     {
-      key: 'createdAt',
-      label: 'Created At',
-      format: (value) => new Date(value).toLocaleDateString(),
+      key: 'unitId',
+      label: 'Unit',
+      format: (value) => units.find((units) => units.unitId === value.unitId) || 'N/A',
     },
+    { key: 'quantity', label: 'Quantity' },
+
+  ];
+
+  // Table columns for filtered stock details
+  const filteredStockColumns = [
+    { key: 'grnId', label: 'GRN ID' },
+    { key: 'grnNo', label: 'GRN Number' },
+    {
+      key: 'grnDate',
+      label: 'GRN Date',
+      format: (value) => value ? new Date(value).toLocaleDateString() : 'N/A',
+    },
+    { key: 'poId', label: 'PO ID' },
+    { key: 'poNo', label: 'PO Number' },
+    { key: 'storeCode', label: 'Store Code' },
+    {
+      key: 'unitId',
+      label: 'Unit',
+      format: (value, row) => row.unitName || units.find((unit) => unit.id === value)?.unitCode || value || 'N/A',
+    },
+    { key: 'totalQuantity', label: 'Quantity' },
   ];
 
   // Handle form input change
@@ -103,7 +137,7 @@ function Stock() {
   const validateForm = () => {
     const newErrors = {};
     if (!formData.itemId || Number(formData.itemId) <= 0 || !items.some((item) => item.itemId === Number(formData.itemId))) {
-      newErrors.itemId = 'A valid item is required';
+      newErrors.itemId = 'Please select a valid item';
     }
     return newErrors;
   };
@@ -137,11 +171,27 @@ function Stock() {
   };
 
   // Handle cancel filter
-  const handleCancel = () => {
+  const handleCancel = async () => {
+    const hasChanges = formData.itemId !== '';
+    if (hasChanges) {
+      const result = await Swal.fire({
+        title: 'Are you sure?',
+        text: 'You have unsaved changes. Do you want to cancel?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, cancel',
+        cancelButtonText: 'No, keep editing',
+        reverseButtons: true,
+      });
+
+      if (!result.isConfirmed) {
+        return;
+      }
+    }
+
     setFormData({ itemId: '' });
     setErrors({});
     setIsFilterVisible(false);
-    setFilteredStock(null);
   };
 
   // Reset filtered view to show all stock
@@ -165,35 +215,24 @@ function Stock() {
               Back to All Stock
             </button>
           </div>
-          <div className="mb-4">
+          <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
             <p><strong>Item ID:</strong> {filteredStock.itemId}</p>
             <p><strong>Total Quantity:</strong> {filteredStock.totalItemCount}</p>
             <p><strong>GRN Count:</strong> {filteredStock.grnCount}</p>
           </div>
           <Table
-            columns={[
-              { key: 'grnId', label: 'GRN ID' },
-              { key: 'grnNo', label: 'GRN Number' },
-              {
-                key: 'grnDate',
-                label: 'GRN Date',
-                format: (value) => new Date(value).toLocaleDateString(),
-              },
-              { key: 'poId', label: 'PO ID' },
-              { key: 'poNo', label: 'PO Number' },
-              { key: 'totalQuantity', label: 'Quantity' },
-            ]}
+            columns={filteredStockColumns}
             data={filteredStock.grnDetails}
           />
         </div>
       ) : (
         <>
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Stock Storage</h2>
+            <h2 className="text-2xl font-semibold text-brand-secondary">Stock Storage</h2>
             <div>
               <button
                 onClick={() => setIsFilterVisible(!isFilterVisible)}
-                className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-sm"
+                className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-brand-primary-dark text-sm"
               >
                 {isFilterVisible ? 'Hide Filter' : 'Filter by Item'}
               </button>
@@ -203,7 +242,7 @@ function Stock() {
             {isFilterVisible && (
               <div>
                 <h3 className="text-lg font-medium text-brand-secondary mb-4">Filter Stock by Item</h3>
-                <form onSubmit={handleSubmit} className="grid grid-cols-3 gap-4">
+                <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Item</label>
                     <select
@@ -224,17 +263,17 @@ function Stock() {
                       <p className="mt-1 text-sm text-red-600">{errors.itemId}</p>
                     )}
                   </div>
-                  <div className="col-span-3 flex space-x-4">
+                  <div className="col-span-1 md:col-span-3 flex space-x-4">
                     <button
                       type="submit"
-                      className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-sm"
+                      className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-brand-primary-dark text-sm"
                     >
                       Apply Filter
                     </button>
                     <button
                       type="button"
                       onClick={handleCancel}
-                      className="px-4 py-2 text-gray-600 rounded-md hover:bg-gray-100 text-sm"
+                      className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-100 text-sm"
                     >
                       Cancel
                     </button>

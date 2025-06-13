@@ -20,16 +20,24 @@ function GRN() {
     grnDate: '',
     challanNo: '',
     challanDate: '',
-    documents: [], // Changed to array for multiple files
-    existingDocuments: [], // To track existing documents during edit
+    documents: [],
+    existingDocuments: [],
     remark: '',
-    grnItems: [{ orderItemId: '', itemId: '', receivedQuantity: '', rejectedQuantity: '' }],
+    grnItems: [{
+      orderItemId: '',
+      itemId: '',
+      unitId: '',
+      storeCode: '',
+      receivedQuantity: '',
+      rejectedQuantity: ''
+    }],
   });
   const [errors, setErrors] = useState({});
   const [editId, setEditId] = useState(null);
   const [selectedGrnId, setSelectedGrnId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [items, setItems] = useState([]);
+  const [units, setUnits] = useState([]);
   const MySwal = withReactContent(Swal);
 
   useEffect(() => {
@@ -40,7 +48,6 @@ function GRN() {
 
         const grnResponse = await getGrns();
         const grnsData = grnResponse.data;
-
         const grnItemsData = grnsData.flatMap(grn => grn.grnItems || []);
         setGrns(grnsData);
         setGrnItems(grnItemsData);
@@ -52,6 +59,14 @@ function GRN() {
           console.error('Expected items data to be an array, but got:', itemsResponse.data.items);
         }
 
+        const unitsResponse = await axios.get('/units');
+        if (Array.isArray(unitsResponse.data.data)) {
+          setUnits(unitsResponse.data.data);
+          console.log('Units fetched successfully:', unitsResponse.data.data);
+          
+        } else {
+          console.error('Expected units data to be an array, but got:', unitsResponse.data.data);
+        }
       } catch (error) {
         console.error('Error fetching data:', error);
         MySwal.fire({
@@ -75,9 +90,11 @@ function GRN() {
             grnItems: orderItems.map(item => ({
               orderItemId: item.id,
               itemId: item.itemId,
+              unitId: item.unitId || '',
+              storeCode: '',
               itemName: item.item?.name || 'N/A',
               receivedQuantity: item.quantity || '',
-              rejectedQuantity: '',
+              rejectedQuantity: '0',
             })),
           }));
         } catch (error) {
@@ -90,13 +107,18 @@ function GRN() {
         }
       };
       fetchOrderItems();
-    } else {
-      if (!isEditMode) {
-        setFormData(prev => ({
-          ...prev,
-          grnItems: [{ orderItemId: '', itemId: '', receivedQuantity: '', rejectedQuantity: '' }],
-        }));
-      }
+    } else if (!isEditMode) {
+      setFormData(prev => ({
+        ...prev,
+        grnItems: [{
+          orderItemId: '',
+          itemId: '',
+          unitId: '',
+          storeCode: '',
+          receivedQuantity: '',
+          rejectedQuantity: ''
+        }],
+      }));
     }
   }, [formData.poId, isEditMode]);
 
@@ -162,10 +184,19 @@ function GRN() {
               id: gi.id,
               orderItemId: gi.orderItemId,
               itemId: gi.itemId,
+              unitId: gi.unitId || '',
+              storeCode: gi.storeCode || '',
               itemName: gi.orderItem?.item?.name || 'N/A',
               receivedQuantity: gi.receivedQuantity,
-              rejectedQuantity: gi.rejectedQuantity || '',
-            })) || [{ orderItemId: '', itemId: '', receivedQuantity: '', rejectedQuantity: '' }],
+              rejectedQuantity: gi.rejectedQuantity || '0',
+            })) || [{
+              orderItemId: '',
+              itemId: '',
+              unitId: '',
+              storeCode: '',
+              receivedQuantity: '',
+              rejectedQuantity: ''
+            }],
           });
           setIsFormVisible(true);
         } catch (error) {
@@ -206,6 +237,9 @@ function GRN() {
     setErrors((prev) => ({ ...prev, [`grnItems[${index}].${name}`]: '' }));
   };
 
+
+
+
   const removeExistingDocument = (index) => {
     setFormData((prev) => ({
       ...prev,
@@ -223,7 +257,14 @@ function GRN() {
       documents: [],
       existingDocuments: [],
       remark: '',
-      grnItems: [{ orderItemId: '', itemId: '', receivedQuantity: '', rejectedQuantity: '' }],
+      grnItems: [{
+        orderItemId: '',
+        itemId: '',
+        unitId: '',
+        storeCode: '',
+        receivedQuantity: '',
+        rejectedQuantity: ''
+      }],
     });
     setErrors({});
     setIsEditMode(false);
@@ -248,10 +289,10 @@ function GRN() {
     formData.grnItems.forEach((gi, index) => {
       if (!gi.orderItemId) newErrors[`grnItems[${index}].orderItemId`] = 'Order item is required';
       if (!gi.itemId) newErrors[`grnItems[${index}].itemId`] = 'Item is required';
-      if (!gi.receivedQuantity || gi.receivedQuantity < 0) {
+      if (!gi.receivedQuantity || Number(gi.receivedQuantity) < 0) {
         newErrors[`grnItems[${index}].receivedQuantity`] = 'Received quantity must be non-negative';
       }
-      if (gi.rejectedQuantity && gi.rejectedQuantity < 0) {
+      if (gi.rejectedQuantity && Number(gi.rejectedQuantity) < 0) {
         newErrors[`grnItems[${index}].rejectedQuantity`] = 'Rejected quantity must be non-negative';
       }
     });
@@ -330,10 +371,10 @@ function GRN() {
 
   const handleCancel = async () => {
     const hasChanges = Object.values(formData).some(
-      (value) => 
+      (value) =>
         (typeof value === 'string' && value !== '') ||
-        (Array.isArray(value) && value.length > 0 && value.some(v => 
-          typeof v === 'string' ? v !== '' : v instanceof File || 
+        (Array.isArray(value) && value.length > 0 && value.some(v =>
+          typeof v === 'string' ? v !== '' : v instanceof File ||
           (typeof v === 'object' && Object.values(v).some(v2 => v2 !== ''))))
     );
 
@@ -369,11 +410,12 @@ function GRN() {
           purchaseOrders={purchaseOrders}
           onBack={handleBack}
           items={items}
+          units={units}
         />
       ) : (
         <>
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-semibold text-brand-secondary mb-4">Goods Received Notes</h2>
+            <h2 className="text-2xl font-semibold text-brand-secondary">Goods Received Notes</h2>
             <div className="flex items-center space-x-4">
               <input
                 type="text"
@@ -384,7 +426,7 @@ function GRN() {
               />
               <button
                 onClick={() => setIsFormVisible(!isFormVisible)}
-                className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-sm"
+                className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-brand-primary-dark text-sm"
               >
                 {isFormVisible ? 'Hide Form' : 'Create GRN'}
               </button>
@@ -396,7 +438,7 @@ function GRN() {
                 <h3 className="text-lg font-medium text-brand-secondary mb-4">
                   {isEditMode ? 'Edit GRN' : 'Add GRN'}
                 </h3>
-                <form onSubmit={handleSubmit} className="grid grid-cols-3 gap-4">
+                <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Purchase Order</label>
                     <select
@@ -496,11 +538,13 @@ function GRN() {
                     required={false}
                     className="w-full text-sm"
                   />
-                  <div className="col-span-3">
-                    <h4 className="text-md font-medium text-brand-secondary mb-2">GRN Items</h4>
+                  <div className="col-span-1 md:col-span-3">
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="text-md font-medium text-brand-secondary">GRN Items</h4>
+                    </div>
                     {formData.grnItems.map((gi, index) => (
                       <div key={index} className="flex flex-col gap-4 mb-4 p-4 border rounded-md">
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700">Item Name</label>
                             <input
@@ -515,6 +559,15 @@ function GRN() {
                               </p>
                             )}
                           </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">Unit</label>
+                            <input
+                              type="text"
+                              value={units.find((unit) => unit.unitId === gi.unitId)?.uniteCode || ''}
+                              disabled
+                              className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                            />
+                          </div>
                           <FormInput
                             label="Received Quantity"
                             type="number"
@@ -525,21 +578,22 @@ function GRN() {
                             required
                             className="w-full text-sm"
                           />
+
                         </div>
                       </div>
                     ))}
                   </div>
-                  <div className="col-span-3 flex space-x-4">
+                  <div className="col-span-1 md:col-span-3 flex space-x-4">
                     <button
                       type="submit"
-                      className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-red-600 text-sm"
+                      className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-brand-primary-dark text-sm"
                     >
-                      {isEditMode ? 'Update' : 'Add'}
+                      {isEditMode ? 'Update GRN' : 'Create GRN'}
                     </button>
                     <button
                       type="button"
                       onClick={handleCancel}
-                      className="px-4 py-2 text-gray-600 rounded-md hover:bg-gray-100 text-sm"
+                      className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-100 text-sm"
                     >
                       Cancel
                     </button>

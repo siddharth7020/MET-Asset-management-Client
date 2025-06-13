@@ -5,7 +5,7 @@ import withReactContent from 'sweetalert2-react-content';
 
 const MySwal = withReactContent(Swal);
 
-const GrnDetails = ({ grn, grnItems, purchaseOrders, onBack, items }) => {
+const GrnDetails = ({ grn, grnItems, purchaseOrders, onBack, items, units }) => {
   if (!grn) {
     return <div className="text-center p-6">No GRN selected</div>;
   }
@@ -112,6 +112,9 @@ const GrnDetails = ({ grn, grnItems, purchaseOrders, onBack, items }) => {
                 <strong>Item Name:</strong> {items.find((i) => i.itemId === item.itemId)?.itemName || 'N/A'}
               </p>
               <p className="text-xs">
+                <strong>Unit:</strong> {units.find((u) => u.unitId === item.unitId)?.nuitCode || 'N/A'}
+              </p>
+              <p className="text-xs">
                 <strong>Received Quantity:</strong> {item.receivedQuantity}
               </p>
               <p className="text-xs">
@@ -126,6 +129,7 @@ const GrnDetails = ({ grn, grnItems, purchaseOrders, onBack, items }) => {
             <thead className="text-xs uppercase bg-gray-200">
               <tr>
                 <th scope="col" className="px-6 py-3">Item Name</th>
+                <th scope="col" className="px-6 py-3">Unit</th>
                 <th scope="col" className="px-6 py-3">Received Quantity</th>
                 <th scope="col" className="px-6 py-3">Rejected Quantity</th>
               </tr>
@@ -135,6 +139,9 @@ const GrnDetails = ({ grn, grnItems, purchaseOrders, onBack, items }) => {
                 <tr key={item.id} className="bg-white border-b">
                   <td className="px-6 py-4">
                     {items.find((i) => i.itemId === item.itemId)?.itemName || 'N/A'}
+                  </td>
+                  <td className="px-6 py-4">
+                    {units.find((unit) => unit.unitId === item.unitId)?.uniteCode || ''}
                   </td>
                   <td className="px-6 py-4">{item.receivedQuantity}</td>
                   <td className="px-6 py-4">{item.rejectedQuantity || '0'}</td>
