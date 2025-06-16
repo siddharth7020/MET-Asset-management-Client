@@ -159,7 +159,8 @@ function Unit() {
               {isEditMode ? 'Edit Unit' : 'Add Unit'}
             </h3>
             <form onSubmit={handleSubmit}>
-              <FormInput
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <FormInput
                 label="Unit Name"
                 type="text"
                 name="uniteName"
@@ -184,6 +185,8 @@ function Unit() {
                 value={formData.remark}
                 onChange={handleChange}
               />
+              </div>
+              
               <div className="flex space-x-2 mt-4">
                 <button
                   type="submit"

@@ -40,8 +40,6 @@ function Category() {
       setLoading(false);
     }
   };
-  console.log(categories);
-  
 
   const columns = [{ key: 'categoryName', label: 'Name' }];
 

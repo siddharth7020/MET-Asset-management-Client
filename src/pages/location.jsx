@@ -30,7 +30,7 @@ const TagInput = ({ label, name, value, onChange, error }) => {
   return (
     <div className="mb-4">
       <label className="block text-sm font-medium text-gray-700">{label}</label>
-      <div className="mt-1 flex flex-wrap gap-2 p-2 border rounded-md">
+      <div className=" flex flex-wrap gap-2 p-2 border rounded-md">
         {value.map((tag, index) => (
           <span
             key={index}
@@ -209,6 +209,7 @@ function Location() {
               {isEditMode ? 'Edit Location' : 'Add Location'}
             </h3>
             <form onSubmit={handleSubmit}>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               <FormInput
                 label="Floor"
                 type="text"
@@ -225,6 +226,7 @@ function Location() {
                 onChange={handleChange}
                 error={errors.room}
               />
+              </div>
               <div className="flex space-x-2 mt-4">
                 <button
                   type="submit"

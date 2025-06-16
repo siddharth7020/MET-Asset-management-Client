@@ -95,24 +95,8 @@ function Institute() {
     setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
-  const validateForm = () => {
-    const newErrors = {};
-    if (!formData.instituteName) newErrors.instituteName = 'Institute name is required';
-    if (!formData.intituteCode) {
-      newErrors.intituteCode = 'Institute code is required';
-    } else if (formData.intituteCode.length < 3 || formData.intituteCode.length > 50) {
-      newErrors.intituteCode = 'Institute code must be between 3 to 50 characters';
-    }
-    return newErrors;
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const newErrors = validateForm();
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
 
     setLoading(true);
     try {
@@ -161,6 +145,7 @@ function Institute() {
               {isEditMode ? 'Edit Institute' : 'Add Institute'}
             </h3>
             <form onSubmit={handleSubmit}>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               <FormInput
                 label="Institute Name"
                 type="text"
@@ -179,6 +164,7 @@ function Institute() {
                 error={errors.intituteCode}
                 required
               />
+              </div>
               <div className="flex space-x-2 mt-4">
                 <button
                   type="submit"

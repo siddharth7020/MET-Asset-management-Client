@@ -176,43 +176,45 @@ function Item() {
 
       {isFormVisible && (
         <form onSubmit={handleSubmit} className="mb-6">
-          <FormInput
-            label="Item Name"
-            type="text"
-            name="itemName"
-            value={formData.itemName}
-            onChange={handleChange}
-            error={errors.itemName}
-            required
-          />
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700">Category</label>
-            <select
-              name="itemCategory"
-              value={formData.itemCategory}
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+            <FormInput
+              label="Item Name"
+              type="text"
+              name="itemName"
+              value={formData.itemName}
               onChange={handleChange}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+              error={errors.itemName}
               required
-            >
-              <option value="">Select Category</option>
-              {categories.map((cat) => (
-                <option key={cat.categoryID} value={cat.categoryID}>
-                  {cat.categoryName}
-                </option>
-              ))}
-            </select>
-            {errors.itemCategory && (
-              <p className="mt-1 text-sm text-red-600">{errors.itemCategory}</p>
-            )}
+            />
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700">Category</label>
+              <select
+                name="itemCategory"
+                value={formData.itemCategory}
+                onChange={handleChange}
+                className="block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                required
+              >
+                <option value="">Select Category</option>
+                {categories.map((cat) => (
+                  <option key={cat.categoryID} value={cat.categoryID}>
+                    {cat.categoryName}
+                  </option>
+                ))}
+              </select>
+              {errors.itemCategory && (
+                <p className="mt-1 text-sm text-red-600">{errors.itemCategory}</p>
+              )}
+            </div>
+            <FormInput
+              label="Remark"
+              type="text"
+              name="remark"
+              value={formData.remark}
+              onChange={handleChange}
+              error={errors.remark}
+            />
           </div>
-          <FormInput
-            label="Remark"
-            type="text"
-            name="remark"
-            value={formData.remark}
-            onChange={handleChange}
-            error={errors.remark}
-          />
           <div className="flex space-x-2 mt-4">
             <button
               type="submit"
