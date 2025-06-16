@@ -53,7 +53,11 @@ const Details = ({ purchaseOrder, orderItems, institutesData, financialYears, ve
     { key: 'quantity', label: 'Quantity' },
     { key: 'rate', label: 'Rate' },
     { key: 'amount', label: 'Amount' },
-    { key: 'discount', label: 'Discount Amount' },
+    {
+      key: 'discount',
+      label: 'Discount Amount',
+      format: (value) => `${value}%`,
+    },
     { key: 'totalAmount', label: 'Total Amount' },
   ];
 

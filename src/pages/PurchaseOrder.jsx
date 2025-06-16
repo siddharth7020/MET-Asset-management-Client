@@ -235,7 +235,7 @@ function PurchaseOrder() {
     const rate = parseFloat(updatedOrderItems[index].rate) || 0;
     const discount = parseFloat(updatedOrderItems[index].discount) || 0;
     const amount = quantity * rate;
-    const totalAmount = amount - discount;
+    const totalAmount = amount * (1 - (discount / 100)); // calculate total amount with discount
     updatedOrderItems[index].amount = amount.toFixed(2);
     updatedOrderItems[index].totalAmount = totalAmount.toFixed(2);
     setFormData((prev) => ({ ...prev, orderItems: updatedOrderItems }));
@@ -663,7 +663,7 @@ function PurchaseOrder() {
                             className="w-full text-xs sm:text-sm"
                           />
                           <FormInput
-                            label="Discount Amount"
+                            label="Discount %"
                             type="number"
                             name="discount"
                             value={oi.discount}
