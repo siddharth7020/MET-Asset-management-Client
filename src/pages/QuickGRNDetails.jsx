@@ -1,7 +1,11 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
 
-const QuickGRNDetails = ({ quickGRN, quickGRNItems, institutes, financialYears, vendors, items, onBack }) => {
+const MySwal = withReactContent(Swal);
+
+const QuickGRNDetails = ({ quickGRN, quickGRNItems, institutes, financialYears, vendors, items, units, onBack }) => {
   if (!quickGRN) {
     return <div className="text-center p-6">No Quick GRN selected</div>;
   }
@@ -10,6 +14,29 @@ const QuickGRNDetails = ({ quickGRN, quickGRNItems, institutes, financialYears, 
   const institute = institutes.find((inst) => inst.instituteId === quickGRN.instituteId);
   const financialYear = financialYears.find((year) => year.financialYearId === quickGRN.financialYearId);
   const vendor = vendors.find((vend) => vend.vendorId === quickGRN.vendorId);
+
+  const handleDocumentDownload = (documentPath) => {
+    try {
+      if (documentPath) {
+        // Construct full URL using the backend base URL
+        const documentUrl = `http://localhost:5000/${documentPath}`;
+        window.open(documentUrl, '_blank');
+      } else {
+        MySwal.fire({
+          icon: 'warning',
+          title: 'No Document',
+          text: 'This document is not available.',
+        });
+      }
+    } catch (error) {
+      console.error('Error accessing document:', error);
+      MySwal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to access document. Please try again later.',
+      });
+    }
+  };
 
   return (
     <div className="">
@@ -51,9 +78,16 @@ const QuickGRNDetails = ({ quickGRN, quickGRNItems, institutes, financialYears, 
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Vendor</span>
             <span className="text-xs sm:text-sm text-gray-900">{vendor?.name || 'N/A'}</span>
           </div>
+        
           <div className="flex flex-col">
-            <span className="text-xs sm:text-sm font-semibold text-gray-700">Document</span>
-            <span className="text-xs sm:text-sm text-gray-900">{quickGRN.document || 'N/A'}</span>
+            <span className="text-xs sm:text-sm font-semibold text-gray-700">Items</span>
+            {quickGRN.items &&
+              quickGRN.items.map((item, index) => (
+                <div key={index} className="flex flex-col">
+                  <span className="text-xs sm:text-sm text-gray-900">{item.itemName}</span>
+                  <span className="text-xs sm:text-sm text-gray-900">{item.quantity}</span>
+                </div>
+              ))}
           </div>
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Challan Number</span>
@@ -72,6 +106,24 @@ const QuickGRNDetails = ({ quickGRN, quickGRNItems, institutes, financialYears, 
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Remark</span>
             <span className="text-xs sm:text-sm text-gray-900">{quickGRN.remark || 'N/A'}</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xs sm:text-sm font-semibold text-gray-700">Documents</span>
+            {quickGRN.document && quickGRN.document.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                {quickGRN.document.map((doc, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleDocumentDownload(doc)}
+                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-xs sm:text-sm w-48"
+                  >
+                    Document {index + 1}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <span className="text-xs sm:text-sm text-gray-900">No documents available.</span>
+            )}
           </div>
         </div>
       </div>
@@ -113,6 +165,7 @@ const QuickGRNDetails = ({ quickGRN, quickGRNItems, institutes, financialYears, 
             <thead className="text-xs uppercase bg-gray-200">
               <tr>
                 <th scope="col" className="px-6 py-3">Item Name</th>
+                <th scope="col" className="px-6 py-3">Unit </th>
                 <th scope="col" className="px-6 py-3">Quantity</th>
                 <th scope="col" className="px-6 py-3">Rate</th>
                 <th scope="col" className="px-6 py-3">Amount</th>
@@ -124,6 +177,9 @@ const QuickGRNDetails = ({ quickGRN, quickGRNItems, institutes, financialYears, 
               {quickGRNItems.map((item) => (
                 <tr key={item.qGRNItemid} className="bg-white border-b">
                   <td className="px-6 py-4">{items.find((i) => i.itemId === item.itemId)?.itemName || 'N/A'}</td>
+                  <td className="px-6 py-4">
+                    {units.find((unit) => unit.unitId === item.unitId)?.uniteName || 'N/A'}
+                  </td>
                   <td className="px-6 py-4">{item.quantity}</td>
                   <td className="px-6 py-4">₹{parseFloat(item.rate).toFixed(2)}</td>
                   <td className="px-6 py-4">₹{parseFloat(item.amount).toFixed(2)}</td>
