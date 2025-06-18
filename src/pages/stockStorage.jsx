@@ -100,7 +100,7 @@ function Stock() {
     {
       key: 'unitId',
       label: 'Unit',
-      format: (value) => units.find((units) => units.unitId === value.unitId) || 'N/A',
+      format: (value) => units.find((units) => units.unitId === value)?.uniteCode || 'N/A',
     },
     { key: 'quantity', label: 'Quantity' },
 
@@ -118,11 +118,6 @@ function Stock() {
     { key: 'poId', label: 'PO ID' },
     { key: 'poNo', label: 'PO Number' },
     { key: 'storeCode', label: 'Store Code' },
-    {
-      key: 'unitId',
-      label: 'Unit',
-      format: (value, row) => row.unitName || units.find((unit) => unit.id === value)?.unitCode || value || 'N/A',
-    },
     { key: 'totalQuantity', label: 'Quantity' },
   ];
 
