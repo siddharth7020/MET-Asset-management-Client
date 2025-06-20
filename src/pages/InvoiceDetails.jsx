@@ -1,14 +1,14 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-const InvoiceDetails = ({ invoice, invoiceItems, purchaseOrders, onBack, items }) => {
+const InvoiceDetails = ({ invoice, invoiceItems, purchaseOrders, onBack, units, items }) => {
   if (!invoice) {
     return <div className="text-center p-6">No invoice selected</div>;
   }
 
   const purchaseOrder = purchaseOrders.find((po) => po.poId === invoice.poId);
   console.log(invoiceItems);
-  
+
 
   return (
     <div className="">
@@ -42,18 +42,6 @@ const InvoiceDetails = ({ invoice, invoiceItems, purchaseOrders, onBack, items }
             </span>
           </div>
           <div className="flex flex-col">
-            <span className="text-xs sm:text-sm font-semibold text-gray-700">Subtotal</span>
-            <span className="text-xs sm:text-sm text-gray-900">₹{parseFloat(invoice.subtotal).toFixed(2)}</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-xs sm:text-sm font-semibold text-gray-700">Total Tax</span>
-            <span className="text-xs sm:text-sm text-gray-900">₹{parseFloat(invoice.totalTax).toFixed(2)}</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-xs sm:text-sm font-semibold text-gray-700">Invoice Amount</span>
-            <span className="text-xs sm:text-sm text-gray-900">₹{parseFloat(invoice.invoiceAmount).toFixed(2)}</span>
-          </div>
-          <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Payment Details</span>
             <span className="text-xs sm:text-sm text-gray-900">{invoice.paymentDetails || 'N/A'}</span>
           </div>
@@ -67,9 +55,11 @@ const InvoiceDetails = ({ invoice, invoiceItems, purchaseOrders, onBack, items }
         <div className="sm:hidden space-y-4">
           {invoiceItems.map((item) => (
             <div key={item.id} className="p-4 border rounded-md bg-gray-50">
-          
               <p className="text-xs">
-                <strong>Item Name:</strong> {item.orderItemId}
+                <strong>Item Name:</strong> {items.find((i) => i.itemId === item.itemId)?.itemName || 'N/A'}
+              </p>
+              <p className="text-xs">
+                <strong>Unit Name:</strong> {units.find((u) => u.unitId === item.unitId)?.uniteCode || 'N/A'}
               </p>
               <p className="text-xs">
                 <strong>Quantity:</strong> {item.quantity}
@@ -97,11 +87,11 @@ const InvoiceDetails = ({ invoice, invoiceItems, purchaseOrders, onBack, items }
           <table className="w-full text-sm text-left text-gray-900">
             <thead className="text-xs uppercase bg-gray-200">
               <tr>
-                <th scope="col" className="px-6 py-3">Order Item </th>
-                <th scope="col" className="px-6 py-3">Item Name</th>
+                <th scope="col" className="px-6 py-3">Item </th>
+                <th scope="col" className="px-6 py-3">Unit </th>
                 <th scope="col" className="px-6 py-3">Quantity</th>
                 <th scope="col" className="px-6 py-3">Rate</th>
-                <th scope="col" className="px-6 py-3">Discount</th>
+                <th scope="col" className="px-6 py-3">Discount %</th>
                 <th scope="col" className="px-6 py-3">Tax %</th>
                 <th scope="col" className="px-6 py-3">Tax Amount</th>
                 <th scope="col" className="px-6 py-3">Total Amount</th>
@@ -110,8 +100,8 @@ const InvoiceDetails = ({ invoice, invoiceItems, purchaseOrders, onBack, items }
             <tbody>
               {invoiceItems.map((item) => (
                 <tr key={item.id} className="bg-white border-b">
-                  <td className="px-6 py-4">{item.orderItemId}</td>
                   <td className="px-6 py-4">{items.find((i) => i.itemId === item.itemId)?.itemName || 'N/A'}</td>
+                  <td className="px-6 py-4">{units.find((u) => u.unitId === item.unitId)?.uniteCode || 'N/A'}</td>
                   <td className="px-6 py-4">{item.quantity}</td>
                   <td className="px-6 py-4">₹{parseFloat(item.rate).toFixed(2)}</td>
                   <td className="px-6 py-4">₹{parseFloat(item.discount).toFixed(2)}</td>
@@ -122,6 +112,20 @@ const InvoiceDetails = ({ invoice, invoiceItems, purchaseOrders, onBack, items }
               ))}
             </tbody>
           </table>
+          <div className='flex flex-col justify-end gap-2 mt-4 ml-auto'>
+            <div className="flex gap-3 mt-2">
+              <span className="text-xs sm:text-sm font-semibold text-gray-700">Subtotal</span>
+              <span className="text-xs sm:text-sm text-gray-900">₹{parseFloat(invoice.subtotal).toFixed(2)}</span>
+            </div>
+            <div className="flex gap-3 mt-2">
+              <span className="text-xs sm:text-sm font-semibold text-gray-700">Total Tax</span>
+              <span className="text-xs sm:text-sm text-gray-900">₹{parseFloat(invoice.totalTax).toFixed(2)}</span>
+            </div>
+            <div className="flex gap-3 mt-2">
+              <span className="text-xs sm:text-sm font-semibold text-gray-700">Invoice Amount</span>
+              <span className="text-xs sm:text-sm text-gray-900">₹{parseFloat(invoice.invoiceAmount).toFixed(2)}</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

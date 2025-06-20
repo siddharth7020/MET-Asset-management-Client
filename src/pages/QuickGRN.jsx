@@ -598,7 +598,7 @@ function QuickGRN() {
                           className="w-full text-sm"
                         />
                         <FormInput
-                          label="Discount"
+                          label="Discount %"
                           type="number"
                           name="discount"
                           value={item.discount}

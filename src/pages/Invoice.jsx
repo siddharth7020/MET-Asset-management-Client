@@ -14,6 +14,7 @@ function Invoice() {
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [orderItems, setOrderItems] = useState([]);
   const [items, setItems] = useState([]);
+  const [units, setUnits] = useState([]);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [formData, setFormData] = useState({
@@ -47,7 +48,7 @@ function Invoice() {
         const invoiceResponse = await getAllInvoices();
         const invoicesData = Array.isArray(invoiceResponse.data.invoices) ? invoiceResponse.data.invoices : [];
         console.log('Invoices:', invoicesData);
-        
+
         const invoiceItemsData = invoicesData.flatMap((inv) => inv.items || []);
         console.log('Invoice Items:', invoiceItemsData);
         setInvoices(invoicesData);
@@ -64,6 +65,14 @@ function Invoice() {
         } else {
           console.error('Expected items data to be an array, but got:', itemsResponse.data.items);
         }
+
+        const unitsResponse = await axios.get('/units');
+        if (Array.isArray(unitsResponse.data.data)) {
+          setUnits(unitsResponse.data.data);
+        } else {
+          console.error('Expected units data to be an array, but got:', unitsResponse.data.data);
+        }
+
       } catch (error) {
         console.error('Error fetching data:', error);
         MySwal.fire({
@@ -89,6 +98,7 @@ function Invoice() {
             items: orderItemsData.map((item) => ({
               orderItemId: item.id,
               itemId: item.itemId || '',
+              unitId: item.unitId || '',
               quantity: item.quantity || '',
               rate: item.rate || '',
               discount: item.discount || '',
@@ -113,6 +123,7 @@ function Invoice() {
         items: [{
           orderItemId: '',
           itemId: '',
+          unitId: '',
           taxPercentage: '',
           quantity: '',
           rate: '',
@@ -189,6 +200,7 @@ function Invoice() {
               id: item.id,
               orderItemId: item.orderItemId,
               itemId: item.itemId || '',
+              unitId: item.unitId || '',
               quantity: item.quantity,
               rate: item.rate,
               discount: item.discount,
@@ -268,6 +280,7 @@ function Invoice() {
         {
           orderItemId: '',
           itemId: '',
+          unitId: '',
           taxPercentage: '',
           quantity: '',
           rate: '',
@@ -307,6 +320,7 @@ function Invoice() {
     formData.items.forEach((item, index) => {
       if (!item.orderItemId) newErrors[`items[${index}].orderItemId`] = 'Order item is required';
       if (!item.itemId) newErrors[`items[${index}].itemId`] = 'Item ID is required';
+      if (!item.unitId) newErrors[`items[${index}].unitId`] = 'Unit ID is required';
       if (!item.quantity || item.quantity <= 0) newErrors[`items[${index}].quantity`] = 'Quantity must be positive';
       if (!item.rate || item.rate < 0) newErrors[`items[${index}].rate`] = 'Rate must be non-negative';
       if (item.discount < 0) newErrors[`items[${index}].discount`] = 'Discount cannot be negative';
@@ -384,6 +398,7 @@ function Invoice() {
         id: item.id || undefined,
         orderItemId: Number(item.orderItemId),
         itemId: Number(item.itemId),
+        unitId: item.unitId ? Number(item.unitId) : undefined,
         quantity: Number(item.quantity),
         rate: Number(item.rate),
         discount: Number(item.discount || 0),
@@ -478,6 +493,7 @@ function Invoice() {
       items: [{
         orderItemId: '',
         itemId: '',
+        unitId: '',
         taxPercentage: '',
         quantity: '',
         rate: '',
@@ -503,6 +519,7 @@ function Invoice() {
           invoice={selectedInvoice}
           invoiceItems={selectedInvoiceItems}
           items={items}
+          units={units}
           purchaseOrders={purchaseOrders}
           onBack={handleBack}
         />
@@ -576,12 +593,27 @@ function Invoice() {
                     {formData.items.map((item, index) => (
                       <div key={index} className="flex flex-col gap-4 mb-4 p-4 border rounded-md">
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div>
+                          <div>
                             <label className="block text-sm font-medium text-gray-700">Item Name</label>
                             <input
                               type="text"
                               //i want item id name fetch to the items
                               value={items.find((i) => i.itemId === item.itemId)?.itemName || 'N/A'}
+                              disabled
+                              className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                            />
+                            {errors[`grnItems[${index}].itemId`] && (
+                              <p className="mt-1 text-sm text-red-600">
+                                {errors[`grnItems[${index}].itemId`]}
+                              </p>
+                            )}
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">Unit</label>
+                            <input
+                              type="text"
+                              //i want item id name fetch to the items
+                              value={units.find((u) => u.unitId === item.unitId)?.uniteCode || 'N/A'}
                               disabled
                               className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
                             />
@@ -621,8 +653,8 @@ function Invoice() {
                             )}
                           </div>
                           <FormInput
-                            label="Discount Amount"
-                            type="number"
+                            label="Discount %"
+                            type="percentage"
                             name="discount"
                             value={item.discount}
                             onChange={(e) => handleItemChange(index, e)}
@@ -640,7 +672,7 @@ function Invoice() {
                             required
                             className="w-full text-xs sm:text-sm"
                           />
-                         <div>
+                          <div>
                             <label className="block text-sm font-medium text-gray-700">tax Amount</label>
                             <input
                               type="text"

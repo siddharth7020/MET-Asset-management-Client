@@ -474,7 +474,7 @@ function QuickInvoice() {
                                   )}
                                 </div>
                                 <FormInput
-                                  label="Discount Amount"
+                                  label="Discount %"
                                   type="number"
                                   name="discount"
                                   value={gi.discount}

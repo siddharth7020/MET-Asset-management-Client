@@ -79,28 +79,28 @@ function Stock() {
     {
       key: 'itemId',
       label: 'Item',
-      format: (value) => items.find((item) => item.itemId === value)?.itemName || 'N/A',
+      format: (value) => items.find((item) => item.itemId === value)?.itemName || '-',
     },
     {
       key: 'poId',
       label: 'Purchase Order',
-      format: (value) => purchaseOrders.find((po) => po.poId === value)?.poNo || 'N/A',
+      format: (value) => purchaseOrders.find((po) => po.poId === value)?.poNo || '-',
     },
     {
       key: 'grnId',
       label: 'GRN',
-      format: (value) => grns.find((grn) => grn.id === value)?.grnNo || 'N/A',
+      format: (value) => grns.find((grn) => grn.id === value)?.grnNo || '-',
     },
     {
       key: 'qGRNId',
       label: 'Quick GRN',
-      format: (value) => quickGRNs.find((qgrn) => qgrn.qGRNId === value)?.qGRNNo || 'N/A',
+      format: (value) => quickGRNs.find((qgrn) => qgrn.qGRNId === value)?.qGRNNo || '-',
     },
     { key: 'storeCode', label: 'Store Code' },
     {
       key: 'unitId',
       label: 'Unit',
-      format: (value) => units.find((units) => units.unitId === value)?.uniteCode || 'N/A',
+      format: (value) => units.find((units) => units.unitId === value)?.uniteCode || '-',
     },
     { key: 'quantity', label: 'Quantity' },
 
