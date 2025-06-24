@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-const QuickInvoiceDetails = ({ quickInvoice, quickInvoiceItems, quickGRNs, items, onBack }) => {
+const QuickInvoiceDetails = ({ quickInvoice, quickInvoiceItems, quickGRNs, items, units, onBack }) => {
   // Debug log for items prop
 
 
@@ -102,8 +102,8 @@ const QuickInvoiceDetails = ({ quickInvoice, quickInvoiceItems, quickGRNs, items
           <table className="w-full text-sm text-left text-gray-900">
             <thead className="text-xs uppercase bg-gray-200">
               <tr>
-                <th scope="col" className="px-6 py-3">GRN Item ID</th>
                 <th scope="col" className="px-6 py-3">Item Name</th>
+                <th scope="col" className="px-6 py-3">Unit</th>
                 <th scope="col" className="px-6 py-3">Quantity</th>
                 <th scope="col" className="px-6 py-3">Rate</th>
                 <th scope="col" className="px-6 py-3">Discount</th>
@@ -115,8 +115,8 @@ const QuickInvoiceDetails = ({ quickInvoice, quickInvoiceItems, quickGRNs, items
             <tbody>
               {quickInvoiceItems.map((item) => (
                 <tr key={item.qInvoiceItemId} className="bg-white border-b">
-                  <td className="px-6 py-4">{item.qGRNItemid}</td>
                   <td className="px-6 py-4">{items.find((i) => i.itemId === item.itemId)?.itemName}</td>
+                  <td className="px-6 py-4">{units.find((u) => u.unitId === item.unitId)?.uniteCode}</td>
                   <td className="px-6 py-4">{item.quantity}</td>
                   <td className="px-6 py-4">₹{parseFloat(item.rate).toFixed(2)}</td>
                   <td className="px-6 py-4">₹{parseFloat(item.discount).toFixed(2)}</td>

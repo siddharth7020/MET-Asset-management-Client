@@ -13,6 +13,7 @@ function QuickInvoice() {
   const [quickGRNs, setQuickGRNs] = useState([]);
   const [quickGRNItems, setQuickGRNItems] = useState([]);
   const [items, setItems] = useState([]);
+  const [units, setUnits] = useState([]);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [formData, setFormData] = useState({
@@ -57,6 +58,13 @@ function QuickInvoice() {
           setItems(itemsResponse.data.items);
         } else {
           console.error('Expected items data to be an array, but got:', itemsResponse.data.items);
+        }
+
+        const unitsResponse = await axios.get('/units');
+        if (Array.isArray(unitsResponse.data.data)) {
+          setUnits(unitsResponse.data.data);
+        } else {
+          console.error('Expected units data to be an array, but got:', unitsResponse.data.data);
         }
 
       } catch (error) {
@@ -200,6 +208,7 @@ function QuickInvoice() {
             qGRNId,
             qGRNItemid: gi.qGRNItemid,
             itemId: gi.itemId,
+            unitId: gi.unitId,
             quantity: Number(gi.quantity),
             rate: Number(gi.rate),
             discount: Number(gi.discount || 0),
@@ -318,17 +327,7 @@ function QuickInvoice() {
         setIsFormVisible(true);
       },
       className: 'bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs sm:text-sm',
-    },
-    {
-      label: 'Delete',
-      onClick: (row) => {
-        if (window.confirm(`Delete Quick Invoice ${row.qInvoiceNo}?`)) {
-          setQuickInvoices((prev) => prev.filter((inv) => inv.qInvoiceId !== row.qInvoiceId));
-          // TODO: Implement deleteQuickInvoice API call
-        }
-      },
-      className: 'bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs sm:text-sm',
-    },
+    }
   ];
 
   // Handle row click
@@ -355,6 +354,7 @@ function QuickInvoice() {
           quickGRNs={quickGRNs}
           quickGRNItems={quickGRNItems}
           items={items}
+          units={units}
           onBack={handleBack}
         />
       ) : (
@@ -436,6 +436,20 @@ function QuickInvoice() {
                                   <input
                                     type="text"
                                     value={items.find((item) => item.itemId === gi.itemId)?.itemName || ''}
+                                    disabled
+                                    className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                                  />
+                                  {errors[`grnItems[${index}].itemId`] && (
+                                    <p className="mt-1 text-sm text-red-600">
+                                      {errors[`grnItems[${index}].itemId`]}
+                                    </p>
+                                  )}
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700">Unit</label>
+                                  <input
+                                    type="text"
+                                    value={units.find((unit) => unit.unitId === gi.unitId)?.uniteCode || ''}
                                     disabled
                                     className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
                                   />
