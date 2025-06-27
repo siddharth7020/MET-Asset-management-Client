@@ -542,7 +542,7 @@ function QuickInvoice() {
                                   <label className="block text-sm font-medium text-gray-700">Unit</label>
                                   <input
                                     type="text"
-                                    value={units.find((unit) => unit.unitId === gi.unitId)?.unitCode || ''}
+                                    value={units.find((unit) => unit.unitId === gi.unitId)?.uniteCode || ''}
                                     disabled
                                     className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
                                   />
