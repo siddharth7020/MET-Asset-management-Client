@@ -150,12 +150,6 @@ const QuickGRNDetails = ({ quickGRN, quickGRNItems, institutes, financialYears, 
               <p className="text-xs">
                 <strong>Amount:</strong> ₹{parseFloat(item.amount).toFixed(2)}
               </p>
-              <p className="text-xs">
-                <strong>Discount:</strong> ₹{parseFloat(item.discount).toFixed(2)}
-              </p>
-              <p className="text-xs">
-                <strong>Total Amount:</strong> ₹{parseFloat(item.totalAmount).toFixed(2)}
-              </p>
             </div>
           ))}
         </div>
@@ -169,8 +163,6 @@ const QuickGRNDetails = ({ quickGRN, quickGRNItems, institutes, financialYears, 
                 <th scope="col" className="px-6 py-3">Quantity</th>
                 <th scope="col" className="px-6 py-3">Rate</th>
                 <th scope="col" className="px-6 py-3">Amount</th>
-                <th scope="col" className="px-6 py-3">Discount</th>
-                <th scope="col" className="px-6 py-3">Total Amount</th>
               </tr>
             </thead>
             <tbody>
@@ -183,8 +175,6 @@ const QuickGRNDetails = ({ quickGRN, quickGRNItems, institutes, financialYears, 
                   <td className="px-6 py-4">{item.quantity}</td>
                   <td className="px-6 py-4">₹{parseFloat(item.rate).toFixed(2)}</td>
                   <td className="px-6 py-4">₹{parseFloat(item.amount).toFixed(2)}</td>
-                  <td className="px-6 py-4">₹{parseFloat(item.discount).toFixed(2)}</td>
-                  <td className="px-6 py-4">₹{parseFloat(item.totalAmount).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
@@ -219,8 +209,6 @@ QuickGRNDetails.propTypes = {
       quantity: PropTypes.number,
       rate: PropTypes.number,
       amount: PropTypes.number,
-      discount: PropTypes.number,
-      totalAmount: PropTypes.number,
       receivedQuantity: PropTypes.number,
       rejectedQuantity: PropTypes.number,
       createdAt: PropTypes.string,

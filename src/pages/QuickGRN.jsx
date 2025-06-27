@@ -26,7 +26,7 @@ function QuickGRN() {
     challanDate: '',
     requestedBy: '',
     remark: '',
-    quickGRNItems: [{ storeCode: '', itemId: '', unitId: '', quantity: '', rate: '', discount: '', amount: '', totalAmount: '' }],
+    quickGRNItems: [{ storeCode: '', itemId: '', unitId: '', quantity: '', rate: '', amount: '' }],
   });
   const [errors, setErrors] = useState({});
   const [selectedQGRNId, setSelectedQGRNId] = useState(null);
@@ -170,12 +170,9 @@ function QuickGRN() {
 
     const quantity = Number(updatedItems[index].quantity) || 0;
     const rate = Number(updatedItems[index].rate) || 0;
-    const discount = Number(updatedItems[index].discount) || 0;
     const amount = quantity * rate;
-    const totalAmount = amount * (1 - discount / 100);
 
     updatedItems[index].amount = amount.toFixed(2);
-    updatedItems[index].totalAmount = totalAmount.toFixed(2);
 
     setFormData((prev) => ({ ...prev, quickGRNItems: updatedItems }));
     setErrors((prev) => ({ ...prev, [`quickGRNItems[${index}].${name}`]: '' }));
@@ -184,7 +181,7 @@ function QuickGRN() {
   const addItem = () => {
     setFormData((prev) => ({
       ...prev,
-      quickGRNItems: [...prev.quickGRNItems, { storeCode: '', itemId: '', unitId: '', quantity: '', rate: '', discount: '', amount: '', totalAmount: '' }],
+      quickGRNItems: [...prev.quickGRNItems, { storeCode: '', itemId: '', unitId: '', quantity: '', rate: '', amount: '' }],
     }));
   };
 
@@ -234,7 +231,6 @@ function QuickGRN() {
       }
       if (!item.quantity || Number(item.quantity) <= 0) newErrors[`quickGRNItems[${index}].quantity`] = 'Quantity must be positive';
       if (!item.rate || Number(item.rate) <= 0) newErrors[`quickGRNItems[${index}].rate`] = 'Rate must be positive';
-      if (item.discount && Number(item.discount) < 0) newErrors[`quickGRNItems[${index}].discount`] = 'Discount cannot be negative';
     });
 
     return newErrors;
@@ -273,7 +269,6 @@ function QuickGRN() {
       unitId: Number(item.unitId),
       quantity: Number(item.quantity),
       rate: Number(item.rate),
-      discount: Number(item.discount) || 0,
     }))));
 
     try {
@@ -310,7 +305,7 @@ function QuickGRN() {
       challanDate: '',
       requestedBy: '',
       remark: '',
-      quickGRNItems: [{ itemId: '', unitId: '', quantity: '', rate: '', discount: '', amount: '', totalAmount: '' }],
+      quickGRNItems: [{ itemId: '', unitId: '', quantity: '', rate: '', amount: '' }],
     });
     setErrors({});
   };
@@ -514,13 +509,14 @@ function QuickGRN() {
                           <label className="block text-xs sm:text-sm font-medium text-gray-700">Item</label>
                           <Select
                             name="itemId"
-                            value={items.find((it) => it.itemId === Number(item.itemId)) || null}
+                            value={
+                              items.find((it) => it.itemId === item.itemId)
+                                ? { value: item.itemId, label: items.find((it) => it.itemId === item.itemId).itemName }
+                                : null
+                            }
                             onChange={(selectedOption) =>
                               handleItemChange(index, {
-                                target: {
-                                  name: 'itemId',
-                                  value: selectedOption ? selectedOption.value : '',
-                                },
+                                target: { name: 'itemId', value: selectedOption ? selectedOption.value : '' },
                               })
                             }
                             options={items.map((it) => ({
@@ -541,7 +537,11 @@ function QuickGRN() {
                           <label className="block text-xs sm:text-sm font-medium text-gray-700">Unit</label>
                           <Select
                             name="unitId"
-                            value={units.find((unit) => unit.unitId === Number(item.unitId)) || null}
+                            value={
+                              units.find((u) => u.unitId === item.unitId)
+                                ? { value: item.unitId, label: units.find((u) => u.unitId === item.unitId).uniteCode }
+                                : null
+                            }
                             onChange={(selectedOption) =>
                               handleItemChange(index, {
                                 target: {
@@ -552,7 +552,7 @@ function QuickGRN() {
                             }
                             options={units.map((unit) => ({
                               value: unit.unitId,
-                              label: unit.unitCode,
+                              label: unit.uniteCode,
                             }))}
                             placeholder="Select Unit"
                             className="text-xs sm:text-sm"
@@ -593,27 +593,6 @@ function QuickGRN() {
                           type="text"
                           name="amount"
                           value={item.amount}
-                          disabled
-                          required={false}
-                          className="w-full text-sm"
-                        />
-                        <FormInput
-                          label="Discount %"
-                          type="number"
-                          name="discount"
-                          value={item.discount}
-                          onChange={(e) => handleItemChange(index, e)}
-                          error={errors[`quickGRNItems[${index}].discount`]}
-                          required={false}
-                          min="0"
-                          step="0.01"
-                          className="w-full text-sm"
-                        />
-                        <FormInput
-                          label="Total Amount"
-                          type="text"
-                          name="totalAmount"
-                          value={item.totalAmount}
                           disabled
                           required={false}
                           className="w-full text-sm"

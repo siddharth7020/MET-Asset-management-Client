@@ -119,7 +119,7 @@ const QuickInvoiceDetails = ({ quickInvoice, quickInvoiceItems, quickGRNs, items
                   <td className="px-6 py-4">{units.find((u) => u.unitId === item.unitId)?.uniteCode}</td>
                   <td className="px-6 py-4">{item.quantity}</td>
                   <td className="px-6 py-4">₹{parseFloat(item.rate).toFixed(2)}</td>
-                  <td className="px-6 py-4">₹{parseFloat(item.discount).toFixed(2)}</td>
+                  <td className="px-6 py-4">{parseFloat(item.discount).toFixed(2)}%</td>
                   <td className="px-6 py-4">{parseFloat(item.taxPercentage).toFixed(2)}%</td>
                   <td className="px-6 py-4">₹{parseFloat(item.taxAmount).toFixed(2)}</td>
                   <td className="px-6 py-4">₹{parseFloat(item.totalAmount).toFixed(2)}</td>
