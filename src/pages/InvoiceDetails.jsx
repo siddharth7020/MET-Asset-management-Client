@@ -68,7 +68,7 @@ const InvoiceDetails = ({ invoice, invoiceItems, purchaseOrders, onBack, units, 
                 <strong>Rate:</strong> ₹{parseFloat(item.rate).toFixed(2)}
               </p>
               <p className="text-xs">
-                <strong>Discount:</strong> ₹{parseFloat(item.discount).toFixed(2)}
+                <strong>Discount:</strong> {parseFloat(item.discount).toFixed(2)}%
               </p>
               <p className="text-xs">
                 <strong>Tax %:</strong> {parseFloat(item.taxPercentage).toFixed(2)}%
@@ -104,7 +104,7 @@ const InvoiceDetails = ({ invoice, invoiceItems, purchaseOrders, onBack, units, 
                   <td className="px-6 py-4">{units.find((u) => u.unitId === item.unitId)?.uniteCode || 'N/A'}</td>
                   <td className="px-6 py-4">{item.quantity}</td>
                   <td className="px-6 py-4">₹{parseFloat(item.rate).toFixed(2)}</td>
-                  <td className="px-6 py-4">₹{parseFloat(item.discount).toFixed(2)}</td>
+                  <td className="px-6 py-4">{parseFloat(item.discount).toFixed(2)}%</td>
                   <td className="px-6 py-4">{parseFloat(item.taxPercentage).toFixed(2)}%</td>
                   <td className="px-6 py-4">₹{parseFloat(item.taxAmount).toFixed(2)}</td>
                   <td className="px-6 py-4">₹{parseFloat(item.totalAmount).toFixed(2)}</td>
@@ -114,7 +114,7 @@ const InvoiceDetails = ({ invoice, invoiceItems, purchaseOrders, onBack, units, 
           </table>
           <div className='flex flex-col justify-end gap-2 mt-4 ml-auto'>
             <div className="flex gap-3 mt-2">
-              <span className="text-xs sm:text-sm font-semibold text-gray-700">Subtotal</span>
+              <span className="text-xs sm:text-sm font-semibold text-gray-700">Sub Total</span>
               <span className="text-xs sm:text-sm text-gray-900">₹{parseFloat(invoice.subtotal).toFixed(2)}</span>
             </div>
             <div className="flex gap-3 mt-2">

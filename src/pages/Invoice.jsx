@@ -25,10 +25,12 @@ function Invoice() {
     items: [{
       orderItemId: '',
       itemId: '',
+      unitId: '',
       taxPercentage: '',
       quantity: '',
       rate: '',
       discount: '',
+      amount: '',
       taxAmount: '',
       totalAmount: ''
     }],
@@ -58,6 +60,7 @@ function Invoice() {
         const poResponse = await getPurchaseOrders();
         const poData = Array.isArray(poResponse.data) ? poResponse.data : [];
         setPurchaseOrders(poData);
+        console.log('Purchase Orders:', poData);
 
         const itemsResponse = await axios.get('/items');
         if (Array.isArray(itemsResponse.data.items)) {
@@ -103,6 +106,7 @@ function Invoice() {
               rate: item.rate || '',
               discount: item.discount || '',
               taxPercentage: '',
+              amount: '',
               taxAmount: '',
               totalAmount: ''
             })),
@@ -128,6 +132,7 @@ function Invoice() {
           quantity: '',
           rate: '',
           discount: '',
+          amount: '',
           taxAmount: '',
           totalAmount: ''
         }],
@@ -205,6 +210,7 @@ function Invoice() {
               rate: item.rate,
               discount: item.discount,
               taxPercentage: item.taxPercentage,
+              amount: item.amount,
               taxAmount: item.taxAmount,
               totalAmount: item.totalAmount
             })),
@@ -249,22 +255,28 @@ function Invoice() {
     const updatedItems = [...formData.items];
     updatedItems[index] = { ...updatedItems[index], [name]: value };
 
-    // Update itemId when orderItemId changes
+    // Update itemId, unitId, quantity, rate, and discount when orderItemId changes
     if (name === 'orderItemId') {
       const selectedOrderItem = orderItems.find((oi) => oi.id === Number(value));
       updatedItems[index].itemId = selectedOrderItem ? selectedOrderItem.itemId : '';
+      updatedItems[index].unitId = selectedOrderItem ? selectedOrderItem.unitId : '';
+      updatedItems[index].quantity = selectedOrderItem ? selectedOrderItem.quantity : '';
+      updatedItems[index].rate = selectedOrderItem ? selectedOrderItem.rate : '';
+      updatedItems[index].discount = selectedOrderItem ? selectedOrderItem.discount : '';
     }
 
-    // Calculate taxAmount and totalAmount
+    // Calculate amount, taxAmount, and totalAmount
     const quantity = Number(updatedItems[index].quantity) || 0;
     const rate = Number(updatedItems[index].rate) || 0;
     const discount = Number(updatedItems[index].discount) || 0;
     const taxPercentage = Number(updatedItems[index].taxPercentage) || 0;
 
-    const baseAmount = quantity * rate - discount;
-    const taxAmount = baseAmount * (taxPercentage / 100);
-    const totalAmount = baseAmount + taxAmount;
+    const itemSubtotal = quantity * rate;
+    const amount = itemSubtotal * (1 - discount / 100);
+    const taxAmount = amount * (taxPercentage / 100);
+    const totalAmount = amount + taxAmount;
 
+    updatedItems[index].amount = amount.toFixed(2);
     updatedItems[index].taxAmount = taxAmount.toFixed(2);
     updatedItems[index].totalAmount = totalAmount.toFixed(2);
 
@@ -285,6 +297,7 @@ function Invoice() {
           quantity: '',
           rate: '',
           discount: '',
+          amount: '',
           taxAmount: '',
           totalAmount: ''
         },
@@ -323,7 +336,7 @@ function Invoice() {
       if (!item.unitId) newErrors[`items[${index}].unitId`] = 'Unit ID is required';
       if (!item.quantity || item.quantity <= 0) newErrors[`items[${index}].quantity`] = 'Quantity must be positive';
       if (!item.rate || item.rate < 0) newErrors[`items[${index}].rate`] = 'Rate must be non-negative';
-      if (item.discount < 0) newErrors[`items[${index}].discount`] = 'Discount cannot be negative';
+      if (item.discount < 0 || item.discount > 100) newErrors[`items[${index}].discount`] = 'Discount must be between 0 and 100%';
       if (!item.taxPercentage || item.taxPercentage < 0 || item.taxPercentage > 100) {
         newErrors[`items[${index}].taxPercentage`] = 'Tax percentage must be between 0 and 100';
       }
@@ -341,18 +354,23 @@ function Invoice() {
       const discount = Number(item.discount) || 0;
       const taxPercentage = Number(item.taxPercentage) || 0;
 
-      const baseAmount = quantity * rate - discount;
-      const taxAmount = baseAmount * (taxPercentage / 100);
-      const totalAmount = baseAmount + taxAmount;
+      const itemSubtotal = quantity * rate;
+      const amount = itemSubtotal * (1 - discount / 100);
+      const taxAmount = amount * (taxPercentage / 100);
+      const totalAmount = amount + taxAmount;
 
       return {
         ...item,
+        amount: amount.toFixed(2),
         taxAmount: taxAmount.toFixed(2),
         totalAmount: totalAmount.toFixed(2),
       };
     });
 
-    subtotal = updatedItems.reduce((sum, item) => sum + (Number(item.quantity) * Number(item.rate) - Number(item.discount || 0)), 0);
+    subtotal = updatedItems.reduce((sum, item) => {
+      const itemSubtotal = (Number(item.quantity) * Number(item.rate));
+      return sum + (itemSubtotal * (1 - Number(item.discount || 0) / 100));
+    }, 0);
     totalTax = updatedItems.reduce((sum, item) => sum + Number(item.taxAmount), 0);
 
     return {
@@ -402,6 +420,7 @@ function Invoice() {
         quantity: Number(item.quantity),
         rate: Number(item.rate),
         discount: Number(item.discount || 0),
+        amount: Number(item.amount),
         taxPercentage: Number(item.taxPercentage),
         taxAmount: Number(item.taxAmount),
         totalAmount: Number(item.totalAmount),
@@ -498,6 +517,7 @@ function Invoice() {
         quantity: '',
         rate: '',
         discount: '',
+        amount: '',
         taxAmount: '',
         totalAmount: ''
       }],
@@ -594,48 +614,59 @@ function Invoice() {
                       <div key={index} className="flex flex-col gap-4 mb-4 p-4 border rounded-md">
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                           <div>
+                            <label className="block text-sm font-medium text-gray-700">Order Item</label>
+                            <select
+                              name="orderItemId"
+                              value={item.orderItemId}
+                              onChange={(e) => handleItemChange(index, e)}
+                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-sm"
+                              required
+                            >
+                              <option value="">Select Order Item</option>
+                              {orderItems.map((oi) => (
+                                <option key={oi.id} value={oi.id}>
+                                  {items.find((i) => i.itemId === oi.itemId)?.itemName || 'N/A'} (ID: {oi.id})
+                                </option>
+                              ))}
+                            </select>
+                            {errors[`items[${index}].orderItemId`] && (
+                              <p className="mt-1 text-sm text-red-600">{errors[`items[${index}].orderItemId`]}</p>
+                            )}
+                          </div>
+                          <div>
                             <label className="block text-sm font-medium text-gray-700">Item Name</label>
                             <input
                               type="text"
-                              //i want item id name fetch to the items
                               value={items.find((i) => i.itemId === item.itemId)?.itemName || 'N/A'}
                               disabled
                               className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
                             />
-                            {errors[`grnItems[${index}].itemId`] && (
-                              <p className="mt-1 text-sm text-red-600">
-                                {errors[`grnItems[${index}].itemId`]}
-                              </p>
+                            {errors[`items[${index}].itemId`] && (
+                              <p className="mt-1 text-sm text-red-600">{errors[`items[${index}].itemId`]}</p>
                             )}
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-gray-700">Unit</label>
                             <input
                               type="text"
-                              //i want item id name fetch to the items
-                              value={units.find((u) => u.unitId === item.unitId)?.uniteCode || 'N/A'}
+                              value={units.find((u) => u.unitId === item.unitId)?.unitCode || 'N/A'}
                               disabled
                               className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
                             />
-                            {errors[`grnItems[${index}].itemId`] && (
-                              <p className="mt-1 text-sm text-red-600">
-                                {errors[`grnItems[${index}].itemId`]}
-                              </p>
+                            {errors[`items[${index}].unitId`] && (
+                              <p className="mt-1 text-sm text-red-600">{errors[`items[${index}].unitId`]}</p>
                             )}
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-gray-700">Quantity</label>
                             <input
                               type="text"
-                              //i want item id name fetch to the items
                               value={item.quantity}
                               disabled
                               className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
                             />
-                            {errors[`grnItems[${index}].itemId`] && (
-                              <p className="mt-1 text-sm text-red-600">
-                                {errors[`grnItems[${index}].itemId`]}
-                              </p>
+                            {errors[`items[${index}].quantity`] && (
+                              <p className="mt-1 text-sm text-red-600">{errors[`items[${index}].quantity`]}</p>
                             )}
                           </div>
                           <div>
@@ -646,22 +677,22 @@ function Invoice() {
                               disabled
                               className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
                             />
-                            {errors[`grnItems[${index}].itemId`] && (
-                              <p className="mt-1 text-sm text-red-600">
-                                {errors[`grnItems[${index}].itemId`]}
-                              </p>
+                            {errors[`items[${index}].rate`] && (
+                              <p className="mt-1 text-sm text-red-600">{errors[`items[${index}].rate`]}</p>
                             )}
                           </div>
-                          <FormInput
-                            label="Discount %"
-                            type="percentage"
-                            name="discount"
-                            value={item.discount}
-                            onChange={(e) => handleItemChange(index, e)}
-                            error={errors[`items[${index}].discount`]}
-                            required={false}
-                            className="w-full text-xs sm:text-sm"
-                          />
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">Discount %</label>
+                            <input
+                              type="text"
+                              value={item.discount}
+                              disabled
+                              className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                            />
+                            {errors[`items[${index}].rate`] && (
+                              <p className="mt-1 text-sm text-red-600">{errors[`items[${index}].rate`]}</p>
+                            )}
+                          </div>
                           <FormInput
                             label="Tax Percentage"
                             type="number"
@@ -671,20 +702,32 @@ function Invoice() {
                             error={errors[`items[${index}].taxPercentage`]}
                             required
                             className="w-full text-xs sm:text-sm"
+                            min="0"
+                            max="100"
+                            step="0.01"
                           />
                           <div>
-                            <label className="block text-sm font-medium text-gray-700">tax Amount</label>
+                            <label className="block text-sm font-medium text-gray-700">Amount</label>
                             <input
                               type="text"
-                              //i want item id name fetch to the items
+                              value={item.amount}
+                              disabled
+                              className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                            />
+                            {errors[`items[${index}].amount`] && (
+                              <p className="mt-1 text-sm text-red-600">{errors[`items[${index}].amount`]}</p>
+                            )}
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">Tax Amount</label>
+                            <input
+                              type="text"
                               value={item.taxAmount}
                               disabled
                               className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
                             />
-                            {errors[`grnItems[${index}].itemId`] && (
-                              <p className="mt-1 text-sm text-red-600">
-                                {errors[`grnItems[${index}].itemId`]}
-                              </p>
+                            {errors[`items[${index}].taxAmount`] && (
+                              <p className="mt-1 text-sm text-red-600">{errors[`items[${index}].taxAmount`]}</p>
                             )}
                           </div>
                           <div>
@@ -695,10 +738,8 @@ function Invoice() {
                               disabled
                               className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
                             />
-                            {errors[`grnItems[${index}].itemId`] && (
-                              <p className="mt-1 text-sm text-red-600">
-                                {errors[`grnItems[${index}].itemId`]}
-                              </p>
+                            {errors[`items[${index}].totalAmount`] && (
+                              <p className="mt-1 text-sm text-red-600">{errors[`items[${index}].totalAmount`]}</p>
                             )}
                           </div>
                         </div>
