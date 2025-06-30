@@ -1,13 +1,38 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
+
+const MySwal = withReactContent(Swal);
 
 const QuickInvoiceDetails = ({ quickInvoice, quickInvoiceItems, quickGRNs, items, units, onBack }) => {
-  // Debug log for items prop
-
-
   if (!quickInvoice) {
     return <div className="text-center p-6">No Quick Invoice selected</div>;
   }
+
+  const handleDocumentDownload = (documentPath) => {
+    try {
+      if (documentPath) {
+        // Normalize the path to remove leading slashes and construct the URL
+        const normalizedPath = documentPath.replace(/^\/+/, '');
+        const documentUrl = `http://localhost:5000/${normalizedPath}`;
+        window.open(documentUrl, '_blank');
+      } else {
+        MySwal.fire({
+          icon: 'warning',
+          title: 'No Document',
+          text: 'This document is not available.',
+        });
+      }
+    } catch (error) {
+      console.error('Error accessing document:', error);
+      MySwal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to access document. Please try again later.',
+      });
+    }
+  };
 
   return (
     <div className="">
@@ -54,6 +79,24 @@ const QuickInvoiceDetails = ({ quickInvoice, quickInvoiceItems, quickGRNs, items
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Remark</span>
             <span className="text-xs sm:text-sm text-gray-900">{quickInvoice.remark || 'N/A'}</span>
           </div>
+          <div className="flex flex-col">
+            <span className="text-xs sm:text-sm font-semibold text-gray-700">Documents</span>
+            {quickInvoice.document && quickInvoice.document.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                {quickInvoice.document.map((doc, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleDocumentDownload(doc)}
+                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-xs sm:text-sm w-48"
+                  >
+                    View Document {index + 1}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <span className="text-xs sm:text-sm text-gray-900">No documents available</span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -74,7 +117,10 @@ const QuickInvoiceDetails = ({ quickInvoice, quickInvoiceItems, quickGRNs, items
                 <strong>GRN Item ID:</strong> {item.qGRNItemid}
               </p>
               <p className="text-xs">
-                <strong>Item Name:</strong> {items.itemId}
+                <strong>Item Name:</strong> {items.find((i) => i.itemId === item.itemId)?.itemName || 'Unknown'}
+              </p>
+              <p className="text-xs">
+                <strong>Unit:</strong> {units.find((u) => u.unitId === item.unitId)?.uniteCode || 'Unknown'}
               </p>
               <p className="text-xs">
                 <strong>Quantity:</strong> {item.quantity}
@@ -83,7 +129,7 @@ const QuickInvoiceDetails = ({ quickInvoice, quickInvoiceItems, quickGRNs, items
                 <strong>Rate:</strong> ₹{parseFloat(item.rate).toFixed(2)}
               </p>
               <p className="text-xs">
-                <strong>Discount:</strong> ₹{parseFloat(item.discount).toFixed(2)}
+                <strong>Discount:</strong> {parseFloat(item.discount).toFixed(2)}%
               </p>
               <p className="text-xs">
                 <strong>Tax %:</strong> {parseFloat(item.taxPercentage).toFixed(2)}%
@@ -115,8 +161,8 @@ const QuickInvoiceDetails = ({ quickInvoice, quickInvoiceItems, quickGRNs, items
             <tbody>
               {quickInvoiceItems.map((item) => (
                 <tr key={item.qInvoiceItemId} className="bg-white border-b">
-                  <td className="px-6 py-4">{items.find((i) => i.itemId === item.itemId)?.itemName}</td>
-                  <td className="px-6 py-4">{units.find((u) => u.unitId === item.unitId)?.uniteCode}</td>
+                  <td className="px-6 py-4">{items.find((i) => i.itemId === item.itemId)?.itemName || 'Unknown'}</td>
+                  <td className="px-6 py-4">{units.find((u) => u.unitId === item.unitId)?.uniteCode || 'Unknown'}</td>
                   <td className="px-6 py-4">{item.quantity}</td>
                   <td className="px-6 py-4">₹{parseFloat(item.rate).toFixed(2)}</td>
                   <td className="px-6 py-4">{parseFloat(item.discount).toFixed(2)}%</td>
@@ -141,6 +187,7 @@ QuickInvoiceDetails.propTypes = {
     qGRNIds: PropTypes.arrayOf(PropTypes.number),
     totalAmount: PropTypes.number,
     remark: PropTypes.string,
+    document: PropTypes.arrayOf(PropTypes.string),
     createdAt: PropTypes.string,
     updatedAt: PropTypes.string,
   }),
@@ -151,6 +198,7 @@ QuickInvoiceDetails.propTypes = {
       qGRNId: PropTypes.number,
       qGRNItemid: PropTypes.number,
       itemId: PropTypes.number,
+      unitId: PropTypes.number,
       quantity: PropTypes.number,
       rate: PropTypes.number,
       discount: PropTypes.number,
@@ -169,8 +217,14 @@ QuickInvoiceDetails.propTypes = {
   ).isRequired,
   items: PropTypes.arrayOf(
     PropTypes.shape({
-      id: PropTypes.number,
-      name: PropTypes.string,
+      itemId: PropTypes.number,
+      itemName: PropTypes.string,
+    })
+  ).isRequired,
+  units: PropTypes.arrayOf(
+    PropTypes.shape({
+      unitId: PropTypes.number,
+      uniteCode: PropTypes.string,
     })
   ).isRequired,
   onBack: PropTypes.func.isRequired,

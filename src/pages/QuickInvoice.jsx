@@ -19,7 +19,9 @@ function QuickInvoice() {
     qInvoiceDate: '',
     qGRNIds: [],
     remark: '',
-    taxDetails: {}, // { qGRNItemid: { taxPercentage: string, amount: string, taxAmount: string, totalAmount: string } }
+    taxDetails: {},
+    documents: [],
+    existingDocuments: [],
   });
   const [errors, setErrors] = useState({});
   const [editId, setEditId] = useState(null);
@@ -231,6 +233,44 @@ function QuickInvoice() {
     setErrors((prev) => ({ ...prev, [`taxDetails[${qGRNItemid}].taxPercentage`]: '' }));
   };
 
+  // Handle file selection
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    const validTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+
+    const invalidFiles = files.filter(file => !validTypes.includes(file.type) || file.size > maxSize);
+    if (invalidFiles.length > 0) {
+      setErrors((prev) => ({
+        ...prev,
+        documents: 'Invalid file(s). Only PDF, JPEG, PNG allowed, max 10MB.',
+      }));
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      documents: files,
+    }));
+    setErrors((prev) => ({ ...prev, documents: '' }));
+  };
+
+  // Handle document removal
+  const handleRemoveDocument = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      documents: prev.documents.filter((_, i) => i !== index),
+    }));
+  };
+
+  // Handle existing document removal
+  const handleRemoveExistingDocument = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      existingDocuments: prev.existingDocuments.filter((_, i) => i !== index),
+    }));
+  };
+
   // Validate form
   const validateForm = () => {
     const newErrors = {};
@@ -313,15 +353,20 @@ function QuickInvoice() {
         });
       });
 
-      const payload = {
-        qGRNIds: formData.qGRNIds,
-        qInvoiceDate: formData.qInvoiceDate,
-        remark: formData.remark,
-        taxDetails: simplifiedTaxDetails,
-        quickInvoiceItems,
-      };
+      const payload = new FormData();
+      payload.append('qGRNIds', JSON.stringify(formData.qGRNIds));
+      payload.append('qInvoiceDate', formData.qInvoiceDate);
+      payload.append('remark', formData.remark || '');
+      payload.append('taxDetails', JSON.stringify(simplifiedTaxDetails));
+      payload.append('quickInvoiceItems', JSON.stringify(quickInvoiceItems));
+      if (isEditMode) {
+        payload.append('existingDocuments', JSON.stringify(formData.existingDocuments));
+      }
+      formData.documents.forEach((file) => {
+        payload.append('documents', file);
+      });
 
-      console.log('Submitting payload:', JSON.stringify(payload, null, 2));
+      console.log('Submitting payload:', [...payload.entries()]);
 
       let response;
       if (isEditMode) {
@@ -353,6 +398,8 @@ function QuickInvoice() {
       qGRNIds: [],
       remark: '',
       taxDetails: {},
+      documents: [],
+      existingDocuments: [],
     });
     setErrors({});
     setSuccessMessage('');
@@ -420,6 +467,8 @@ function QuickInvoice() {
           qGRNIds: row.qGRNIds,
           remark: row.remark || '',
           taxDetails,
+          documents: [],
+          existingDocuments: row.document || [],
         });
         setSuccessMessage('');
         setIsFormVisible(true);
@@ -504,6 +553,63 @@ function QuickInvoice() {
                   />
                   {errors.qGRNIds && <p className="mt-1 text-xs text-red-600">{errors.qGRNIds}</p>}
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Documents</label>
+                  <input
+                    type="file"
+                    name="documents"
+                    multiple
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={handleFileChange}
+                    className="block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"
+                  />
+                  {errors.documents && <p className="mt-1 text-xs text-red-600">{errors.documents}</p>}
+                  {formData.documents.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-xs text-gray-600">Selected files:</p>
+                      <ul className="list-disc pl-5 text-xs text-gray-600">
+                        {formData.documents.map((file, index) => (
+                          <li key={index} className="flex items-center">
+                            <span>{file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveDocument(index)}
+                              className="ml-2 text-red-600 hover:text-red-800 text-xs"
+                            >
+                              Remove
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {isEditMode && formData.existingDocuments.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-xs text-gray-600">Existing documents:</p>
+                      <ul className="list-disc pl-5 text-xs text-gray-600">
+                        {formData.existingDocuments.map((doc, index) => (
+                          <li key={index} className="flex items-center">
+                            <a
+                              href={doc}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline"
+                            >
+                              {doc.split('/').pop()}
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveExistingDocument(index)}
+                              className="ml-2 text-red-600 hover:text-red-800 text-xs"
+                            >
+                              Remove
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
                 <FormInput
                   label="Remark"
                   type="text"
@@ -516,124 +622,128 @@ function QuickInvoice() {
                 />
                 <div className="col-span-1 sm:col-span-2 lg:col-span-3">
                   <h4 className="text-md font-medium text-brand-secondary mb-2">Items</h4>
-                  {formData.qGRNIds.map((qGRNId) => {
-                    const grnItems = quickGRNItems.filter((gi) => gi.qGRNId === qGRNId);
-                    return (
-                      <div key={qGRNId} className="mb-4 p-4 border rounded-md">
-                        <h5 className="text-sm font-medium text-gray-700 mb-2">
-                          Items for GRN #{quickGRNs.find((g) => g.qGRNId === qGRNId)?.qGRNNo || qGRNId}
-                        </h5>
-                        {grnItems.length === 0 ? (
-                          <p className="text-sm text-gray-500">No items found.</p>
-                        ) : (
-                          <div className="space-y-4">
-                            {grnItems.map((gi) => (
-                              <div key={gi.qGRNItemid} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 p-2 border rounded-md">
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700">Item Name</label>
-                                  <input
-                                    type="text"
-                                    value={items.find((item) => item.itemId === gi.itemId)?.itemName || ''}
-                                    disabled
-                                    className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
-                                  />
+                  {formData.qGRNIds.length === 0 ? (
+                    <p className="text-sm text-gray-500">Select at least one Quick GRN to view items.</p>
+                  ) : (
+                    formData.qGRNIds.map((qGRNId) => {
+                      const grnItems = quickGRNItems.filter((gi) => gi.qGRNId === qGRNId);
+                      return (
+                        <div key={qGRNId} className="mb-4 p-4 border rounded-md">
+                          <h5 className="text-sm font-medium text-gray-700 mb-2">
+                            Items for GRN #{quickGRNs.find((g) => g.qGRNId === qGRNId)?.qGRNNo || qGRNId}
+                          </h5>
+                          {grnItems.length === 0 ? (
+                            <p className="text-sm text-gray-500">No items found.</p>
+                          ) : (
+                            <div className="space-y-4">
+                              {grnItems.map((gi) => (
+                                <div key={gi.qGRNItemid} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 p-2 border rounded-md">
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700">Item Name</label>
+                                    <input
+                                      type="text"
+                                      value={items.find((item) => item.itemId === gi.itemId)?.itemName || ''}
+                                      disabled
+                                      className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700">Unit</label>
+                                    <input
+                                      type="text"
+                                      value={units.find((unit) => unit.unitId === gi.unitId)?.uniteCode || ''}
+                                      disabled
+                                      className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700">Quantity</label>
+                                    <input
+                                      type="text"
+                                      value={gi.quantity}
+                                      disabled
+                                      className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700">Rate</label>
+                                    <input
+                                      type="text"
+                                      value={gi.rate}
+                                      disabled
+                                      className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700">Discount %</label>
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      min="0"
+                                      max="100"
+                                      value={gi.discount || ''}
+                                      onChange={(e) => handleDiscountChange(gi.qGRNItemid, e)}
+                                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-brand-primary focus:border-brand-primary"
+                                      placeholder="Enter discount %"
+                                    />
+                                    {errors[`items[${gi.qGRNItemid}].discount`] && (
+                                      <p className="mt-1 text-xs text-red-600">{errors[`items[${gi.qGRNItemid}].discount`]}</p>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700">Amount</label>
+                                    <input
+                                      type="text"
+                                      value={formData.taxDetails[gi.qGRNItemid]?.amount || '0.00'}
+                                      disabled
+                                      className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                                    />
+                                    {errors[`taxDetails[${gi.qGRNItemid}].amount`] && (
+                                      <p className="mt-1 text-xs text-red-600">{errors[`taxDetails[${gi.qGRNItemid}].amount`]}</p>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700">Tax Percentage</label>
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      min="0"
+                                      value={formData.taxDetails[gi.qGRNItemid]?.taxPercentage || ''}
+                                      onChange={(e) => handleTaxChange(gi.qGRNItemid, e)}
+                                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-brand-primary focus:border-brand-primary"
+                                      placeholder="Enter tax %"
+                                      required
+                                    />
+                                    {errors[`taxDetails[${gi.qGRNItemid}].taxPercentage`] && (
+                                      <p className="mt-1 text-xs text-red-600">{errors[`taxDetails[${gi.qGRNItemid}].taxPercentage`]}</p>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700">Tax Amount</label>
+                                    <input
+                                      type="text"
+                                      value={formData.taxDetails[gi.qGRNItemid]?.taxAmount || '0.00'}
+                                      disabled
+                                      className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700">Total Amount</label>
+                                    <input
+                                      type="text"
+                                      value={formData.taxDetails[gi.qGRNItemid]?.totalAmount || '0.00'}
+                                      disabled
+                                      className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                                    />
+                                  </div>
                                 </div>
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700">Unit</label>
-                                  <input
-                                    type="text"
-                                    value={units.find((unit) => unit.unitId === gi.unitId)?.uniteCode || ''}
-                                    disabled
-                                    className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700">Quantity</label>
-                                  <input
-                                    type="text"
-                                    value={gi.quantity}
-                                    disabled
-                                    className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700">Rate</label>
-                                  <input
-                                    type="text"
-                                    value={gi.rate}
-                                    disabled
-                                    className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700">Discount %</label>
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    max="100"
-                                    value={gi.discount || ''}
-                                    onChange={(e) => handleDiscountChange(gi.qGRNItemid, e)}
-                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-brand-primary focus:border-brand-primary"
-                                    placeholder="Enter discount %"
-                                  />
-                                  {errors[`items[${gi.qGRNItemid}].discount`] && (
-                                    <p className="mt-1 text-xs text-red-600">{errors[`items[${gi.qGRNItemid}].discount`]}</p>
-                                  )}
-                                </div>
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700">Amount</label>
-                                  <input
-                                    type="text"
-                                    value={formData.taxDetails[gi.qGRNItemid]?.amount || '0.00'}
-                                    disabled
-                                    className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
-                                  />
-                                  {errors[`taxDetails[${gi.qGRNItemid}].amount`] && (
-                                    <p className="mt-1 text-xs text-red-600">{errors[`taxDetails[${gi.qGRNItemid}].amount`]}</p>
-                                  )}
-                                </div>
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700">Tax Percentage</label>
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    value={formData.taxDetails[gi.qGRNItemid]?.taxPercentage || ''}
-                                    onChange={(e) => handleTaxChange(gi.qGRNItemid, e)}
-                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-brand-primary focus:border-brand-primary"
-                                    placeholder="Enter tax %"
-                                    required
-                                  />
-                                  {errors[`taxDetails[${gi.qGRNItemid}].taxPercentage`] && (
-                                    <p className="mt-1 text-xs text-red-600">{errors[`taxDetails[${gi.qGRNItemid}].taxPercentage`]}</p>
-                                  )}
-                                </div>
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700">Tax Amount</label>
-                                  <input
-                                    type="text"
-                                    value={formData.taxDetails[gi.qGRNItemid]?.taxAmount || '0.00'}
-                                    disabled
-                                    className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700">Total Amount</label>
-                                  <input
-                                    type="text"
-                                    value={formData.taxDetails[gi.qGRNItemid]?.totalAmount || '0.00'}
-                                    disabled
-                                    className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
-                                  />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
                   <div className="mt-4 p-4 bg-gray-50 rounded-md">
                     <h4 className="text-md font-semibold text-brand-secondary">Final Total Amount</h4>
                     <p className="text-md font-medium text-gray-900">
