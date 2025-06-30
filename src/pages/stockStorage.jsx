@@ -18,16 +18,17 @@ function Stock() {
   const [isFilterVisible, setIsFilterVisible] = useState(false);
   const [formData, setFormData] = useState({ itemId: '' });
   const [errors, setErrors] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
 
   // Fetch all necessary data on component mount
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setIsLoading(true);
         // Fetch stock entries
         const stockResponse = await getAllStockStorage();
         setStockEntries(stockResponse.data);
         console.log('Stock entries fetched successfully:', stockResponse.data);
-        
 
         // Fetch items
         const itemsResponse = await axios.get('/items');
@@ -39,6 +40,7 @@ function Stock() {
             title: 'Data Error',
             text: 'Failed to load items data.',
           });
+          setItems([]);
         }
 
         // Fetch units
@@ -46,9 +48,9 @@ function Stock() {
         if (Array.isArray(unitsResponse.data.data)) {
           setUnits(unitsResponse.data.data);
           console.log('Units fetched successfully:', unitsResponse.data.data);
-          
         } else {
           console.error('Expected units data to be an array, but got:', unitsResponse.data.data);
+          setUnits([]);
         }
 
         // Fetch GRNs
@@ -69,6 +71,8 @@ function Stock() {
           title: 'Fetch Error',
           text: 'Failed to load data. Please try again.',
         });
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchData();
@@ -79,28 +83,28 @@ function Stock() {
     {
       key: 'itemId',
       label: 'Item',
-      format: (value) => items.find((item) => item.itemId === value)?.itemName || '-',
+      format: (value) => items.find((item) => item.itemId === Number(value))?.itemName || '-',
     },
     {
       key: 'poId',
-      label: 'Purchase Order',
-      format: (value) => purchaseOrders.find((po) => po.poId === value)?.poNo || '-',
+      label: 'PO',
+      format: (value) => purchaseOrders.find((po) => po.poId === Number(value))?.poNo || '-',
     },
     {
       key: 'grnId',
       label: 'GRN',
-      format: (value) => grns.find((grn) => grn.id === value)?.grnNo || '-',
+      format: (value) => grns.find((grn) => grn.id === Number(value))?.grnNo || '-',
     },
     {
       key: 'qGRNId',
       label: 'Quick GRN',
-      format: (value) => quickGRNs.find((qgrn) => qgrn.qGRNId === value)?.qGRNNo || '-',
+      format: (value) => quickGRNs.find((qgrn) => qgrn.qGRNId === Number(value))?.qGRNNo || '-',
     },
     { key: 'storeCode', label: 'Store Code' },
     {
       key: 'unitId',
       label: 'Unit',
-      format: (value) => units.find((units) => units.unitId === value)?.uniteCode || '-',
+      format: (value) => units.find((unit) => unit.unitId === Number(value))?.uniteCode || '-',
     },
     { key: 'quantity', label: 'Quantity' },
 
@@ -108,17 +112,34 @@ function Stock() {
 
   // Table columns for filtered stock details
   const filteredStockColumns = [
-    { key: 'grnId', label: 'GRN ID' },
-    { key: 'grnNo', label: 'GRN Number' },
     {
-      key: 'grnDate',
-      label: 'GRN Date',
-      format: (value) => value ? new Date(value).toLocaleDateString() : 'N/A',
+      key: 'itemId',
+      label: 'Item',
+      format: (value) => items.find((item) => item.itemId === Number(value))?.itemName || '-',
     },
-    { key: 'poId', label: 'PO ID' },
-    { key: 'poNo', label: 'PO Number' },
+    {
+      key: 'poId',
+      label: 'PO Number',
+      format: (value) => purchaseOrders.find((po) => po.poId === Number(value))?.poNo || '-',
+    },
+    {
+      key: 'grnId',
+      label: 'GRN Number',
+      format: (value) => grns.find((grn) => grn.id === Number(value))?.grnNo || '-',
+    },
+    {
+      key: 'qGRNId',
+      label: 'Quick GRN Number',
+      format: (value) => quickGRNs.find((qgrn) => qgrn.qGRNId === Number(value))?.qGRNNo || '-',
+    },
     { key: 'storeCode', label: 'Store Code' },
-    { key: 'totalQuantity', label: 'Quantity' },
+    {
+      key: 'unitId',
+      label: 'Unit',
+      format: (value) => units.find((unit) => unit.unitId === Number(value))?.uniteCode || '-',
+    },
+    { key: 'quantity', label: 'Quantity' },
+    { key: 'totalQuantity', label: 'Total Quantity' },
   ];
 
   // Handle form input change
@@ -152,7 +173,7 @@ function Stock() {
     }
 
     try {
-      const response = await getStockStorageByItemId(formData.itemId);
+      const response = await getStockStorageByItemId(Number(formData.itemId));
       setFilteredStock(response.data);
       setIsFilterVisible(false);
     } catch (error) {
@@ -195,13 +216,21 @@ function Stock() {
     setFormData({ itemId: '' });
   };
 
+  // Get item name for filtered stock
+  const getItemName = (itemId) => {
+    const item = items.find((i) => i.itemId === Number(itemId));
+    return item ? item.itemName : 'N/A';
+  };
+
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
-      {filteredStock ? (
+      {isLoading ? (
+        <div>Loading...</div>
+      ) : filteredStock ? (
         <div>
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-semibold text-brand-secondary">
-              Stock Details for {filteredStock.itemName}
+              Stock Details for {getItemName(filteredStock.itemId)}
             </h2>
             <button
               onClick={handleBack}
@@ -210,11 +239,18 @@ function Stock() {
               Back to All Stock
             </button>
           </div>
-          <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <p><strong>Item ID:</strong> {filteredStock.itemId}</p>
-            <p><strong>Total Quantity:</strong> {filteredStock.totalItemCount}</p>
-            <p><strong>GRN Count:</strong> {filteredStock.grnCount}</p>
+          <div className="flex flex-col gap-4 mb-6 bg-white shadow-md p-6 rounded-xl border border-gray-200 transition-transform duration-200 hover:scale-[1.01]">
+            <p className="text-gray-700 text-base">
+              <strong className="text-gray-900">Item ID:</strong> {getItemName(filteredStock.itemId)}
+            </p>
+            <p className="text-gray-700 text-base">
+              <strong className="text-gray-900">Total Quantity:</strong> {filteredStock.totalItemCount}
+            </p>
+            <p className="text-gray-700 text-base">
+              <strong className="text-gray-900">GRN Count:</strong> {filteredStock.grnCount}
+            </p>
           </div>
+
           <Table
             columns={filteredStockColumns}
             data={filteredStock.grnDetails}
