@@ -3,7 +3,7 @@ import Table from '../components/Table';
 import FormInput from '../components/FormInput';
 import GrnDetails from './GRNDetail';
 import { getPurchaseOrders, getPurchaseOrder } from '../api/purchaseOrderService';
-import { getGrns, getGrnById, createGrn, updateGrn } from '../api/grnService';
+import { getGrns, createGrn } from '../api/grnService';
 import axios from '../api/axiosInstance';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
@@ -13,7 +13,6 @@ function GRN() {
   const [grnItems, setGrnItems] = useState([]);
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [isFormVisible, setIsFormVisible] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
   const [formData, setFormData] = useState({
     poId: '',
     grnNo: '',
@@ -21,7 +20,6 @@ function GRN() {
     challanNo: '',
     challanDate: '',
     documents: [],
-    existingDocuments: [],
     remark: '',
     grnItems: [{
       orderItemId: '',
@@ -33,7 +31,6 @@ function GRN() {
     }],
   });
   const [errors, setErrors] = useState({});
-  const [editId, setEditId] = useState(null);
   const [selectedGrnId, setSelectedGrnId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [items, setItems] = useState([]);
@@ -63,7 +60,6 @@ function GRN() {
         if (Array.isArray(unitsResponse.data.data)) {
           setUnits(unitsResponse.data.data);
           console.log('Units fetched successfully:', unitsResponse.data.data);
-          
         } else {
           console.error('Expected units data to be an array, but got:', unitsResponse.data.data);
         }
@@ -80,7 +76,7 @@ function GRN() {
   }, []);
 
   useEffect(() => {
-    if (formData.poId && !isEditMode) {
+    if (formData.poId) {
       const fetchOrderItems = async () => {
         try {
           const poResponse = await getPurchaseOrder(formData.poId);
@@ -107,7 +103,7 @@ function GRN() {
         }
       };
       fetchOrderItems();
-    } else if (!isEditMode) {
+    } else {
       setFormData(prev => ({
         ...prev,
         grnItems: [{
@@ -120,7 +116,7 @@ function GRN() {
         }],
       }));
     }
-  }, [formData.poId, isEditMode]);
+  }, [formData.poId]);
 
   const filteredGrns = grns.filter((grn) => {
     const searchLower = searchQuery.toLowerCase();
@@ -162,56 +158,6 @@ function GRN() {
     },
   ];
 
-  const actions = [
-    {
-      label: 'Edit',
-      onClick: async (row) => {
-        try {
-          const grnResponse = await getGrnById(row.id);
-          const grn = grnResponse.data;
-          setIsEditMode(true);
-          setEditId(row.id);
-          setFormData({
-            poId: grn.poId,
-            grnNo: grn.grnNo,
-            grnDate: grn.grnDate.split('T')[0],
-            challanNo: grn.challanNo,
-            challanDate: grn.challanDate.split('T')[0],
-            documents: [],
-            existingDocuments: grn.document || [],
-            remark: grn.remark || '',
-            grnItems: grn.grnItems.map(gi => ({
-              id: gi.id,
-              orderItemId: gi.orderItemId,
-              itemId: gi.itemId,
-              unitId: gi.unitId || '',
-              storeCode: gi.storeCode || '',
-              itemName: gi.orderItem?.item?.name || 'N/A',
-              receivedQuantity: gi.receivedQuantity,
-              rejectedQuantity: gi.rejectedQuantity || '0',
-            })) || [{
-              orderItemId: '',
-              itemId: '',
-              unitId: '',
-              storeCode: '',
-              receivedQuantity: '',
-              rejectedQuantity: ''
-            }],
-          });
-          setIsFormVisible(true);
-        } catch (error) {
-          console.error('Error fetching GRN:', error);
-          MySwal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Failed to fetch GRN details. Please try again.',
-          });
-        }
-      },
-      className: 'bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-sm',
-    },
-  ];
-
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     if (name === 'documents') {
@@ -237,16 +183,6 @@ function GRN() {
     setErrors((prev) => ({ ...prev, [`grnItems[${index}].${name}`]: '' }));
   };
 
-
-
-
-  const removeExistingDocument = (index) => {
-    setFormData((prev) => ({
-      ...prev,
-      existingDocuments: prev.existingDocuments.filter((_, i) => i !== index),
-    }));
-  };
-
   const resetForm = () => {
     setFormData({
       poId: '',
@@ -255,7 +191,6 @@ function GRN() {
       challanNo: '',
       challanDate: '',
       documents: [],
-      existingDocuments: [],
       remark: '',
       grnItems: [{
         orderItemId: '',
@@ -267,8 +202,6 @@ function GRN() {
       }],
     });
     setErrors({});
-    setIsEditMode(false);
-    setEditId(null);
   };
 
   const validateForm = () => {
@@ -320,43 +253,24 @@ function GRN() {
     apiFormData.append('challanDate', formData.challanDate);
     apiFormData.append('remark', formData.remark);
     apiFormData.append('grnItems', JSON.stringify(formData.grnItems.map(gi => ({
-      ...(isEditMode && gi.id ? { id: gi.id } : {}),
       orderItemId: Number(gi.orderItemId),
       itemId: Number(gi.itemId),
       receivedQuantity: Number(gi.receivedQuantity),
       rejectedQuantity: gi.rejectedQuantity ? Number(gi.rejectedQuantity) : 0,
     }))));
-    apiFormData.append('existingDocuments', JSON.stringify(formData.existingDocuments));
     formData.documents.forEach((file) => {
       apiFormData.append('documents', file);
     });
 
     try {
-      if (isEditMode) {
-        await updateGrn(formData.poId, editId, apiFormData);
-        const grnResponse = await getGrnById(editId);
-        setGrns((prev) =>
-          prev.map((grn) => (grn.id === editId ? grnResponse.data : grn))
-        );
-        setGrnItems((prev) => [
-          ...prev.filter((gi) => gi.grnId !== editId),
-          ...grnResponse.data.grnItems,
-        ]);
-        MySwal.fire({
-          icon: 'success',
-          title: 'Success',
-          text: 'GRN updated successfully!',
-        });
-      } else {
-        const response = await createGrn(formData.poId, apiFormData);
-        setGrns((prev) => [...prev, response.data]);
-        setGrnItems((prev) => [...prev, ...response.data.grnItems]);
-        MySwal.fire({
-          icon: 'success',
-          title: 'Success',
-          text: 'GRN created successfully!',
-        });
-      }
+      const response = await createGrn(formData.poId, apiFormData);
+      setGrns((prev) => [...prev, response.data]);
+      setGrnItems((prev) => [...prev, ...response.data.grnItems]);
+      MySwal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: 'GRN created successfully!',
+      });
       resetForm();
       setIsFormVisible(false);
     } catch (error) {
@@ -435,9 +349,7 @@ function GRN() {
           <div className="flex flex-col gap-6">
             {isFormVisible && (
               <div>
-                <h3 className="text-lg font-medium text-brand-secondary mb-4">
-                  {isEditMode ? 'Edit GRN' : 'Add GRN'}
-                </h3>
+                <h3 className="text-lg font-medium text-brand-secondary mb-4">Add GRN</h3>
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Purchase Order</label>
@@ -508,25 +420,6 @@ function GRN() {
                         </ul>
                       </div>
                     )}
-                    {isEditMode && formData.existingDocuments.length > 0 && (
-                      <div className="mt-2">
-                        <p className="text-xs text-gray-600">Existing documents:</p>
-                        <ul className="list-disc pl-5 text-xs text-gray-600">
-                          {formData.existingDocuments.map((doc, index) => (
-                            <li key={index} className="flex items-center">
-                              <span>{doc.split('/').pop()}</span>
-                              <button
-                                type="button"
-                                onClick={() => removeExistingDocument(index)}
-                                className="ml-2 text-red-600 hover:text-red-800 text-xs"
-                              >
-                                Remove
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
                   </div>
                   <FormInput
                     label="Remark"
@@ -578,7 +471,6 @@ function GRN() {
                             required
                             className="w-full text-sm"
                           />
-
                         </div>
                       </div>
                     ))}
@@ -588,7 +480,7 @@ function GRN() {
                       type="submit"
                       className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-brand-primary-dark text-sm"
                     >
-                      {isEditMode ? 'Update GRN' : 'Create GRN'}
+                      Create GRN
                     </button>
                     <button
                       type="button"
@@ -605,7 +497,6 @@ function GRN() {
               <Table
                 columns={grnColumns}
                 data={filteredGrns}
-                actions={actions}
                 onRowClick={handleRowClick}
               />
             </div>
