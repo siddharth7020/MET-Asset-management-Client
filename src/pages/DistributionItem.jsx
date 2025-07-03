@@ -11,6 +11,7 @@ function Distribution() {
   const [distributions, setDistributions] = useState([]);
   const [distributionItems, setDistributionItems] = useState([]);
   const [items, setItems] = useState([]);
+  const [units, setUnits] = useState([]); // Added for units
   const [financialYears, setFinancialYears] = useState([]);
   const [institutes, setInstitutes] = useState([]);
   const [locations, setLocations] = useState([]);
@@ -28,7 +29,7 @@ function Distribution() {
     distributionNo: '',
     documents: '',
     remark: '',
-    items: [{ itemId: '', issueQuantity: '' }],
+    items: [{ itemId: '', unitId: '', issueQuantity: '' }], // Added unitId
   });
   const [errors, setErrors] = useState({});
   const [editId, setEditId] = useState(null);
@@ -57,6 +58,15 @@ function Distribution() {
             title: 'Data Error',
             text: 'Failed to load items data.',
           });
+        }
+
+        // Fetch units
+        const unitsResponse = await axios.get('/units');
+        if (Array.isArray(unitsResponse.data.data)) {
+          setUnits(unitsResponse.data.data);
+          console.log('Units fetched successfully:', unitsResponse.data.data);
+        } else {
+          console.error('Expected units data to be an array, but got:', unitsResponse.data.data);
         }
 
         // Fetch locations
@@ -175,7 +185,7 @@ function Distribution() {
   const handleAddItem = () => {
     setFormData((prev) => ({
       ...prev,
-      items: [...prev.items, { itemId: '', issueQuantity: '' }],
+      items: [...prev.items, { itemId: '', unitId: '', issueQuantity: '' }], // Added unitId
     }));
   };
 
@@ -212,10 +222,11 @@ function Distribution() {
     if (formData.items.length === 0) newErrors.items = 'At least one item is required';
     formData.items.forEach((item, index) => {
       if (!item.itemId) newErrors[`items[${index}].itemId`] = 'Item is required';
+      if (!item.unitId) newErrors[`items[${index}].unitId`] = 'Unit is required'; // Added unitId validation
       if (!item.issueQuantity || Number(item.issueQuantity) <= 0)
         newErrors[`items[${index}].issueQuantity`] = 'Issue quantity must be positive';
-      if (formData.items.some((i, iIdx) => i.itemId === item.itemId && iIdx !== index))
-        newErrors[`items[${index}].itemId`] = 'Duplicate item selected';
+      if (formData.items.some((i, iIdx) => i.itemId === item.itemId && i.unitId === item.unitId && iIdx !== index))
+        newErrors[`items[${index}].itemId`] = 'Duplicate item and unit combination selected';
     });
     return newErrors;
   };
@@ -232,7 +243,7 @@ function Distribution() {
       });
       return;
     }
-  
+
     const payload = {
       financialYearId: Number(formData.financialYearId),
       instituteId: Number(formData.instituteId),
@@ -246,10 +257,11 @@ function Distribution() {
       remark: formData.remark.trim() || '',
       items: formData.items.map((item) => ({
         itemId: Number(item.itemId),
+        unitId: Number(item.unitId), // Added unitId
         issueQuantity: Number(item.issueQuantity),
       })),
     };
-  
+
     try {
       if (isEditMode) {
         const response = await updateDistribution(editId, payload);
@@ -281,15 +293,6 @@ function Distribution() {
           showConfirmButton: false,
         });
       }
-      // Add Swal alert to display available quantity and requested quantity
-      Swal.fire({
-        icon: 'info',
-        title: 'Quantity Details',
-        html: `
-          <p>Available Quantity: ${formData.items.reduce((acc, item) => acc + Number(item.availableQuantity), 0)}</p>
-          <p>Requested Quantity: ${formData.items.reduce((acc, item) => acc + Number(item.issueQuantity), 0)}</p>
-        `,
-      });
       resetForm();
       setIsFormVisible(false);
     } catch (error) {
@@ -332,7 +335,7 @@ function Distribution() {
       distributionNo: '',
       documents: '',
       remark: '',
-      items: [{ itemId: '', issueQuantity: '' }],
+      items: [{ itemId: '', unitId: '', issueQuantity: '' }], // Added unitId
     });
     setErrors({});
     setRoomOptions([]);
@@ -398,9 +401,10 @@ function Distribution() {
             items: distribution.items.length > 0
               ? distribution.items.map((item) => ({
                   itemId: item.itemId.toString(),
+                  unitId: item.unitId.toString(), // Added unitId
                   issueQuantity: item.issueQuantity.toString(),
                 }))
-              : [{ itemId: '', issueQuantity: '' }],
+              : [{ itemId: '', unitId: '', issueQuantity: '' }], // Added unitId
           });
           // Set room options for the selected floor
           if (selectedLocation) {
@@ -484,6 +488,10 @@ function Distribution() {
     value: item.itemId.toString(),
     label: item.itemName,
   }));
+  const unitOptions = units.map((unit) => ({
+    value: unit.unitId.toString(),
+    label: unit.uniteCode,
+  }));
   const floorOptions = locations.map((loc) => ({
     value: loc.floor,
     label: loc.floor,
@@ -500,6 +508,7 @@ function Distribution() {
           distribution={selectedDistribution}
           distributionItems={selectedDistributionItems}
           items={items}
+          units={units} // Pass units to DistributionDetails
           financialYears={financialYears}
           institutes={institutes}
           locations={locations}
@@ -652,6 +661,23 @@ function Distribution() {
                             />
                             {errors[`items[${index}].itemId`] && (
                               <p className="mt-1 text-sm text-red-600">{errors[`items[${index}].itemId`]}</p>
+                            )}
+                          </div>
+                          <div>
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700">Unit</label>
+                            <Select
+                              options={unitOptions}
+                              value={unitOptions.find((option) => option.value === item.unitId)}
+                              onChange={(option) =>
+                                handleItemChange(index, { target: { name: 'unitId', value: option ? option.value : '' } })
+                              }
+                              className="text-sm"
+                              classNamePrefix="select"
+                              placeholder="Select Unit"
+                              isClearable
+                            />
+                            {errors[`items[${index}].unitId`] && (
+                              <p className="mt-1 text-sm text-red-600">{errors[`items[${index}].unitId`]}</p>
                             )}
                           </div>
                           <FormInput

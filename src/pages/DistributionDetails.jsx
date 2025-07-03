@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-const DistributionDetails = ({ distribution, distributionItems, items, financialYears, institutes, onBack }) => {
+const DistributionDetails = ({ distribution, distributionItems, items, financialYears, institutes, onBack, units }) => {
   if (!distribution) {
     return <div className="text-center p-6">No Distribution selected</div>;
   }
@@ -64,7 +64,7 @@ const DistributionDetails = ({ distribution, distributionItems, items, financial
             <span className="text-xs sm:text-sm text-gray-900">{distribution.remark || 'N/A'}</span>
           </div>
           <div className="flex flex-col">
-            <span className="text-xs sm:text-sm font-semibold text-gray-700">Created At</span>
+            <span className="text-xs sm:text-sm font-semibold text-gray-700">Date</span>
             <span className="text-xs sm:text-sm text-gray-900">{new Date(distribution.createdAt).toLocaleDateString()}</span>
           </div>
         </div>
@@ -94,16 +94,18 @@ const DistributionDetails = ({ distribution, distributionItems, items, financial
           <table className="w-full text-sm text-left text-gray-900">
             <thead className="text-xs uppercase bg-gray-200">
               <tr>
-                <th scope="col" className="px-6 py-3">Item ID</th>
                 <th scope="col" className="px-6 py-3">Item Name</th>
+                <th scope="col" className="px-6 py-3">Unit</th>
                 <th scope="col" className="px-6 py-3">Issue Quantity</th>
               </tr>
             </thead>
             <tbody>
               {distributionItems.map((item) => (
                 <tr key={item.id} className="bg-white border-b">
-                  <td className="px-6 py-4">{item.id}</td>
                   <td className="px-6 py-4">{items.find((i) => i.itemId === item.itemId)?.itemName || 'N/A'}</td>
+                  <td className="px-6 py-4">
+                    {units.find((u) => u.unitId === item.unitId)?.uniteCode || 'N/A'}
+                  </td>
                   <td className="px-6 py-4">{item.issueQuantity}</td>
                 </tr>
               ))}
@@ -132,6 +134,7 @@ DistributionDetails.propTypes = {
       id: PropTypes.number,
       distributionId: PropTypes.number,
       itemId: PropTypes.number,
+      unitId: PropTypes.number,
       issueQuantity: PropTypes.number,
       createdAt: PropTypes.string,
       updatedAt: PropTypes.string,
