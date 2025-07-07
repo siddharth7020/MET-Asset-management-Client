@@ -11,7 +11,7 @@ function Distribution() {
   const [distributions, setDistributions] = useState([]);
   const [distributionItems, setDistributionItems] = useState([]);
   const [items, setItems] = useState([]);
-  const [units, setUnits] = useState([]); // Added for units
+  const [units, setUnits] = useState([]);
   const [financialYears, setFinancialYears] = useState([]);
   const [institutes, setInstitutes] = useState([]);
   const [locations, setLocations] = useState([]);
@@ -27,9 +27,10 @@ function Distribution() {
     rooms: '',
     distributionDate: '',
     distributionNo: '',
-    documents: '',
+    documents: [], // For new files to be uploaded
+    existingDocuments: [], // To track existing document paths during edit
     remark: '',
-    items: [{ itemId: '', unitId: '', issueQuantity: '' }], // Added unitId
+    items: [{ itemId: '', unitId: '', issueQuantity: '' }],
   });
   const [errors, setErrors] = useState({});
   const [editId, setEditId] = useState(null);
@@ -64,7 +65,6 @@ function Distribution() {
         const unitsResponse = await axios.get('/units');
         if (Array.isArray(unitsResponse.data.data)) {
           setUnits(unitsResponse.data.data);
-          console.log('Units fetched successfully:', unitsResponse.data.data);
         } else {
           console.error('Expected units data to be an array, but got:', unitsResponse.data.data);
         }
@@ -122,12 +122,13 @@ function Distribution() {
     if (formData.floor) {
       const selectedLocation = locations.find(loc => loc.floor === formData.floor);
       if (selectedLocation) {
+        const rooms = Array.isArray(selectedLocation.room) ? selectedLocation.room : [selectedLocation.room];
         setFormData(prev => ({
           ...prev,
           location: selectedLocation.locationID.toString(),
-          rooms: selectedLocation.room.includes(prev.rooms) ? prev.rooms : '',
+          rooms: rooms.includes(prev.rooms) ? prev.rooms : '',
         }));
-        setRoomOptions(selectedLocation.room.map(room => ({
+        setRoomOptions(rooms.map(room => ({
           value: room,
           label: room,
         })));
@@ -141,12 +142,52 @@ function Distribution() {
     }
   }, [formData.floor, locations]);
 
-  // Form handling
+  // Handle file input change
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    console.log('Selected files:', files); // Debugging: Log selected files
+    // Validate file types and size
+    const validTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const validFiles = files.filter(file => validTypes.includes(file.type) && file.size <= maxSize);
+
+    if (validFiles.length < files.length) {
+      setErrors(prev => ({
+        ...prev,
+        documents: 'Only JPEG, PNG, and PDF files up to 10MB are allowed.',
+      }));
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      documents: isEditMode ? [...prev.documents, ...validFiles] : validFiles,
+    }));
+    console.log('Updated documents:', formData.documents); // Debugging
+
+    setErrors(prev => ({ ...prev, documents: '' }));
+  };
+
+  // Remove a file from documents or existingDocuments
+  const handleRemoveFile = (index, isExisting = false) => {
+    if (isExisting) {
+      setFormData(prev => ({
+        ...prev,
+        existingDocuments: prev.existingDocuments.filter((_, i) => i !== index),
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        documents: prev.documents.filter((_, i) => i !== index),
+      }));
+    }
+  };
+
   const handleChange = (e) => {
-    const { name, value, files } = e.target;
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: files ? files[0] : value,
+      [name]: value,
     }));
     setErrors((prev) => ({ ...prev, [name]: '' }));
   };
@@ -156,7 +197,7 @@ function Distribution() {
       setFormData((prev) => ({
         ...prev,
         [name]: option ? option.value : '',
-        rooms: '', // Reset rooms when floor changes
+        rooms: '',
       }));
     } else if (name === 'rooms') {
       setFormData((prev) => ({
@@ -185,7 +226,7 @@ function Distribution() {
   const handleAddItem = () => {
     setFormData((prev) => ({
       ...prev,
-      items: [...prev.items, { itemId: '', unitId: '', issueQuantity: '' }], // Added unitId
+      items: [...prev.items, { itemId: '', unitId: '', issueQuantity: '' }],
     }));
   };
 
@@ -222,7 +263,7 @@ function Distribution() {
     if (formData.items.length === 0) newErrors.items = 'At least one item is required';
     formData.items.forEach((item, index) => {
       if (!item.itemId) newErrors[`items[${index}].itemId`] = 'Item is required';
-      if (!item.unitId) newErrors[`items[${index}].unitId`] = 'Unit is required'; // Added unitId validation
+      if (!item.unitId) newErrors[`items[${index}].unitId`] = 'Unit is required';
       if (!item.issueQuantity || Number(item.issueQuantity) <= 0)
         newErrors[`items[${index}].issueQuantity`] = 'Issue quantity must be positive';
       if (formData.items.some((i, iIdx) => i.itemId === item.itemId && i.unitId === item.unitId && iIdx !== index))
@@ -244,27 +285,35 @@ function Distribution() {
       return;
     }
 
-    const payload = {
-      financialYearId: Number(formData.financialYearId),
-      instituteId: Number(formData.instituteId),
-      employeeName: formData.employeeName.trim(),
-      location: Number(formData.location),
-      floor: formData.floor,
-      rooms: formData.rooms,
-      distributionDate: formData.distributionDate,
-      distributionNo: formData.distributionNo.trim(),
-      documents: formData.documents ? formData.documents.name : '',
-      remark: formData.remark.trim() || '',
-      items: formData.items.map((item) => ({
-        itemId: Number(item.itemId),
-        unitId: Number(item.unitId), // Added unitId
-        issueQuantity: Number(item.issueQuantity),
-      })),
-    };
+    const formDataPayload = new FormData();
+    formDataPayload.append('financialYearId', Number(formData.financialYearId));
+    formDataPayload.append('instituteId', Number(formData.instituteId));
+    formDataPayload.append('employeeName', formData.employeeName.trim());
+    formDataPayload.append('location', Number(formData.location));
+    formDataPayload.append('floor', formData.floor);
+    formDataPayload.append('rooms', formData.rooms);
+    formDataPayload.append('distributionDate', formData.distributionDate);
+    formDataPayload.append('distributionNo', formData.distributionNo.trim());
+    formDataPayload.append('remark', formData.remark.trim() || '');
+    formDataPayload.append('items', JSON.stringify(formData.items.map(item => ({
+      itemId: Number(item.itemId),
+      unitId: Number(item.unitId),
+      issueQuantity: Number(item.issueQuantity),
+    }))));
+
+    // Handle documents
+    console.log('Submitting - Existing documents:', formData.existingDocuments); // Debugging
+    console.log('Submitting - New files:', formData.documents.map(file => file.name)); // Debugging
+    formDataPayload.append('existingDocuments', JSON.stringify(formData.existingDocuments));
+    formData.documents.forEach((file) => {
+      formDataPayload.append('documents', file);
+    });
 
     try {
       if (isEditMode) {
-        const response = await updateDistribution(editId, payload);
+        const response = await updateDistribution(editId, formDataPayload, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
         const updatedDistribution = response.data.data || response.data;
         setDistributions((prev) =>
           prev.map((dist) => (dist.id === editId ? updatedDistribution : dist))
@@ -281,7 +330,9 @@ function Distribution() {
           showConfirmButton: false,
         });
       } else {
-        const response = await createDistribution(payload);
+        const response = await createDistribution(formDataPayload, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
         const newDistribution = response.data.data || response.data;
         setDistributions((prev) => [...prev, newDistribution]);
         setDistributionItems((prev) => [...prev, ...(newDistribution.items || [])]);
@@ -296,7 +347,7 @@ function Distribution() {
       resetForm();
       setIsFormVisible(false);
     } catch (error) {
-      console.error('Error submitting distribution:', error);
+      console.error('Error submitting distribution:', error.response?.data || error);
       Swal.fire({
         icon: 'error',
         title: 'Submission Error',
@@ -308,7 +359,7 @@ function Distribution() {
   const handleCancel = () => {
     Swal.fire({
       title: 'Cancel Form?',
-      text: 'Are you sure you want to cancel? All unsaved changes will be lost.',
+      text: 'Are you sure you want to cancel? Unsaved changes will be lost.',
       icon: 'question',
       showCancelButton: true,
       confirmButtonColor: '#d33',
@@ -333,9 +384,10 @@ function Distribution() {
       rooms: '',
       distributionDate: '',
       distributionNo: '',
-      documents: '',
+      documents: [],
+      existingDocuments: [],
       remark: '',
-      items: [{ itemId: '', unitId: '', issueQuantity: '' }], // Added unitId
+      items: [{ itemId: '', unitId: '', issueQuantity: '' }],
     });
     setErrors({});
     setRoomOptions([]);
@@ -384,31 +436,34 @@ function Distribution() {
         try {
           const response = await getDistributionById(row.id);
           const distribution = response.data;
+          console.log('Fetched distribution for edit:', distribution); // Debugging
           const selectedLocation = locations.find(loc => loc.locationID === distribution.location);
           setIsEditMode(true);
           setEditId(row.id);
           setFormData({
-            financialYearId: distribution.financialYearId.toString(),
-            instituteId: distribution.instituteId.toString(),
-            employeeName: distribution.employeeName,
-            location: distribution.location.toString(),
+            financialYearId: distribution.financialYearId?.toString() || '',
+            instituteId: distribution.instituteId?.toString() || '',
+            employeeName: distribution.employeeName || '',
+            location: distribution.location?.toString() || '',
             floor: selectedLocation ? selectedLocation.floor : '',
             rooms: distribution.rooms || '',
             distributionDate: distribution.distributionDate ? distribution.distributionDate.split('T')[0] : '',
             distributionNo: distribution.distributionNo || '',
-            documents: distribution.documents || '',
+            documents: [], // Reset new documents for edit
+            existingDocuments: distribution.document && Array.isArray(distribution.document) ? distribution.document : [], // Set existing documents
             remark: distribution.remark || '',
-            items: distribution.items.length > 0
+            items: distribution.items && distribution.items.length > 0
               ? distribution.items.map((item) => ({
-                  itemId: item.itemId.toString(),
-                  unitId: item.unitId.toString(), // Added unitId
-                  issueQuantity: item.issueQuantity.toString(),
-                }))
-              : [{ itemId: '', unitId: '', issueQuantity: '' }], // Added unitId
+                itemId: item.itemId?.toString() || '',
+                unitId: item.unitId?.toString() || '',
+                issueQuantity: item.issueQuantity?.toString() || '',
+              }))
+              : [{ itemId: '', unitId: '', issueQuantity: '' }],
           });
-          // Set room options for the selected floor
+          console.log('Set existingDocuments:', distribution.document); // Debugging
           if (selectedLocation) {
-            setRoomOptions(selectedLocation.room.map(room => ({
+            const rooms = Array.isArray(selectedLocation.room) ? selectedLocation.room : [selectedLocation.room];
+            setRoomOptions(rooms.map(room => ({
               value: room,
               label: room,
             })));
@@ -440,7 +495,6 @@ function Distribution() {
         }).then(async (result) => {
           if (result.isConfirmed) {
             try {
-              // Note: No delete API provided in controller, so simulating frontend deletion
               setDistributions((prev) => prev.filter((dist) => dist.id !== row.id));
               setDistributionItems((prev) => prev.filter((di) => di.distributionId !== row.id));
               Swal.fire({
@@ -508,7 +562,7 @@ function Distribution() {
           distribution={selectedDistribution}
           distributionItems={selectedDistributionItems}
           items={items}
-          units={units} // Pass units to DistributionDetails
+          units={units}
           financialYears={financialYears}
           institutes={institutes}
           locations={locations}
@@ -622,15 +676,65 @@ function Distribution() {
                     required
                     className="w-full text-sm"
                   />
-                  <FormInput
-                    label="Document"
-                    type="file"
-                    name="documents"
-                    accept=".pdf,.doc,.docx,.xls,.xlsx"
-                    error={errors.documents}
-                    required={false}
-                    className="w-full text-xs sm:text-sm"
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Documents</label>
+                    <input
+                      type="file"
+                      name="documents"
+                      accept="image/jpeg,image/png,application/pdf"
+                      multiple
+                      onChange={handleFileChange}
+                      className="w-full text-xs sm:text-sm border border-gray-300 rounded-md p-2"
+                    />
+                    <div className="mb-2">
+                      {
+                        isEditMode && formData.existingDocuments.length > 0 && (
+                          <p className="text-sm font-medium text-gray-700 mb-1">Existing Documents:</p>
+                        )
+                      }
+                      {formData.existingDocuments.length > 0 ? (
+                        <ul className="list-disc list-inside text-sm text-gray-600">
+                          {formData.existingDocuments.map((doc, index) => (
+                            <li key={index} className="flex items-center justify-between">
+                              <span>{doc.split('/').pop()}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveFile(index, true)}
+                                className="text-red-600 hover:text-red-800 text-xs"
+                              >
+                                Remove
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-sm text-gray-600">No existing documents.</p>
+                      )}
+                    </div>
+
+                    {errors.documents && (
+                      <p className="mt-1 text-sm text-red-600">{errors.documents}</p>
+                    )}
+                    {formData.documents.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-sm font-medium text-gray-700">New Files:</p>
+                        <ul className="list-disc list-inside text-sm text-gray-600">
+                          {formData.documents.map((file, index) => (
+                            <li key={index} className="flex items-center justify-between">
+                              <span>{file.name}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveFile(index, false)}
+                                className="text-red-600 hover:text-red-800 text-xs"
+                              >
+                                Remove
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
                   <FormInput
                     label="Remark"
                     type="textarea"

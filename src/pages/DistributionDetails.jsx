@@ -1,18 +1,49 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
+
+const MySwal = withReactContent(Swal);
 
 const DistributionDetails = ({ distribution, distributionItems, items, financialYears, institutes, onBack, units }) => {
   if (!distribution) {
     return <div className="text-center p-6">No Distribution selected</div>;
   }
+
+  console.log('Distribution Details:', distribution);
+
   const financialYear = financialYears.find((year) => year.financialYearId === distribution.financialYearId);
   const institute = institutes.find((inst) => inst.instituteId === distribution.instituteId);
-  console.log(location);
-  
+
+  const handleDocumentDownload = (documentPath) => {
+    try {
+      if (documentPath) {
+        // Ensure the path doesn't start with a slash to avoid double slashes
+        const cleanPath = documentPath.replace(/^\/+/, '');
+        // Encode the file path to handle special characters
+        const encodedPath = encodeURI(cleanPath);
+        const documentUrl = `http://localhost:5000/${encodedPath}`;
+        console.log('Downloading document from:', documentUrl); // Debugging
+        window.open(documentUrl, '_blank');
+      } else {
+        MySwal.fire({
+          icon: 'warning',
+          title: 'No Document',
+          text: 'This document is not available.',
+        });
+      }
+    } catch (error) {
+      console.error('Error accessing document:', error);
+      MySwal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to access document. Please try again later.',
+      });
+    }
+  };
 
   return (
     <div className="">
-      {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-lg sm:text-xl font-semibold text-brand-secondary">Distribution Details</h2>
         <button
@@ -23,7 +54,6 @@ const DistributionDetails = ({ distribution, distributionItems, items, financial
         </button>
       </div>
 
-      {/* Details Section */}
       <div className="p-6 bg-gray-50 rounded-md shadow mb-6">
         <h3 className="text-sm sm:text-base font-medium text-brand-secondary mb-4">Details</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -57,7 +87,21 @@ const DistributionDetails = ({ distribution, distributionItems, items, financial
           </div>
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Documents</span>
-            <span className="text-xs sm:text-sm text-gray-900">{distribution.documents || 'N/A'}</span>
+            {distribution.document && distribution.document.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                {distribution.document.map((doc, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleDocumentDownload(doc)}
+                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-xs sm:text-sm w-48"
+                  >
+                    Document {index + 1}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <span className="text-xs sm:text-sm text-gray-900">No documents available.</span>
+            )}
           </div>
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Remark</span>
@@ -70,10 +114,8 @@ const DistributionDetails = ({ distribution, distributionItems, items, financial
         </div>
       </div>
 
-      {/* Items Section */}
       <div>
         <h3 className="text-sm sm:text-base font-medium text-brand-secondary mb-4">Items</h3>
-        {/* Mobile View */}
         <div className="sm:hidden space-y-4">
           {distributionItems.map((item) => (
             <div key={item.id} className="p-4 border rounded-md bg-gray-50">
@@ -89,7 +131,6 @@ const DistributionDetails = ({ distribution, distributionItems, items, financial
             </div>
           ))}
         </div>
-        {/* Desktop View */}
         <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm text-left text-gray-900">
             <thead className="text-xs uppercase bg-gray-200">
@@ -124,7 +165,7 @@ DistributionDetails.propTypes = {
     instituteId: PropTypes.number,
     employeeName: PropTypes.string,
     location: PropTypes.string,
-    documents: PropTypes.string,
+    document: PropTypes.arrayOf(PropTypes.string),
     remark: PropTypes.string,
     createdAt: PropTypes.string,
     updatedAt: PropTypes.string,
@@ -159,6 +200,12 @@ DistributionDetails.propTypes = {
     })
   ).isRequired,
   onBack: PropTypes.func.isRequired,
+  units: PropTypes.arrayOf(
+    PropTypes.shape({
+      unitId: PropTypes.number,
+      uniteCode: PropTypes.string,
+    })
+  ).isRequired,
 };
 
 DistributionDetails.defaultProps = {
