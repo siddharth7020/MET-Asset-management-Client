@@ -1,5 +1,9 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
+
+const MySwal = withReactContent(Swal);
 
 const InvoiceDetails = ({ invoice, invoiceItems, purchaseOrders, onBack, units, items }) => {
   if (!invoice) {
@@ -7,7 +11,33 @@ const InvoiceDetails = ({ invoice, invoiceItems, purchaseOrders, onBack, units, 
   }
 
   const purchaseOrder = purchaseOrders.find((po) => po.poId === invoice.poId);
-  console.log(invoiceItems);
+
+  const handleDocumentDownload = (documentPath) => {
+    try {
+      if (documentPath) {
+        // Ensure the path doesn't start with a slash to avoid double slashes
+        const cleanPath = documentPath.replace(/^\/+/, '');
+        // Encode the file path to handle special characters
+        const encodedPath = encodeURI(cleanPath);
+        const documentUrl = `http://localhost:5000/${encodedPath}`;
+        console.log('Downloading document from:', documentUrl); // Debugging
+        window.open(documentUrl, '_blank');
+      } else {
+        MySwal.fire({
+          icon: 'warning',
+          title: 'No Document',
+          text: 'This document is not available.',
+        });
+      }
+    } catch (error) {
+      console.error('Error accessing document:', error);
+      MySwal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to access document. Please try again later.',
+      });
+    }
+  };
 
 
   return (
@@ -44,6 +74,24 @@ const InvoiceDetails = ({ invoice, invoiceItems, purchaseOrders, onBack, units, 
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-semibold text-gray-700">Payment Details</span>
             <span className="text-xs sm:text-sm text-gray-900">{invoice.paymentDetails || 'N/A'}</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xs sm:text-sm font-semibold text-gray-700">Documents</span>
+            {invoice.document && invoice.document.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                {invoice.document.map((doc, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleDocumentDownload(doc)}
+                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-xs sm:text-sm w-48"
+                  >
+                    View Document {index + 1}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <span className="text-xs sm:text-sm text-gray-900">No documents available</span>
+            )}
           </div>
         </div>
       </div>

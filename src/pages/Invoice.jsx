@@ -22,6 +22,8 @@ function Invoice() {
     invoiceNo: '',
     invoiceDate: '',
     paymentDetails: '',
+    documents: [], // For new file uploads
+    existingDocuments: [], // For existing document paths
     items: [{
       orderItemId: '',
       itemId: '',
@@ -46,21 +48,15 @@ function Invoice() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch invoices
         const invoiceResponse = await getAllInvoices();
         const invoicesData = Array.isArray(invoiceResponse.data.invoices) ? invoiceResponse.data.invoices : [];
-        console.log('Invoices:', invoicesData);
-
         const invoiceItemsData = invoicesData.flatMap((inv) => inv.items || []);
-        console.log('Invoice Items:', invoiceItemsData);
         setInvoices(invoicesData);
         setInvoiceItems(invoiceItemsData);
 
-        // Fetch purchase orders
         const poResponse = await getPurchaseOrders();
         const poData = Array.isArray(poResponse.data) ? poResponse.data : [];
         setPurchaseOrders(poData);
-        console.log('Purchase Orders:', poData);
 
         const itemsResponse = await axios.get('/items');
         if (Array.isArray(itemsResponse.data.items)) {
@@ -75,7 +71,6 @@ function Invoice() {
         } else {
           console.error('Expected units data to be an array, but got:', unitsResponse.data.data);
         }
-
       } catch (error) {
         console.error('Error fetching data:', error);
         MySwal.fire({
@@ -110,6 +105,8 @@ function Invoice() {
               taxAmount: '',
               totalAmount: ''
             })),
+            documents: [],
+            existingDocuments: []
           }));
         } catch (error) {
           console.error('Error fetching order items:', error);
@@ -136,6 +133,8 @@ function Invoice() {
           taxAmount: '',
           totalAmount: ''
         }],
+        documents: [],
+        existingDocuments: []
       }));
       setOrderItems([]);
     }
@@ -171,7 +170,7 @@ function Invoice() {
       key: 'invoiceAmount',
       label: 'Invoice Amount',
       format: (value) => `₹${parseFloat(value).toFixed(2)}`,
-    },
+    }
   ];
 
   // Table actions
@@ -200,7 +199,9 @@ function Invoice() {
             poId: invoice.poId,
             invoiceNo: invoice.invoiceNo,
             invoiceDate: invoice.invoiceDate.split('T')[0],
-            paymentDetails: invoice.paymentDetails,
+            paymentDetails: invoice.paymentDetails || '',
+            documents: [],
+            existingDocuments: Array.isArray(invoice.document) ? invoice.document : [], // Ensure array
             items: invoice.items.map((item) => ({
               id: item.id,
               orderItemId: item.orderItemId,
@@ -250,12 +251,37 @@ function Invoice() {
     setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
+  // Handle file input change for new uploads
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    setFormData((prev) => ({
+      ...prev,
+      documents: files,
+    }));
+    setErrors((prev) => ({ ...prev, documents: '' }));
+  };
+
+  // Remove an existing document
+  const removeExistingDocument = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      existingDocuments: prev.existingDocuments.filter((_, i) => i !== index),
+    }));
+  };
+
+  // Remove a new document
+  const removeNewDocument = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      documents: prev.documents.filter((_, i) => i !== index),
+    }));
+  };
+
   const handleItemChange = (index, e) => {
     const { name, value } = e.target;
     const updatedItems = [...formData.items];
     updatedItems[index] = { ...updatedItems[index], [name]: value };
 
-    // Update itemId, unitId, quantity, rate, and discount when orderItemId changes
     if (name === 'orderItemId') {
       const selectedOrderItem = orderItems.find((oi) => oi.id === Number(value));
       updatedItems[index].itemId = selectedOrderItem ? selectedOrderItem.itemId : '';
@@ -265,7 +291,6 @@ function Invoice() {
       updatedItems[index].discount = selectedOrderItem ? selectedOrderItem.discount : '';
     }
 
-    // Calculate amount, taxAmount, and totalAmount
     const quantity = Number(updatedItems[index].quantity) || 0;
     const rate = Number(updatedItems[index].rate) || 0;
     const discount = Number(updatedItems[index].discount) || 0;
@@ -325,7 +350,6 @@ function Invoice() {
     if (!formData.poId) newErrors.poId = 'Purchase Order is required';
     if (!formData.invoiceDate) newErrors.invoiceDate = 'Invoice date is required';
 
-    // Check if an invoice already exists for the selected PO (only for create mode)
     if (!isEditMode && formData.poId && invoices.some((inv) => inv.poId === Number(formData.poId))) {
       newErrors.poId = 'This Purchase Order already has an invoice.';
     }
@@ -403,35 +427,40 @@ function Invoice() {
     }
 
     const { items, subtotal, totalTax, invoiceAmount } = calculateTotals(formData.items);
+    console.log('Calculated Totals:', { items, subtotal, totalTax, invoiceAmount });
 
-    const payload = {
-      poId: Number(formData.poId),
-      invoiceNo: formData.invoiceNo,
-      invoiceDate: formData.invoiceDate,
-      paymentDetails: formData.paymentDetails || '',
-      subtotal,
-      totalTax,
-      invoiceAmount,
-      items: items.map((item) => ({
-        id: item.id || undefined,
-        orderItemId: Number(item.orderItemId),
-        itemId: Number(item.itemId),
-        unitId: item.unitId ? Number(item.unitId) : undefined,
-        quantity: Number(item.quantity),
-        rate: Number(item.rate),
-        discount: Number(item.discount || 0),
-        amount: Number(item.amount),
-        taxPercentage: Number(item.taxPercentage),
-        taxAmount: Number(item.taxAmount),
-        totalAmount: Number(item.totalAmount),
-      })),
-    };
+    const formDataToSend = new FormData();
+    formDataToSend.append('poId', Number(formData.poId));
+    formDataToSend.append('invoiceNo', formData.invoiceNo);
+    formDataToSend.append('invoiceDate', formData.invoiceDate);
+    formDataToSend.append('paymentDetails', formData.paymentDetails || '');
+    formDataToSend.append('items', JSON.stringify(items.map((item) => ({
+      id: item.id || undefined,
+      orderItemId: Number(item.orderItemId),
+      itemId: Number(item.itemId),
+      unitId: item.unitId ? Number(item.unitId) : undefined,
+      quantity: Number(item.quantity),
+      rate: Number(item.rate),
+      discount: Number(item.discount || 0),
+      amount: Number(item.amount),
+      taxPercentage: Number(item.taxPercentage),
+      taxAmount: Number(item.taxAmount),
+      totalAmount: Number(item.totalAmount),
+    }))));
 
-    console.log('Submitting Payload:', payload);
+    formData.documents.forEach((file) => {
+      formDataToSend.append('documents', file);
+    });
+
+    if (isEditMode && formData.existingDocuments.length > 0) {
+      formDataToSend.append('existingDocuments', JSON.stringify(formData.existingDocuments));
+    }
+
+    console.log('Submitting FormData:', formDataToSend);
 
     try {
       if (isEditMode) {
-        await updateInvoice(editId, payload);
+        await updateInvoice(editId, formDataToSend);
         const invoiceResponse = await getInvoiceById(editId);
         console.log('Updated Invoice Response:', invoiceResponse.data);
         if (!invoiceResponse.data) {
@@ -455,7 +484,7 @@ function Invoice() {
           text: 'Invoice updated successfully!',
         });
       } else {
-        const response = await createInvoice(payload);
+        const response = await createInvoice(formDataToSend);
         setInvoices((prev) => [...prev, response.data]);
         setInvoiceItems((prev) => [...prev, ...(Array.isArray(response.data.items) ? response.data.items : [])]);
         MySwal.fire({
@@ -480,7 +509,9 @@ function Invoice() {
     const hasChanges = Object.values(formData).some(
       (value) =>
         (typeof value === 'string' && value !== '') ||
-        (Array.isArray(value) && value.some((item) => Object.values(item).some((v) => v !== '')))
+        (Array.isArray(value) && value.length > 0 && (
+          value === formData.items ? value.some((item) => Object.values(item).some((v) => v !== '')) : true
+        ))
     );
 
     if (hasChanges) {
@@ -509,6 +540,8 @@ function Invoice() {
       invoiceNo: '',
       invoiceDate: '',
       paymentDetails: '',
+      documents: [],
+      existingDocuments: [],
       items: [{
         orderItemId: '',
         itemId: '',
@@ -528,7 +561,6 @@ function Invoice() {
     setOrderItems([]);
   };
 
-  // Get selected invoice data
   const selectedInvoice = invoices.find((inv) => inv.id === selectedInvoiceId);
   const selectedInvoiceItems = invoiceItems.filter((ii) => ii.invoiceId === selectedInvoiceId);
 
@@ -569,7 +601,7 @@ function Invoice() {
                 <h3 className="text-base sm:text-lg font-medium text-brand-secondary mb-4">
                   {isEditMode ? 'Edit Invoice' : 'Add Invoice'}
                 </h3>
-                <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <form onSubmit={handleSubmit} encType="multipart/form-data" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-xs sm:text-sm font-medium text-gray-700">Purchase Order</label>
                     <select
@@ -608,6 +640,58 @@ function Invoice() {
                     required={false}
                     className="w-full text-xs sm:text-sm"
                   />
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700">Documents</label>
+                    <input
+                      type="file"
+                      name="documents"
+                      onChange={handleFileChange}
+                      multiple
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
+                    />
+                    {formData.documents.length > 0 && (
+                      <div className="mt-2">
+                        <h4 className="text-xs font-medium text-gray-700">New Documents</h4>
+                        <ul className="mt-1 text-xs text-gray-600">
+                          {formData.documents.map((file, index) => (
+                            <li key={index} className="flex items-center">
+                              <span>{file.name}</span>
+                              <button
+                                type="button"
+                                onClick={() => removeNewDocument(index)}
+                                className="ml-2 text-red-600 hover:text-red-800 text-xs"
+                              >
+                                Remove
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {isEditMode && formData.existingDocuments.length > 0 && (
+                      <div className="mt-2">
+                        <h4 className="text-xs font-medium text-gray-700">Existing Documents</h4>
+                        <ul className="mt-1 text-xs text-gray-600">
+                          {formData.existingDocuments.map((path, index) => (
+                            <li key={index} className="flex items-center">
+                              <a href={path} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                {path.split('/').pop()}
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => removeExistingDocument(index)}
+                                className="ml-2 text-red-600 hover:text-red-800 text-xs"
+                              >
+                                Remove
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {errors.documents && <p className="mt-1 text-xs text-red-600">{errors.documents}</p>}
+                  </div>
                   <div className="col-span-1 sm:col-span-2 lg:col-span-3">
                     <h4 className="text-sm sm:text-md font-medium text-brand-secondary mb-2">Invoice Items</h4>
                     {formData.items.map((item, index) => (
@@ -619,13 +703,13 @@ function Invoice() {
                               name="orderItemId"
                               value={item.orderItemId}
                               onChange={(e) => handleItemChange(index, e)}
-                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-sm"
+                              className="block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-sm"
                               required
                             >
                               <option value="">Select Order Item</option>
                               {orderItems.map((oi) => (
                                 <option key={oi.id} value={oi.id}>
-                                  {items.find((i) => i.itemId === oi.itemId)?.itemName || 'N/A'} (ID: {oi.id})
+                                  {items.find((i) => i.itemId === oi.itemId)?.itemName || 'N/A'}
                                 </option>
                               ))}
                             </select>
@@ -689,8 +773,8 @@ function Invoice() {
                               disabled
                               className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
                             />
-                            {errors[`items[${index}].rate`] && (
-                              <p className="mt-1 text-sm text-red-600">{errors[`items[${index}].rate`]}</p>
+                            {errors[`items[${index}].discount`] && (
+                              <p className="mt-1 text-sm text-red-600">{errors[`items[${index}].discount`]}</p>
                             )}
                           </div>
                           <FormInput
