@@ -273,11 +273,19 @@ function PurchaseOrder() {
     setErrors((prev) => ({ ...prev, documents: '' }));
   };
 
-  const removeExistingDocument = (index) => {
-    setFormData((prev) => ({
-      ...prev,
-      existingDocuments: prev.existingDocuments.filter((_, i) => i !== index),
-    }));
+  // Remove a file from documents or existingDocuments
+  const handleRemoveFile = (index, isExisting = false) => {
+    if (isExisting) {
+      setFormData(prev => ({
+        ...prev,
+        existingDocuments: prev.existingDocuments.filter((_, i) => i !== index),
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        documents: prev.documents.filter((_, i) => i !== index),
+      }));
+    }
   };
 
   const validateForm = () => {
@@ -522,7 +530,7 @@ function PurchaseOrder() {
                       className="block w-full border border-gray-300 rounded-md shadow-sm p-2 text-xs sm:text-sm"
                     />
                     {errors.documents && <p className="mt-1 text-xs text-red-600">{errors.documents}</p>}
-                    {formData.documents.length > 0 && (
+                    {/* {formData.documents.length > 0 && (
                       <div className="mt-2">
                         <p className="text-xs text-gray-600">Selected files:</p>
                         <ul className="list-disc pl-5 text-xs text-gray-600">
@@ -531,7 +539,7 @@ function PurchaseOrder() {
                           ))}
                         </ul>
                       </div>
-                    )}
+                    )} */}
                     {isEditMode && formData.existingDocuments.length > 0 && (
                       <div className="mt-2">
                         <p className="text-xs text-gray-600">Existing documents:</p>
@@ -541,8 +549,27 @@ function PurchaseOrder() {
                               <span>{doc.split('/').pop()}</span>
                               <button
                                 type="button"
-                                onClick={() => removeExistingDocument(index)}
+                                onClick={() => handleRemoveFile(index)}
                                 className="ml-2 text-red-600 hover:text-red-800 text-xs"
+                              >
+                                Remove
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {formData.documents.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-sm font-medium text-gray-700">New Files:</p>
+                        <ul className="list-disc list-inside text-sm text-gray-600">
+                          {formData.documents.map((file, index) => (
+                            <li key={index} className="flex items-center justify-between">
+                              <span>{file.name}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveFile(index, false)}
+                                className="text-red-600 hover:text-red-800 text-xs"
                               >
                                 Remove
                               </button>
