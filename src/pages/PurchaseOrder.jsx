@@ -295,6 +295,8 @@ function PurchaseOrder() {
     if (!formData.financialYearId) newErrors.financialYearId = 'Financial year is required';
     if (!formData.vendorId) newErrors.vendorId = 'Vendor is required';
     if (!formData.requestedBy) newErrors.requestedBy = 'Requested by is required';
+    
+    // Validate documents
     formData.documents.forEach((file, index) => {
       if (!['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) {
         newErrors[`documents[${index}]`] = `File ${file.name}: Only PDF, JPEG, or PNG files are allowed`;
@@ -303,6 +305,8 @@ function PurchaseOrder() {
         newErrors[`documents[${index}]`] = `File ${file.name}: Size must not exceed 10MB`;
       }
     });
+    
+    // Validate order items
     formData.orderItems.forEach((oi, index) => {
       if (!oi.itemId) newErrors[`orderItems[${index}].itemId`] = 'Item is required';
       if (!oi.unitId) newErrors[`orderItems[${index}].unitId`] = 'Unit is required';
@@ -310,10 +314,22 @@ function PurchaseOrder() {
       if (!oi.rate || oi.rate <= 0) newErrors[`orderItems[${index}].rate`] = 'Rate must be positive';
       if (oi.discount < 0) newErrors[`orderItems[${index}].discount`] = 'Discount must be non-negative';
     });
+    
+    // Check for duplicate items
+    const itemIds = formData.orderItems.map((oi) => oi.itemId);
+    formData.orderItems.forEach((oi, index) => {
+      if (oi.itemId) {
+        const isDuplicate = itemIds.indexOf(oi.itemId) !== index;
+        if (isDuplicate) {
+          newErrors[`orderItems[${index}].itemId`] = 'This item is already selected';
+        }
+      }
+    });
+    
     return newErrors;
-  };
+};
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = validateForm();
     if (Object.keys(newErrors).length > 0) {
@@ -385,8 +401,7 @@ function PurchaseOrder() {
         text: error.response?.data?.message || 'Failed to save purchase order. Please try again.',
       });
     }
-  };
-
+};
   const resetForm = () => {
     setFormData({
       poId: '',

@@ -233,10 +233,21 @@ function QuickGRN() {
       if (!item.rate || Number(item.rate) <= 0) newErrors[`quickGRNItems[${index}].rate`] = 'Rate must be positive';
     });
 
-    return newErrors;
-  };
+    // Check for duplicate items
+    const itemIds = formData.quickGRNItems.map((item) => item.itemId);
+    formData.quickGRNItems.forEach((item, index) => {
+      if (item.itemId) {
+        const isDuplicate = itemIds.indexOf(item.itemId) !== index;
+        if (isDuplicate) {
+          newErrors[`quickGRNItems[${index}].itemId`] = 'This item is already selected';
+        }
+      }
+    });
 
-  const handleSubmit = async (e) => {
+    return newErrors;
+};
+
+const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = validateForm();
     if (Object.keys(newErrors).length > 0) {
@@ -291,7 +302,7 @@ function QuickGRN() {
         text: `Failed to create Quick GRN: ${error.response?.data?.message || error.message}`,
       });
     }
-  };
+};
 
   const resetForm = () => {
     setFormData({
