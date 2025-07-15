@@ -148,13 +148,13 @@ function GRN() {
     {
       key: 'grnDate',
       label: 'GRN Date',
-      format: (value) => new Date(value).toLocaleDateString(),
+      format:(value) => new Date(value).toLocaleDateString('en-GB')
     },
     { key: 'challanNo', label: 'Challan Number' },
     {
       key: 'challanDate',
       label: 'Challan Date',
-      format: (value) => new Date(value).toLocaleDateString(),
+      format: (value) => new Date(value).toLocaleDateString('en-GB')
     },
   ];
 

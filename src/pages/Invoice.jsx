@@ -164,7 +164,7 @@ function Invoice() {
     {
       key: 'invoiceDate',
       label: 'Invoice Date',
-      format: (value) => new Date(value).toLocaleDateString(),
+      format: (value) => new Date(value).toLocaleDateString('en-GB'),
     },
     {
       key: 'invoiceAmount',
