@@ -22,8 +22,9 @@ function Invoice() {
     invoiceNo: '',
     invoiceDate: '',
     paymentDetails: '',
-    documents: [], // For new file uploads
-    existingDocuments: [], // For existing document paths
+    OtherAmount: '0.00',
+    documents: [],
+    existingDocuments: [],
     items: [{
       orderItemId: '',
       itemId: '',
@@ -106,7 +107,8 @@ function Invoice() {
               totalAmount: ''
             })),
             documents: [],
-            existingDocuments: []
+            existingDocuments: [],
+            OtherAmount: '0.00'
           }));
         } catch (error) {
           console.error('Error fetching order items:', error);
@@ -134,7 +136,8 @@ function Invoice() {
           totalAmount: ''
         }],
         documents: [],
-        existingDocuments: []
+        existingDocuments: [],
+        OtherAmount: '0.00'
       }));
       setOrderItems([]);
     }
@@ -165,6 +168,11 @@ function Invoice() {
       key: 'invoiceDate',
       label: 'Invoice Date',
       format: (value) => new Date(value).toLocaleDateString('en-GB'),
+    },
+    {
+      key: 'OtherAmount',
+      label: 'Other Amount',
+      format: (value) => `₹${parseFloat(value).toFixed(2)}`,
     },
     {
       key: 'invoiceAmount',
@@ -200,8 +208,9 @@ function Invoice() {
             invoiceNo: invoice.invoiceNo,
             invoiceDate: invoice.invoiceDate.split('T')[0],
             paymentDetails: invoice.paymentDetails || '',
+            OtherAmount: invoice.OtherAmount || '0.00',
             documents: [],
-            existingDocuments: Array.isArray(invoice.document) ? invoice.document : [], // Ensure array
+            existingDocuments: Array.isArray(invoice.document) ? invoice.document : [],
             items: invoice.items.map((item) => ({
               id: item.id,
               orderItemId: item.orderItemId,
@@ -309,46 +318,11 @@ function Invoice() {
     setErrors((prev) => ({ ...prev, [`items[${index}].${name}`]: '' }));
   };
 
-  const addItem = () => {
-    setFormData((prev) => ({
-      ...prev,
-      items: [
-        ...prev.items,
-        {
-          orderItemId: '',
-          itemId: '',
-          unitId: '',
-          taxPercentage: '',
-          quantity: '',
-          rate: '',
-          discount: '',
-          amount: '',
-          taxAmount: '',
-          totalAmount: ''
-        },
-      ],
-    }));
-  };
-
-  const removeItem = (index) => {
-    if (formData.items.length === 1) {
-      MySwal.fire({
-        icon: 'warning',
-        title: 'Cannot Remove',
-        text: 'At least one invoice item is required.',
-      });
-      return;
-    }
-    setFormData((prev) => ({
-      ...prev,
-      items: prev.items.filter((_, i) => i !== index),
-    }));
-  };
-
   const validateForm = () => {
     const newErrors = {};
     if (!formData.poId) newErrors.poId = 'Purchase Order is required';
     if (!formData.invoiceDate) newErrors.invoiceDate = 'Invoice date is required';
+    if (formData.OtherAmount < 0) newErrors.OtherAmount = 'Other Amount must be non-negative';
 
     if (!isEditMode && formData.poId && invoices.some((inv) => inv.poId === Number(formData.poId))) {
       newErrors.poId = 'This Purchase Order already has an invoice.';
@@ -369,7 +343,7 @@ function Invoice() {
     return newErrors;
   };
 
-  const calculateTotals = (items) => {
+  const calculateTotals = (items, otherAmount) => {
     let subtotal = 0;
     let totalTax = 0;
     const updatedItems = items.map((item) => {
@@ -396,12 +370,14 @@ function Invoice() {
       return sum + (itemSubtotal * (1 - Number(item.discount || 0) / 100));
     }, 0);
     totalTax = updatedItems.reduce((sum, item) => sum + Number(item.taxAmount), 0);
+    const parsedOtherAmount = Number(otherAmount) || 0;
 
     return {
       items: updatedItems,
       subtotal: subtotal.toFixed(2),
       totalTax: totalTax.toFixed(2),
-      invoiceAmount: (subtotal + totalTax).toFixed(2),
+      OtherAmount: parsedOtherAmount.toFixed(2),
+      invoiceAmount: (subtotal + totalTax + parsedOtherAmount).toFixed(2),
     };
   };
 
@@ -426,14 +402,15 @@ function Invoice() {
       return;
     }
 
-    const { items, subtotal, totalTax, invoiceAmount } = calculateTotals(formData.items);
-    console.log('Calculated Totals:', { items, subtotal, totalTax, invoiceAmount });
+    const { items, subtotal, totalTax, OtherAmount, invoiceAmount } = calculateTotals(formData.items, formData.OtherAmount);
+    console.log('Calculated Totals:', { items, subtotal, totalTax, OtherAmount, invoiceAmount });
 
     const formDataToSend = new FormData();
     formDataToSend.append('poId', Number(formData.poId));
     formDataToSend.append('invoiceNo', formData.invoiceNo);
     formDataToSend.append('invoiceDate', formData.invoiceDate);
     formDataToSend.append('paymentDetails', formData.paymentDetails || '');
+    formDataToSend.append('OtherAmount', Number(formData.OtherAmount));
     formDataToSend.append('items', JSON.stringify(items.map((item) => ({
       id: item.id || undefined,
       orderItemId: Number(item.orderItemId),
@@ -508,7 +485,7 @@ function Invoice() {
   const handleCancel = async () => {
     const hasChanges = Object.values(formData).some(
       (value) =>
-        (typeof value === 'string' && value !== '') ||
+        (typeof value === 'string' && value !== '' && value !== '0.00') ||
         (Array.isArray(value) && value.length > 0 && (
           value === formData.items ? value.some((item) => Object.values(item).some((v) => v !== '')) : true
         ))
@@ -540,6 +517,7 @@ function Invoice() {
       invoiceNo: '',
       invoiceDate: '',
       paymentDetails: '',
+      OtherAmount: '0.00',
       documents: [],
       existingDocuments: [],
       items: [{
@@ -827,22 +805,54 @@ function Invoice() {
                             )}
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => removeItem(index)}
-                          className="text-red-600 hover:text-red-800 text-xs sm:text-sm mt-2"
-                        >
-                          Remove Item
-                        </button>
                       </div>
                     ))}
-                    <button
-                      type="button"
-                      onClick={addItem}
-                      className="w-full sm:w-auto bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 text-xs sm:text-sm"
-                    >
-                      Add Invoice Item
-                    </button>
+                    <div className="flex flex-col gap-4 mb-4 p-4 border rounded-md">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Sub Total</label>
+                          <input
+                            type="text"
+                            value={calculateTotals(formData.items, formData.OtherAmount).subtotal}
+                            disabled
+                            className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Tax Total</label>
+                          <input
+                            type="text"
+                            value={calculateTotals(formData.items, formData.OtherAmount).totalTax}
+                            disabled
+                            className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Other Amount</label>
+                          <input
+                            type="number"
+                            name="OtherAmount"
+                            value={formData.OtherAmount}
+                            onChange={handleChange}
+                            className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 text-sm"
+                            min="0"
+                            step="0.01"
+                          />
+                          {errors.OtherAmount && (
+                            <p className="mt-1 text-sm text-red-600">{errors.OtherAmount}</p>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Invoice Amount</label>
+                          <input
+                            type="text"
+                            value={calculateTotals(formData.items, formData.OtherAmount).invoiceAmount}
+                            disabled
+                            className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                   <div className="col-span-1 sm:col-span-2 lg:col-span-3 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
                     <button

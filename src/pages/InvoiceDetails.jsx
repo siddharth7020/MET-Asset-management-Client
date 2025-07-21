@@ -170,6 +170,10 @@ const InvoiceDetails = ({ invoice, invoiceItems, purchaseOrders, onBack, units, 
               <span className="text-xs sm:text-sm text-gray-900">₹{parseFloat(invoice.totalTax).toFixed(2)}</span>
             </div>
             <div className="flex gap-3 mt-2">
+              <span className="text-xs sm:text-sm font-semibold text-gray-700">Other Amount</span>
+              <span className="text-xs sm:text-sm text-gray-900">₹{parseFloat(invoice.OtherAmount).toFixed(2)}</span>
+            </div>
+            <div className="flex gap-3 mt-2">
               <span className="text-xs sm:text-sm font-semibold text-gray-700">Invoice Amount</span>
               <span className="text-xs sm:text-sm text-gray-900">₹{parseFloat(invoice.invoiceAmount).toFixed(2)}</span>
             </div>
