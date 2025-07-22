@@ -173,6 +173,29 @@ const QuickInvoiceDetails = ({ quickInvoice, quickInvoiceItems, quickGRNs, items
               ))}
             </tbody>
           </table>
+          <div className='flex flex-col justify-end gap-2 mt-4 ml-auto'>
+            <div className="flex gap-3 mt-2">
+              <span className="text-xs sm:text-sm font-semibold text-gray-700">Total Amount</span>
+              <span className="text-xs sm:text-sm text-gray-900">₹{parseFloat(quickInvoice.totalAmount).toFixed(2)}</span>
+            </div>
+            <div className="flex gap-3 mt-2">
+              <span className="text-xs sm:text-sm font-semibold text-gray-700">Discount Amount</span>
+              <span className="text-xs sm:text-sm text-gray-900">₹{parseFloat(quickInvoice.discountedAmount).toFixed(2)}</span>
+            </div>
+            <div className="flex gap-3 mt-2">
+              <span className="text-xs sm:text-sm font-semibold text-gray-700">Total Tax</span>
+              <span className="text-xs sm:text-sm text-gray-900">₹{parseFloat(quickInvoice.taxAmount).toFixed(2)}</span>
+            </div>
+            
+            <div className="flex gap-3 mt-2">
+              <span className="text-xs sm:text-sm font-semibold text-gray-700">Other Amount</span>
+              <span className="text-xs sm:text-sm text-gray-900">₹{parseFloat(quickInvoice.OtherAmount).toFixed(2)}</span>
+            </div>
+            <div className="flex gap-3 mt-2">
+              <span className="text-xs sm:text-sm font-semibold text-gray-700">Invoice Amount</span>
+              <span className="text-xs sm:text-sm text-gray-900">₹{parseFloat(quickInvoice.totalAmountWithTax).toFixed(2)}</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

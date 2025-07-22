@@ -22,6 +22,7 @@ function QuickInvoice() {
     taxDetails: {},
     documents: [],
     existingDocuments: [],
+    OtherAmount:'',
   });
   const [errors, setErrors] = useState({});
   const [editId, setEditId] = useState(null);
@@ -80,14 +81,18 @@ function QuickInvoice() {
     console.log(`Calculating for item ${item.qGRNItemid}: qty=${quantity}, rate=${rate}, discount=${discount}, taxPercentage=${taxPercentage}`);
 
     if (discount < 0 || discount > 100) {
-      return { amount: '0.00', taxAmount: '0.00', totalAmount: '0.00', error: 'Discount must be between 0 and 100%.' };
+      return { baseAmount: '0.00', discountAmount: '0.00', amount: '0.00', taxAmount: '0.00', totalAmount: '0.00', error: 'Discount must be between 0 and 100%.' };
     }
 
-    const amount = quantity * rate * (1 - discount / 100);
+    const baseAmount = quantity * rate;
+    const discountAmount = baseAmount * (discount / 100);
+    const amount = baseAmount - discountAmount;
     const taxAmount = amount * (Number(taxPercentage || 0) / 100);
     const totalAmount = amount + taxAmount;
 
     return {
+      baseAmount: parseFloat(baseAmount.toFixed(2)),
+      discountAmount: parseFloat(discountAmount.toFixed(2)),
       amount: parseFloat(amount.toFixed(2)),
       taxAmount: parseFloat(taxAmount.toFixed(2)),
       totalAmount: parseFloat(totalAmount.toFixed(2)),
@@ -95,18 +100,28 @@ function QuickInvoice() {
     };
   };
 
-  // Calculate final total amount
-  const calculateFinalTotalAmount = (qGRNIds, taxDetails) => {
-    let total = 0;
-    qGRNIds.forEach((qGRNId) => {
-      const grnItems = quickGRNItems.filter((gi) => gi.qGRNId === qGRNId);
-      grnItems.forEach((gi) => {
-        const { totalAmount } = calculateItemAmounts(gi, taxDetails[gi.qGRNItemid]?.taxPercentage);
-        total += Number(totalAmount);
-      });
+ // Calculate final totals
+const calculateFinalTotals = (qGRNIds, taxDetails, OtherAmount) => {
+  let totalAmount = 0;
+  let taxAmount = 0;
+  let discountedAmount = 0;
+  qGRNIds.forEach((qGRNId) => {
+    const grnItems = quickGRNItems.filter((gi) => gi.qGRNId === qGRNId);
+    grnItems.forEach((gi) => {
+      const { baseAmount, discountAmount, taxAmount: itemTaxAmount } = calculateItemAmounts(gi, taxDetails[gi.qGRNItemid]?.taxPercentage);
+      totalAmount += baseAmount;
+      taxAmount += itemTaxAmount;
+      discountedAmount += discountAmount;
     });
-    return parseFloat(total.toFixed(2));
+  });
+  const totalAmountWithTax = totalAmount + Number(OtherAmount) + taxAmount - discountedAmount;
+  return {
+    totalAmount: parseFloat(totalAmount.toFixed(2)),
+    taxAmount: parseFloat(taxAmount.toFixed(2)),
+    discountedAmount: parseFloat(discountedAmount.toFixed(2)),
+    totalAmountWithTax: parseFloat(totalAmountWithTax.toFixed(2)),
   };
+};
 
   // Handle GRN selection
   const handleGRNChange = async (selectedOptions) => {
@@ -129,8 +144,8 @@ function QuickInvoice() {
         const selectedGRNItems = newGRNItems.filter((gi) => selected.includes(gi.qGRNId));
         selectedGRNItems.forEach((gi) => {
           const existingTax = prev.taxDetails[gi.qGRNItemid] || { taxPercentage: '' };
-          const { amount, taxAmount, totalAmount, error } = calculateItemAmounts(gi, existingTax.taxPercentage);
-          newTaxDetails[gi.qGRNItemid] = { taxPercentage: existingTax.taxPercentage, amount, taxAmount, totalAmount };
+          const { baseAmount, discountAmount, amount, taxAmount, totalAmount, error } = calculateItemAmounts(gi, existingTax.taxPercentage);
+          newTaxDetails[gi.qGRNItemid] = { taxPercentage: existingTax.taxPercentage, baseAmount, discountAmount, amount, taxAmount, totalAmount };
           if (error) {
             setErrors((prevErrors) => ({
               ...prevErrors,
@@ -181,7 +196,7 @@ function QuickInvoice() {
         return prev;
       }
       const updatedItem = { ...grnItem, discount };
-      const { amount, taxAmount, totalAmount } = calculateItemAmounts(
+      const { baseAmount, discountAmount, amount, taxAmount, totalAmount } = calculateItemAmounts(
         updatedItem,
         prev.taxDetails[qGRNItemid]?.taxPercentage
       );
@@ -191,6 +206,8 @@ function QuickInvoice() {
           ...prev.taxDetails,
           [qGRNItemid]: {
             ...prev.taxDetails[qGRNItemid],
+            baseAmount,
+            discountAmount,
             amount,
             taxAmount,
             totalAmount,
@@ -220,17 +237,31 @@ function QuickInvoice() {
         console.error(`GRN item ${qGRNItemid} not found during tax update`);
         return prev;
       }
-      const { amount, taxAmount, totalAmount } = calculateItemAmounts(grnItem, taxPercentage);
+      const { baseAmount, discountAmount, amount, taxAmount, totalAmount } = calculateItemAmounts(grnItem, taxPercentage);
       return {
         ...prev,
         taxDetails: {
           ...prev.taxDetails,
-          [qGRNItemid]: { taxPercentage, amount, taxAmount, totalAmount },
+          [qGRNItemid]: { taxPercentage, baseAmount, discountAmount, amount, taxAmount, totalAmount },
         },
       };
     });
 
     setErrors((prev) => ({ ...prev, [`taxDetails[${qGRNItemid}].taxPercentage`]: '' }));
+  };
+
+  // Handle OtherAmount change
+  const handleOtherAmountChange = (e) => {
+    const value = Number(e.target.value) || '';
+    if (value < 0) {
+      setErrors((prev) => ({
+        ...prev,
+        OtherAmount: 'Other Amount cannot be negative.',
+      }));
+      return;
+    }
+    setFormData((prev) => ({ ...prev, OtherAmount: value }));
+    setErrors((prev) => ({ ...prev, OtherAmount: '' }));
   };
 
   // Handle file selection
@@ -276,6 +307,7 @@ function QuickInvoice() {
     const newErrors = {};
     if (!formData.qInvoiceDate) newErrors.qInvoiceDate = 'Invoice date is required';
     if (!formData.qGRNIds.length) newErrors.qGRNIds = 'At least one Quick GRN is required';
+    if (formData.OtherAmount < 0) newErrors.OtherAmount = 'Other Amount cannot be negative';
     quickGRNItems
       .filter((gi) => formData.qGRNIds.includes(gi.qGRNId))
       .forEach((gi) => {
@@ -313,15 +345,13 @@ function QuickInvoice() {
     try {
       const simplifiedTaxDetails = {};
       const quickInvoiceItems = [];
-      let totalInvoiceAmount = 0;
-
       formData.qGRNIds.forEach((qGRNId) => {
         const grnItems = quickGRNItems.filter((gi) => gi.qGRNId === qGRNId);
         grnItems.forEach((gi) => {
           const taxPercentage = Number(formData.taxDetails[gi.qGRNItemid]?.taxPercentage) || 0;
           const discount = Number(gi.discount) || 0;
           console.log(`Preparing invoice item ${gi.qGRNItemid} with discount=${discount}`);
-          const { amount, taxAmount, totalAmount } = calculateItemAmounts(gi, taxPercentage);
+          const { baseAmount, discountAmount, amount, taxAmount, totalAmount } = calculateItemAmounts(gi, taxPercentage);
 
           simplifiedTaxDetails[gi.qGRNItemid] = { taxPercentage };
 
@@ -333,6 +363,8 @@ function QuickInvoice() {
             quantity: Number(gi.quantity),
             rate: Number(gi.rate),
             discount: parseFloat(discount.toFixed(2)),
+            baseAmount,
+            discountAmount,
             amount,
             taxPercentage,
             taxAmount,
@@ -349,7 +381,6 @@ function QuickInvoice() {
           }
 
           quickInvoiceItems.push(invoiceItem);
-          totalInvoiceAmount += Number(totalAmount);
         });
       });
 
@@ -359,6 +390,7 @@ function QuickInvoice() {
       payload.append('remark', formData.remark || '');
       payload.append('taxDetails', JSON.stringify(simplifiedTaxDetails));
       payload.append('quickInvoiceItems', JSON.stringify(quickInvoiceItems));
+      payload.append('OtherAmount', JSON.stringify(formData.OtherAmount));
       if (isEditMode) {
         payload.append('existingDocuments', JSON.stringify(formData.existingDocuments));
       }
@@ -400,6 +432,7 @@ function QuickInvoice() {
       taxDetails: {},
       documents: [],
       existingDocuments: [],
+      OtherAmount: '',
     });
     setErrors({});
     setSuccessMessage('');
@@ -434,8 +467,8 @@ function QuickInvoice() {
       format: (value) => new Date(value).toLocaleDateString(),
     },
     {
-      key: 'totalAmount',
-      label: 'Total Amount',
+      key: 'totalAmountWithTax',
+      label: 'Total Amount with Tax',
       format: (value) => `₹${parseFloat(value).toFixed(2)}`,
     },
   ];
@@ -456,8 +489,8 @@ function QuickInvoice() {
           }
           const grnItem = updatedGRNItems.find((gi) => gi.qGRNItemid === qi.qGRNItemid);
           if (grnItem) {
-            const { amount, taxAmount, totalAmount } = calculateItemAmounts(grnItem, qi.taxPercentage);
-            taxDetails[qi.qGRNItemid] = { taxPercentage: qi.taxPercentage, amount, taxAmount, totalAmount };
+            const { baseAmount, discountAmount, amount, taxAmount, totalAmount } = calculateItemAmounts(grnItem, qi.taxPercentage);
+            taxDetails[qi.qGRNItemid] = { taxPercentage: qi.taxPercentage, baseAmount, discountAmount, amount, taxAmount, totalAmount };
           }
         });
         console.log('Loaded edit form with quickGRNItems:', updatedGRNItems);
@@ -469,6 +502,7 @@ function QuickInvoice() {
           taxDetails,
           documents: [],
           existingDocuments: row.document || [],
+          OtherAmount: Number(row.OtherAmount) || '',
         });
         setSuccessMessage('');
         setIsFormVisible(true);
@@ -637,7 +671,7 @@ function QuickInvoice() {
                           ) : (
                             <div className="space-y-4">
                               {grnItems.map((gi) => (
-                                <div key={gi.qGRNItemid} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 p-2 border rounded-md">
+                                <div key={gi.qGRNItemid} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2 p-2 border rounded-md">
                                   <div>
                                     <label className="block text-sm font-medium text-gray-700">Item Name</label>
                                     <input
@@ -675,6 +709,15 @@ function QuickInvoice() {
                                     />
                                   </div>
                                   <div>
+                                    <label className="block text-sm font-medium text-gray-700">Base Amount</label>
+                                    <input
+                                      type="text"
+                                      value={formData.taxDetails[gi.qGRNItemid]?.baseAmount || '0.00'}
+                                      disabled
+                                      className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                                    />
+                                  </div>
+                                  <div>
                                     <label className="block text-sm font-medium text-gray-700">Discount %</label>
                                     <input
                                       type="number"
@@ -689,6 +732,15 @@ function QuickInvoice() {
                                     {errors[`items[${gi.qGRNItemid}].discount`] && (
                                       <p className="mt-1 text-xs text-red-600">{errors[`items[${gi.qGRNItemid}].discount`]}</p>
                                     )}
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700">Discount Amount</label>
+                                    <input
+                                      type="text"
+                                      value={formData.taxDetails[gi.qGRNItemid]?.discountAmount || '0.00'}
+                                      disabled
+                                      className="block w-full border border-gray-300 rounded-md shadow-sm px-2 py-2 bg-gray-100 text-sm"
+                                    />
                                   </div>
                                   <div>
                                     <label className="block text-sm font-medium text-gray-700">Amount</label>
@@ -745,10 +797,45 @@ function QuickInvoice() {
                     })
                   )}
                   <div className="mt-4 p-4 bg-gray-50 rounded-md">
-                    <h4 className="text-md font-semibold text-brand-secondary">Final Total Amount</h4>
-                    <p className="text-md font-medium text-gray-900">
-                      ₹{calculateFinalTotalAmount(formData.qGRNIds, formData.taxDetails)}
-                    </p>
+                    <h4 className="text-md font-semibold text-brand-secondary">Invoice Totals</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-2">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Base Amount</label>
+                        <p className="text-md font-medium text-gray-900">
+                          ₹{calculateFinalTotals(formData.qGRNIds, formData.taxDetails, formData.OtherAmount).totalAmount}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Other Amount</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.OtherAmount}
+                          onChange={handleOtherAmountChange}
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-brand-primary focus:border-brand-primary"
+                          placeholder="Enter other amount"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Tax Amount</label>
+                        <p className="text-md font-medium text-gray-900">
+                          ₹{calculateFinalTotals(formData.qGRNIds, formData.taxDetails, formData.OtherAmount).taxAmount}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Discount Amount</label>
+                        <p className="text-md font-medium text-gray-900">
+                          ₹{calculateFinalTotals(formData.qGRNIds, formData.taxDetails, formData.OtherAmount).discountedAmount}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Total Amount with Tax</label>
+                        <p className="text-md font-medium text-gray-900">
+                          ₹{calculateFinalTotals(formData.qGRNIds, formData.taxDetails, formData.OtherAmount).totalAmountWithTax}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div className="col-span-1 sm:col-span-2 lg:col-span-3 flex space-x-4">
