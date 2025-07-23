@@ -581,7 +581,7 @@ const calculateFinalTotals = (qGRNIds, taxDetails, OtherAmount) => {
                     options={grnOptions}
                     value={grnOptions.filter((option) => formData.qGRNIds.includes(option.value))}
                     onChange={handleGRNChange}
-                    className="mt-1 text-sm"
+                    className="text-sm"
                     placeholder="Select Quick GRNs"
                     required
                   />

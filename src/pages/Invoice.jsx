@@ -7,6 +7,7 @@ import { getPurchaseOrders } from '../api/purchaseOrderService';
 import axios from '../api/axiosInstance';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
+import Select from 'react-select';
 
 function Invoice() {
   const [invoices, setInvoices] = useState([]);
@@ -582,20 +583,20 @@ function Invoice() {
                 <form onSubmit={handleSubmit} encType="multipart/form-data" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-xs sm:text-sm font-medium text-gray-700">Purchase Order</label>
-                    <select
+                    <Select
                       name="poId"
                       value={formData.poId}
                       onChange={handleChange}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-xs sm:text-sm"
+                      options={purchaseOrders.map((po) => ({
+                        value: po.poId,
+                        label: po.poNo,
+                      }))}
+                      placeholder="Select Purchase Order"
+                      className="text-xs sm:text-sm"
+                      classNamePrefix="react-select"
+                      isClearable
                       required
-                    >
-                      <option value="">Select PO</option>
-                      {purchaseOrders.map((po) => (
-                        <option key={po.poId} value={po.poId}>
-                          {po.poNo}
-                        </option>
-                      ))}
-                    </select>
+                    />
                     {errors.poId && <p className="mt-1 text-xs text-red-600">{errors.poId}</p>}
                   </div>
                   <FormInput

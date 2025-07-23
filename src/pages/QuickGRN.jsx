@@ -245,9 +245,9 @@ function QuickGRN() {
     });
 
     return newErrors;
-};
+  };
 
-const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = validateForm();
     if (Object.keys(newErrors).length > 0) {
@@ -302,7 +302,7 @@ const handleSubmit = async (e) => {
         text: `Failed to create Quick GRN: ${error.response?.data?.message || error.message}`,
       });
     }
-};
+  };
 
   const resetForm = () => {
     setFormData({
@@ -339,8 +339,8 @@ const handleSubmit = async (e) => {
     });
   };
 
-   // Remove a file from documents or existingDocuments
-   const handleRemoveFile = (index, isExisting = false) => {
+  // Remove a file from documents or existingDocuments
+  const handleRemoveFile = (index, isExisting = false) => {
     if (isExisting) {
       setFormData(prev => ({
         ...prev,
@@ -405,64 +405,64 @@ const handleSubmit = async (e) => {
                   className="w-full text-sm"
                 />
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Institute</label>
-                  <select
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">Institute</label>
+                  <Select
                     name="instituteId"
-                    value={formData.instituteId}
-                    onChange={handleChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-sm"
+                    value={institutes.find((inst) => inst.instituteId === formData.instituteId) ? { value: formData.instituteId, label: institutes.find((inst) => inst.instituteId === formData.instituteId)?.intituteCode } : null}
+                    onChange={(selectedOption) =>
+                      setFormData({ ...formData, instituteId: selectedOption ? selectedOption.value : '' })
+                    }
+                    options={institutes.map((inst) => ({
+                      value: inst.instituteId,
+                      label: inst.intituteCode,
+                    }))}
+                    placeholder="Select Institute"
+                    className="text-xs sm:text-sm"
+                    classNamePrefix="react-select"
+                    isClearable
                     required
-                  >
-                    <option value="">Select Institute</option>
-                    {institutes.map((inst) => (
-                      <option key={inst.instituteId} value={inst.instituteId}>
-                        {inst.instituteName}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.instituteId && (
-                    <p className="mt-1 text-xs text-red-600">{errors.instituteId}</p>
-                  )}
+                  />
+                  {errors.instituteId && <p className="mt-1 text-xs text-red-600">{errors.instituteId}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Financial Year</label>
-                  <select
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">Financial Year</label>
+                  <Select
                     name="financialYearId"
-                    value={formData.financialYearId}
-                    onChange={handleChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-sm"
+                    value={financialYears.find((fy) => fy.financialYearId === formData.financialYearId) ? { value: formData.financialYearId, label: financialYears.find((fy) => fy.financialYearId === formData.financialYearId)?.year } : null}
+                    onChange={(selectedOption) =>
+                      setFormData({ ...formData, financialYearId: selectedOption ? selectedOption.value : '' })
+                    }
+                    options={financialYears.map((fy) => ({
+                      value: fy.financialYearId,
+                      label: fy.year,
+                    }))}
+                    placeholder="Select Financial Year"
+                    className="text-xs sm:text-sm"
+                    classNamePrefix="react-select"
+                    isClearable
                     required
-                  >
-                    <option value="">Select Financial Year</option>
-                    {financialYears.map((fy) => (
-                      <option key={fy.financialYearId} value={fy.financialYearId}>
-                        {fy.year}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.financialYearId && (
-                    <p className="mt-1 text-xs text-red-600">{errors.financialYearId}</p>
-                  )}
+                  />
+                  {errors.financialYearId && <p className="mt-1 text-xs text-red-600">{errors.financialYearId}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Vendor</label>
-                  <select
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">Vendor</label>
+                  <Select
                     name="vendorId"
-                    value={formData.vendorId}
-                    onChange={handleChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-brand-primary focus:border-brand-primary text-sm"
+                    value={vendors.find((v) => v.vendorId === formData.vendorId) ? { value: formData.vendorId, label: vendors.find((v) => v.vendorId === formData.vendorId)?.name } : null}
+                    onChange={(selectedOption) =>
+                      setFormData({ ...formData, vendorId: selectedOption ? selectedOption.value : '' })
+                    }
+                    options={vendors.map((v) => ({
+                      value: v.vendorId,
+                      label: v.name,
+                    }))}
+                    placeholder="Select Vendor"
+                    className="text-xs sm:text-sm"
+                    classNamePrefix="react-select"
+                    isClearable
                     required
-                  >
-                    <option value="">Select Vendor</option>
-                    {vendors.map((vendor) => (
-                      <option key={vendor.vendorId} value={vendor.vendorId}>
-                        {vendor.name}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.vendorId && (
-                    <p className="mt-1 text-xs text-red-600">{errors.vendorId}</p>
-                  )}
+                  />
+                  {errors.vendorId && <p className="mt-1 text-xs text-red-600">{errors.vendorId}</p>}
                 </div>
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-gray-700">Documents</label>
@@ -485,25 +485,25 @@ const handleSubmit = async (e) => {
                       </ul>
                     </div>
                   )} */}
-                     {formData.documents.length > 0 && (
-                      <div className="mt-2">
-                        <p className="text-sm font-medium text-gray-700">New Files:</p>
-                        <ul className="list-disc list-inside text-sm text-gray-600">
-                          {formData.documents.map((file, index) => (
-                            <li key={index} className="flex items-center justify-between">
-                              <span>{file.name}</span>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveFile(index, false)}
-                                className="text-red-600 hover:text-red-800 text-xs"
-                              >
-                                Remove
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
+                  {formData.documents.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-sm font-medium text-gray-700">New Files:</p>
+                      <ul className="list-disc list-inside text-sm text-gray-600">
+                        {formData.documents.map((file, index) => (
+                          <li key={index} className="flex items-center justify-between">
+                            <span>{file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveFile(index, false)}
+                              className="text-red-600 hover:text-red-800 text-xs"
+                            >
+                              Remove
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
                 <FormInput
                   label="Challan Number"
