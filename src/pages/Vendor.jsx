@@ -202,15 +202,15 @@ function Vendor() {
                   <FormInput label="Name" name="name" value={formData.name} onChange={handleChange} error={errors.name} required />
                   <FormInput label="Company Name" name="companyName" value={formData.companyName} onChange={handleChange} error={errors.companyName} required />
                   <FormInput label="Address" name="address" value={formData.address} onChange={handleChange} error={errors.address} required />
-                  <FormInput label="Email" name="email" value={formData.email} onChange={handleChange} error={errors.email}  />
-                  <FormInput label="Mobile Number" name="mobileNo" value={formData.mobileNo} onChange={handleChange} error={errors.mobileNo}  />
+                  <FormInput label="Email" name="email" type={'email'} value={formData.email} onChange={handleChange} error={errors.email}  />
+                  <FormInput label="Mobile Number" name="mobileNo" type={'number'} value={formData.mobileNo} onChange={handleChange} error={errors.mobileNo}  />
                   <FormInput label="PAN Card Number" name="pancardNo" value={formData.pancardNo} onChange={handleChange} error={errors.pancardNo}  />
                   <FormInput label="GST Number" name="gstNo" value={formData.gstNo} onChange={handleChange} error={errors.gstNo}  />
                   <FormInput label="Bank Name" name="bankName" value={formData.bankName} onChange={handleChange} error={errors.bankName}  />
                   <FormInput label="Account Number" name="accountNo" value={formData.accountNo} onChange={handleChange} error={errors.accountNo}  />
                   <FormInput label="IFSC Code" name="ifscCode" value={formData.ifscCode} onChange={handleChange} error={errors.ifscCode}  />
                   <FormInput label="TAN Number" name="tanNo" value={formData.tanNo} onChange={handleChange} error={errors.tanNo}  />
-                  <FormInput label="Website" name="website" value={formData.website} onChange={handleChange} error={errors.website} />
+                  <FormInput label="Website" name="website" type={'url'} value={formData.website} onChange={handleChange} error={errors.website} />
                   <FormInput label="Remark" name="remark" value={formData.remark} onChange={handleChange} error={errors.remark}  />
                 </div>
                 <div className="flex space-x-2 mt-4">

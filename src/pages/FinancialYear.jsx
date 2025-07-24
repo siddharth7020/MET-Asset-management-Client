@@ -186,16 +186,17 @@ function FinancialYear() {
               {isEditMode ? 'Edit Financial Year' : 'Add Financial Year'}
             </h3>
             <form onSubmit={handleSubmit}>
-              <FormInput
-                label="Year (YYYY-YYYY)"
-                type="text"
-                name="year"
-                value={formData.year}
-                onChange={handleChange}
-                error={errors.year}
-                required
-              />
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+
+              <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+                <FormInput
+                  label="Year (YYYY-YYYY)"
+                  type="text"
+                  name="year"
+                  value={formData.year}
+                  onChange={handleChange}
+                  error={errors.year}
+                  required
+                />
                 <FormInput
                   label="Start Date"
                   type="date"
