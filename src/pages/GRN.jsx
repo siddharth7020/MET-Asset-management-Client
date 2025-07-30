@@ -149,7 +149,7 @@ function GRN() {
     {
       key: 'grnDate',
       label: 'GRN Date',
-      format:(value) => new Date(value).toLocaleDateString('en-GB')
+      format: (value) => new Date(value).toLocaleDateString('en-GB')
     },
     { key: 'challanNo', label: 'Challan Number' },
     {
@@ -312,12 +312,12 @@ function GRN() {
     resetForm();
     setIsFormVisible(false);
   };
-   // Remove a file from documents or existingDocuments
-   const handleRemoveFile = (index) => {
-      setFormData(prev => ({
-        ...prev,
-        documents: prev.documents.filter((_, i) => i !== index),
-      }));
+  // Remove a file from documents or existingDocuments
+  const handleRemoveFile = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      documents: prev.documents.filter((_, i) => i !== index),
+    }));
   };
 
   const selectedGrn = grns.find((grn) => grn.id === selectedGrnId);
@@ -363,8 +363,12 @@ function GRN() {
                     <label className="block text-sm font-medium text-gray-700">Purchase Order</label>
                     <Select
                       name="poId"
-                      value={formData.poId}
-                      onChange={handleChange}
+                      value={
+                        purchaseOrders
+                          .map((po) => ({ value: po.poId, label: po.poNo }))
+                          .find((option) => option.value === formData.poId) || null
+                      }
+                      onChange={(e) => setFormData({ ...formData, poId: e ? e.value : null })}
                       options={purchaseOrders.map((po) => ({
                         value: po.poId,
                         label: po.poNo,
@@ -375,6 +379,7 @@ function GRN() {
                       isClearable
                       required
                     />
+
                     {errors.poId && <p className="mt-1 text-sm text-red-600">{errors.poId}</p>}
                   </div>
                   <FormInput

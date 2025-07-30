@@ -585,8 +585,12 @@ function Invoice() {
                     <label className="block text-xs sm:text-sm font-medium text-gray-700">Purchase Order</label>
                     <Select
                       name="poId"
-                      value={formData.poId}
-                      onChange={handleChange}
+                      value={
+                        purchaseOrders
+                          .map((po) => ({ value: po.poId, label: po.poNo }))
+                          .find((option) => option.value === formData.poId) || null
+                      }
+                      onChange={(e) => setFormData({ ...formData, poId: e ? e.value : null })}
                       options={purchaseOrders.map((po) => ({
                         value: po.poId,
                         label: po.poNo,
